@@ -30,7 +30,7 @@ import org.rulelearn.rules.RuleSet;
 import org.rulelearn.rules.ruleml.RuleParser;
 
 /**
- * TODO.
+ * Tests different operations on PROTECTIVE data (like, reading objects into information table, from JSON and CSV, and reading rules from RuleML followed by printing them to system console as simple text.
  *
  * @author Jerzy Błaszczyński (<a href="mailto:jurek.blaszczynski@cs.put.poznan.pl">jurek.blaszczynski@cs.put.poznan.pl</a>)
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
@@ -38,21 +38,35 @@ import org.rulelearn.rules.ruleml.RuleParser;
 public class ProtectiveIntegrationTest {
 
 	/**
-	 * TODO
+	 * Application entry point.
 	 * 
-	 * @param args
+	 * @param args input arguments of this application (ignored)
 	 */
 	public static void main(String[] args) {
+		readInformationTable(true);
+		System.out.println();
+		readInformationTable(false);
+		System.out.println();
+		transformRules();
+	}
+	
+	private static void readInformationTable(boolean fromJSON) { //read objects from JSON file if true, otherwise from CSV file
 		InformationTable informationTable = null;
 		try {
-			//informationTable = InformationTableBuilder.safelyBuildFromJSONFile("src/test/resources/data/json-metadata/prioritisation-no-rank.json", "src/test/resources/data/json-objects/LearningSet_2604v1.json");
-			informationTable = InformationTableBuilder.safelyBuildFromCSVFile("src/test/resources/data/json-metadata/prioritisation-no-rank.json", "src/test/resources/data/csv/LearningSet_2604v1.csv", false, ',');
+			if (fromJSON) {
+				informationTable = InformationTableBuilder.safelyBuildFromJSONFile("src/test/resources/data/json-metadata/prioritisation-no-rank.json", "src/test/resources/data/json-objects/LearningSet_2604v1.json");
+			} else {
+				informationTable = InformationTableBuilder.safelyBuildFromCSVFile("src/test/resources/data/json-metadata/prioritisation-no-rank.json", "src/test/resources/data/csv/LearningSet_2604v1.csv", false, ',');
+			}
+			
 		}
 		catch (FileNotFoundException ex) {
 			System.out.println(ex);
+			return;
 		}
 		catch (IOException ex) {
 			System.out.println(ex);
+			return;
 		}
 		
 		if (informationTable != null) {
@@ -61,9 +75,6 @@ public class ProtectiveIntegrationTest {
 		} else {
 			System.out.println("Error reading information table from json file.");
 		}
-		
-		transformRules();
-
 	}
 	
 	private static void transformRules() {
@@ -78,9 +89,10 @@ public class ProtectiveIntegrationTest {
 					rules = ruleParser.parseRules(fileRulesStream);
 					if (rules != null) {
 						RuleSet ruleSet = rules.get(1);
-						System.out.println(ruleSet.size() + " rules read from file.");
+						System.out.println(ruleSet.size() + " rules read from file:");
+						
 						for (int i = 0; i < ruleSet.size(); i++) {
-							System.out.println(ruleSet.getRule(i).toString(true)); //sort conditions?
+							System.out.println(ruleSet.getRule(i).toString(true)); //true <==> sort rules' conditions
 						}
 					}
 					else {
@@ -90,6 +102,7 @@ public class ProtectiveIntegrationTest {
 				}
 				catch (FileNotFoundException ex) {
 					System.out.println(ex.toString());
+					return;
 				}
 			}
 			else {
@@ -99,9 +112,11 @@ public class ProtectiveIntegrationTest {
 		}
 		catch (FileNotFoundException ex) {
 			System.out.println(ex.toString());
+			return;
 		}
 		catch (IOException ex) {
 			System.out.println(ex.toString());
+			return;
 		}
 	}
 
