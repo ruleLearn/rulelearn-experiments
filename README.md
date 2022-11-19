@@ -1,2 +1,2 @@
 # rulelearn-experiments
-Experiments and supplementary calculations/conversions employing ruleLearn library
+Experiments and supplementary calculations/conversions employing ruleLearn library.

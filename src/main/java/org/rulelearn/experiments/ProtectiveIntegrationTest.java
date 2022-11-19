@@ -50,6 +50,11 @@ public class ProtectiveIntegrationTest {
 		transformRules();
 	}
 	
+	/**
+	 * Reads information table from JSON or CSV file.
+	 * 
+	 * @param fromJSON flag indicating type of file with objects
+	 */
 	private static void readInformationTable(boolean fromJSON) { //read objects from JSON file if true, otherwise from CSV file
 		InformationTable informationTable = null;
 		try {
@@ -73,10 +78,13 @@ public class ProtectiveIntegrationTest {
 			System.out.println("Information table read from file.");
 			System.out.println("# objects: "+informationTable.getNumberOfObjects());
 		} else {
-			System.out.println("Error reading information table from json file.");
+			System.out.println("Error reading information table from JSON file.");
 		}
 	}
 	
+	/**
+	 * Transforms rules from RuleML file (xml) to text, sorting conditions.
+	 */
 	private static void transformRules() {
 		Attribute [] attributes = null;
 		AttributeParser attributeParser = new AttributeParser();
