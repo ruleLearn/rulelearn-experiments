@@ -20,8 +20,8 @@ repositories {
 
 dependencies {
 	//adding ruleLearn library
-	//implementation('com.github.ruleLearn:rulelearn:0.25.0-rc.1')
-	implementation('com.github.ruleLearn:rulelearn:0.24.2')
+	implementation('com.github.ruleLearn:rulelearn:0.25.0-rc.10')
+	implementation('nz.ac.waikato.cms.weka:weka-stable:3.8.6') //https://mvnrepository.com/artifact/nz.ac.waikato.cms.weka/weka-stable
 
 	testImplementation("org.junit.jupiter:junit-jupiter-api:5.0.2")
 	testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.0.2")
