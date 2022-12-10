@@ -20,7 +20,7 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 	}
 
 	@Override
-	public ClassificationModel learn(Data data, LearningAlgorithmDataParameters parameters) {
+	public ClassificationModel learn(Data data, LearningAlgorithmDataParameters parameters) { //parameters can be null, if not used (i.e., WEKA algorithm is used with default options)
 		Instances train = InformationTable2Instances.convert(data.getInformationTable(), data.getName());
 		AbstractClassifier wekaClassifier = wekaClassifierProvider.get();
 

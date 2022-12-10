@@ -19,9 +19,9 @@ import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 public class BatchExperimentResults {
 	
 	private class FoldsResults { //results for all folds within single cross-validation
-		OrdinalMisclassificationMatrix[] foldMisclassificationMatrices;
+		OrdinalMisclassificationMatrix[] foldMisclassificationMatrices; //matrix for each fold
 		Decision[] orderOfDecisions; //taken from entire data
-		OrdinalMisclassificationMatrix aggregatedMisclassificationMatrix;
+		OrdinalMisclassificationMatrix aggregatedMisclassificationMatrix; //matrix aggregated over all folds
 		
 		public FoldsResults(Decision[] orderOfDecisions, int foldsCount) {
 			this.orderOfDecisions = orderOfDecisions;
@@ -31,15 +31,11 @@ public class BatchExperimentResults {
 	}
 	
 	public static class FullDataResults { //full information table results for a single data set
-		double qualityOfDRSAApproximation;
-		double qualityOfVCDRSAApproximation;
-		double consistencyThresholdForVCDRSAApproximation;
-		Map<String, Double> algorithmNameWithParameters2Accuracy;
-		public FullDataResults(double qualityOfDRSAApproximation, double qualityOfVCDRSAApproximation,
-				double consistencyThresholdForVCDRSAApproximation, Map<String, Double> algorithmNameWithParameters2Accuracy) { //should pass a linked hash map
-			this.qualityOfDRSAApproximation = qualityOfDRSAApproximation;
-			this.qualityOfVCDRSAApproximation = qualityOfVCDRSAApproximation;
-			this.consistencyThresholdForVCDRSAApproximation = consistencyThresholdForVCDRSAApproximation;
+		Map<Double, Double> consistencyThreshold2QualityOfApproximation;
+		Map<String, Double> algorithmNameWithParameters2Accuracy; //maps "algorithm-name(parameters)" to accuracy
+		
+		public FullDataResults(Map<Double, Double> consistencyThreshold2QualityOfApproximation, Map<String, Double> algorithmNameWithParameters2Accuracy) { //linked hash maps should be passed!
+			this.consistencyThreshold2QualityOfApproximation = consistencyThreshold2QualityOfApproximation;
 			this.algorithmNameWithParameters2Accuracy = algorithmNameWithParameters2Accuracy;
 		}
 	}
@@ -47,7 +43,8 @@ public class BatchExperimentResults {
 	public static class Builder {
 		int dataSetsCount = -1;
 		int learningAlgorithmsCount = -1;
-		int crossValidationsCount = -1;
+		int maxParametersCount = -1;
+		int maxCrossValidationsCount = -1;
 		
 		public Builder() {}
 		
@@ -59,35 +56,44 @@ public class BatchExperimentResults {
 			this.learningAlgorithmsCount = learningAlgorithmsCount;
 			return this;
 		}
-		public Builder crossValidationsCount(int crossValidationsCount) {
-			this.crossValidationsCount = crossValidationsCount;
+		public Builder maxParametersCount(int maxParametersCount) {
+			this.maxParametersCount = maxParametersCount;
+			return this;
+		}
+		public Builder maxCrossValidationsCount(int maxCrossValidationsCount) {
+			this.maxCrossValidationsCount = maxCrossValidationsCount;
 			return this;
 		}
 		
 		public BatchExperimentResults build() {
-			BatchExperimentResults batchExperimentResult = new BatchExperimentResults(dataSetsCount, learningAlgorithmsCount, crossValidationsCount);
-			batchExperimentResult.foldsResults = new FoldsResults[dataSetsCount][learningAlgorithmsCount][crossValidationsCount];
+			BatchExperimentResults batchExperimentResult = new BatchExperimentResults(dataSetsCount, learningAlgorithmsCount, maxParametersCount, maxCrossValidationsCount);
 			return batchExperimentResult;
 		}
 	}
 	
-	public static class DataAlgorithmSelector { //selects data+algorithm pair
+	public static class DataAlgorithmParametersSelector { //selects data+algorithm+parameters triple
 		int dataSetNumber = -1;
 		int learningAlgorithmNumber = -1;
+		int parametersNumber = -1;
 		
-		public DataAlgorithmSelector() {}
+		public DataAlgorithmParametersSelector() {}
 		
-		public DataAlgorithmSelector dataSetNumber(int dataSetNumber) {
+		public DataAlgorithmParametersSelector dataSetNumber(int dataSetNumber) {
 			this.dataSetNumber = dataSetNumber;
 			return this;
 		}
-		public DataAlgorithmSelector learningAlgorithmNumber(int learningAlgorithmNumber) {
+		public DataAlgorithmParametersSelector learningAlgorithmNumber(int learningAlgorithmNumber) {
 			this.learningAlgorithmNumber = learningAlgorithmNumber;
 			return this;
 		}
+		public DataAlgorithmParametersSelector parametersNumber(int parametersNumber) {
+			this.parametersNumber = parametersNumber;
+			return this;
+		}
+		
 	}
 	
-	public static class CVSelector extends DataAlgorithmSelector { //selects data+algorithm+CV triple
+	public static class CVSelector extends DataAlgorithmParametersSelector { //selects data+algorithm+CV triple
 		int crossValidationNumber = -1;
 		
 		public CVSelector() {}
@@ -102,6 +108,11 @@ public class BatchExperimentResults {
 			this.learningAlgorithmNumber = learningAlgorithmNumber;
 			return this;
 		}
+		@Override
+		public CVSelector parametersNumber(int parametersNumber) {
+			this.parametersNumber = parametersNumber;
+			return this;
+		}
 		public CVSelector crossValidationNumber(int crossValidationNumber) {
 			this.crossValidationNumber = crossValidationNumber;
 			return this;
@@ -110,31 +121,38 @@ public class BatchExperimentResults {
 	
 	public class AverageEvaluation {
 		double average;
-		double standardDeviation;
-		public AverageEvaluation(double average, double standardDeviation) {
+		double stdDev; //standard deviation
+		
+		public AverageEvaluation(double average, double stdDev) {
 			this.average = average;
-			this.standardDeviation = standardDeviation;
+			this.stdDev = stdDev;
 		}
+		
 		public double getAverage() {
 			return average;
 		}
-		public double getStandardDeviation() {
-			return standardDeviation;
+		public double getStdDev() {
+			return stdDev;
 		}
 	}
 	
-	FoldsResults[][][] foldsResults;
+	FoldsResults[][][][] foldsResults; //usage: foldsResults[dataSetNumber][learningAlgorithmNumber][parametersNumber][crossValidationNumber] = foldsResults
+	
 	int dataSetsCount = -1;
 	int learningAlgorithmsCount = -1;
-	int maximumCrossValidationsCount = -1;
+	int maxParametersCount = -1;
+	int maxCrossValidationsCount = -1;
 	
 	Map<String, FullDataResults> dataName2FullDataResults;
 	
-	private BatchExperimentResults(int dataSetsCount, int learningAlgorithmsCount, int maximumCrossValidationsCount) {
+	private BatchExperimentResults(int dataSetsCount, int learningAlgorithmsCount, int maxParametersCount, int maxCrossValidationsCount) {
 		this.dataSetsCount = dataSetsCount;
 		this.learningAlgorithmsCount = learningAlgorithmsCount;
-		this.maximumCrossValidationsCount = maximumCrossValidationsCount;
+		this.maxParametersCount = maxParametersCount;
+		this.maxCrossValidationsCount = maxCrossValidationsCount;
 		this.dataName2FullDataResults = new HashMap<String, FullDataResults>();
+		
+		this.foldsResults = new FoldsResults[dataSetsCount][learningAlgorithmsCount][maxParametersCount][maxCrossValidationsCount];
 	} //accessible only by the builder
 	
 	public void storeFullDataResults (String dataName, FullDataResults fullDataResults) {
@@ -144,11 +162,14 @@ public class BatchExperimentResults {
 	public String reportFullDataResults(String dataName) {
 		StringBuilder sb = new StringBuilder();
 		FullDataResults fullDataResults = dataName2FullDataResults.get(dataName);
-		
-		sb.append("Quality of approximation for ('").append(dataName).append("', consistency threshold=0.0): ").append(fullDataResults.qualityOfDRSAApproximation).append(".").append(System.lineSeparator());
-		sb.append("Quality of approximation for ('").append(dataName).append("', consistency threshold=").append(fullDataResults.consistencyThresholdForVCDRSAApproximation).append("): ").append(fullDataResults.qualityOfVCDRSAApproximation).append(".").append(System.lineSeparator());
-		
+		Map<Double, Double> consistencyThreshold2QualityOfApproximation = fullDataResults.consistencyThreshold2QualityOfApproximation;
 		Map<String, Double> algorithmNameWithParameters2Accuracy = fullDataResults.algorithmNameWithParameters2Accuracy;
+		
+		consistencyThreshold2QualityOfApproximation.forEach((consistencyThreshold, qualityOfApproximation) -> {
+			sb.append("Quality of approximation for ('").append(dataName).append("', consistency threshold=").append(consistencyThreshold).append("): ")
+			.append(qualityOfApproximation).append(".").append(System.lineSeparator());
+		});
+		
 		algorithmNameWithParameters2Accuracy.forEach(
 			(algorithmNameWithParameters, accuracy) ->
 				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f.", dataName, algorithmNameWithParameters, accuracy)).append(System.lineSeparator())
@@ -159,45 +180,44 @@ public class BatchExperimentResults {
 	
 	//must be called before storeFoldMisclassificationMatrix!
 	public void initializeFoldResults(CVSelector selector, Decision[] orderOfDecisions, int foldsCount) {
-		foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.crossValidationNumber] = new FoldsResults(orderOfDecisions, foldsCount);
+		foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber][selector.crossValidationNumber] = new FoldsResults(orderOfDecisions, foldsCount);
 	}
 	
 	public void storeFoldMisclassificationMatrix(CVSelector selector, int foldNumber, OrdinalMisclassificationMatrix foldResult) { //do initializeFoldResults before!
-		foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.crossValidationNumber].foldMisclassificationMatrices[foldNumber] = foldResult;
+		foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber][selector.crossValidationNumber].foldMisclassificationMatrices[foldNumber] = foldResult;
 	}
 	
 	//gets average misclassification matrix or null, if there are no fold results stored for given selector
 	public OrdinalMisclassificationMatrix getAverageCVMisclassificationMatrix(CVSelector selector) {
-		FoldsResults _foldResults = foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.crossValidationNumber];
+		FoldsResults _foldResults = foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber][selector.crossValidationNumber];
 		
 //		System.out.println("Getting avg misclassification matrix for: "+selector.dataSetNumber+", "+selector.learningAlgorithmNumber+", "+selector.crossValidationNumber);
 		
 		if (_foldResults != null) {
-			if (_foldResults.aggregatedMisclassificationMatrix != null) { //there is already an aggregated matrxi
-				return _foldResults.aggregatedMisclassificationMatrix;
-			} else {
+			if (_foldResults.aggregatedMisclassificationMatrix == null) { //there is already an aggregated matrix
 				_foldResults.aggregatedMisclassificationMatrix = new OrdinalMisclassificationMatrix(_foldResults.orderOfDecisions, _foldResults.foldMisclassificationMatrices);
-				return _foldResults.aggregatedMisclassificationMatrix;
 			}
+			return _foldResults.aggregatedMisclassificationMatrix;
 		} else {
 			return null;
 		}
 	}
 	
-	public AverageEvaluation getAverageDataAlgorithmAccuracy(DataAlgorithmSelector selector) {
-//		List<OrdinalMisclassificationMatrix> matrices = new ArrayList<>(maximumCrossValidationsCount);
+	public AverageEvaluation getAverageDataAlgorithmParametersAccuracy(DataAlgorithmParametersSelector selector) {
+//		List<OrdinalMisclassificationMatrix> matrices = new ArrayList<>(maxCrossValidationsCount);
 		double sumCVAccuracies = 0.0;
 		OrdinalMisclassificationMatrix averageCVMisclassificationMatrix;
 		
 		List<Double> cvAccuracies = new ArrayList<Double>();
 		
 		int numberOfCrossValidations = 0;
-		for (int i = 0; i < maximumCrossValidationsCount; i++) {
-			averageCVMisclassificationMatrix = getAverageCVMisclassificationMatrix((new CVSelector()).dataSetNumber(selector.dataSetNumber).learningAlgorithmNumber(selector.learningAlgorithmNumber).crossValidationNumber(i));
+		for (int i = 0; i < maxCrossValidationsCount; i++) {
+			averageCVMisclassificationMatrix = getAverageCVMisclassificationMatrix(
+					(new CVSelector()).dataSetNumber(selector.dataSetNumber).learningAlgorithmNumber(selector.learningAlgorithmNumber).parametersNumber(selector.parametersNumber).crossValidationNumber(i));
 			
 			if (averageCVMisclassificationMatrix != null) {
 				numberOfCrossValidations++;
-//				matrices.add(ordinalMisclassificationMatrix); //TODO: use this list of matrices
+//				matrices.add(ordinalMisclassificationMatrix); //TODO: use this list of matrices, if more information is needed
 				sumCVAccuracies += averageCVMisclassificationMatrix.getAccuracy();
 				cvAccuracies.add(averageCVMisclassificationMatrix.getAccuracy());
 			} else {
