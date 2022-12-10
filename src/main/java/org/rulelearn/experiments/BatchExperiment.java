@@ -283,13 +283,14 @@ public class BatchExperiment {
 							t5 = b(null);
 							ClassificationModel model = algorithm.learn(processedTrainData, parameters); //can change result of processedTrainData.getInformationTable()
 							OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = model.validate(fold.getTestData());
+							String validationSummary = model.getValidationSummary();
 							model = null; //facilitate GC
 							
 							BatchExperimentResults.CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
 									.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(streamCrossValidationNumber);
 							batchExperimentResults.storeFoldMisclassificationMatrix(cvSelector, fold.getIndex(), ordinalMisclassificationMatrix);
 							
-							e(t5, resolveText("      %1Finishing calculations for fold %2, algorithm %3(%4).", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters));
+							e(t5, resolveText("      %1Finishing calculations for fold %2, algorithm %3(%4). %5", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters, validationSummary));
 						}
 						
 						//e(t4, resolveText("      %1Finishing calculations for fold %2, algorithm %3.", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName()));

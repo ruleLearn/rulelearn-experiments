@@ -14,5 +14,6 @@ public interface ClassificationModel {
 	
 	public OrdinalMisclassificationMatrix validate(Data testData);
 	String getModelDescription();
+	String getValidationSummary();
 	
 }

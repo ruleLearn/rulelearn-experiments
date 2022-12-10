@@ -26,9 +26,11 @@ import weka.core.Instances;
 public class WEKAClassifer implements ClassificationModel {
 	
 	AbstractClassifier trainedClassifier; //trained classifier
+	String validationSummary;
 
 	public WEKAClassifer(AbstractClassifier trainedClassifier) {
 		this.trainedClassifier = trainedClassifier;
+		validationSummary = "";
 	}
 
 	@Override
@@ -62,7 +64,13 @@ public class WEKAClassifer implements ClassificationModel {
 			}
 		}
 		
+		//TODO: update validation summary?
+		
 		return new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
+	}
+	
+	public String getValidationSummary() {
+		return validationSummary;
 	}
 
 	@Override

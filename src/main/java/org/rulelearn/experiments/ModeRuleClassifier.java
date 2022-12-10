@@ -4,6 +4,7 @@
 package org.rulelearn.experiments;
 
 import org.rulelearn.classification.SimpleClassificationResult;
+import org.rulelearn.classification.SimpleOptimizingCountingRuleClassifier;
 import org.rulelearn.classification.SimpleOptimizingRuleClassifier;
 import org.rulelearn.data.Decision;
 import org.rulelearn.data.InformationTable;
@@ -19,11 +20,13 @@ import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 public class ModeRuleClassifier implements ClassificationModel {
 	
 	RuleSetWithComputableCharacteristics ruleSet;
-	SimpleOptimizingRuleClassifier simpleOptimizingRuleClassifier;
+	SimpleOptimizingCountingRuleClassifier simpleOptimizingCountingRuleClassifier;
+	String validationSummary;
 
 	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult) {
 		this.ruleSet = ruleSet;
-		simpleOptimizingRuleClassifier = new SimpleOptimizingRuleClassifier(ruleSet, defaultClassificationResult);
+		simpleOptimizingCountingRuleClassifier = new SimpleOptimizingCountingRuleClassifier(ruleSet, defaultClassificationResult);
+		validationSummary = "";
 	}
 
 	/**
@@ -45,10 +48,28 @@ public class ModeRuleClassifier implements ClassificationModel {
 		SimpleDecision[] assignedDecisions = new SimpleDecision[testDataSize]; //will contain assigned decisions
 	
 		for (int testObjectIndex = 0; testObjectIndex < testDataSize; testObjectIndex++) {
-			assignedDecisions[testObjectIndex] = simpleOptimizingRuleClassifier.classify(testObjectIndex, testInformationTable).getSuggestedDecision();
+			assignedDecisions[testObjectIndex] = simpleOptimizingCountingRuleClassifier.classify(testObjectIndex, testInformationTable).getSuggestedDecision();
 		}
 		
+		StringBuilder sb = new StringBuilder(80);
+		sb.append("Classification summary: ");
+		sb.append("precise: ").append(String.format("%.4f",
+				(double)( (simpleOptimizingCountingRuleClassifier.getResolvedToDownLimitCount() +
+				simpleOptimizingCountingRuleClassifier.getResolvedToEqualLimitCount() +
+				simpleOptimizingCountingRuleClassifier.getResolvedToUpLimitCount() ) / testDataSize) ));
+		sb.append("%, ");
+		sb.append("mode: ").append(String.format("%.4f", (double)simpleOptimizingCountingRuleClassifier.getResolvedToModeCount() / testDataSize));
+		sb.append("%, ");
+		sb.append("default ").append(String.format("%.4f", (double)simpleOptimizingCountingRuleClassifier.getResolvedToDefaultCount() / testDataSize));
+		sb.append("%.");
+		
+		validationSummary = sb.toString();
+		
 		return new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
+	}
+	
+	public String getValidationSummary() {
+		return validationSummary;
 	}
 
 	@Override
