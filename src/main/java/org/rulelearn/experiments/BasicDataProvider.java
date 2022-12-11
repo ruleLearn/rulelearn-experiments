@@ -148,17 +148,16 @@ public class BasicDataProvider implements DataProvider {
 	}
 
 	/**
-	 * Gets seeds for subsequent cross-validations.
-	 * 
-	 * @throws UnsupportedOperationException if this provider has already {@link #done() done} his job.
+	 * Gets seeds for subsequent cross-validations. It is possible to obtain seeds even if this provide is {@link #done()}.
 	 */
 	@Override
 	public long[] getSeeds() {
-		if (!done) {
-			return seeds;
-		} else {
-			throw new UnsupportedOperationException("Data provider has already done his job.");
-		}
+		return seeds;
+//		if (!done) {
+//			return seeds;
+//		} else {
+//			throw new UnsupportedOperationException("Data provider has already done his job.");
+//		}
 	}
 
 	/**
@@ -186,7 +185,7 @@ public class BasicDataProvider implements DataProvider {
 	@Override
 	public void done() {
 		this.informationTable = null;
-		this.seeds = null;
+		//this.seeds = null;
 		this.params = null;
 		done = true;
 	}

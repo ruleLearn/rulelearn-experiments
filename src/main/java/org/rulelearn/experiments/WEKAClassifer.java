@@ -30,7 +30,7 @@ public class WEKAClassifer implements ClassificationModel {
 
 	public WEKAClassifer(AbstractClassifier trainedClassifier) {
 		this.trainedClassifier = trainedClassifier;
-		validationSummary = "";
+		validationSummary = "[Classification summary]: --.";
 	}
 
 	@Override
@@ -64,7 +64,7 @@ public class WEKAClassifer implements ClassificationModel {
 			}
 		}
 		
-		//TODO: update validation summary?
+		//TODO: set validation summary?
 		
 		return new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 	}

@@ -3,9 +3,12 @@
  */
 package org.rulelearn.experiments;
 
+import java.util.Locale;
+
 import org.rulelearn.classification.SimpleClassificationResult;
 import org.rulelearn.classification.SimpleOptimizingCountingRuleClassifier;
 import org.rulelearn.classification.SimpleOptimizingRuleClassifier;
+import org.rulelearn.classification.SimpleOptimizingCountingRuleClassifier.ResolutionStrategy;
 import org.rulelearn.data.Decision;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.SimpleDecision;
@@ -36,6 +39,15 @@ public class ModeRuleClassifier implements ClassificationModel {
 	 */
 	@Override
 	public OrdinalMisclassificationMatrix validate(Data testData) {
+		final class ResolutionCounters {
+			long preciseCorrect = 0;
+			long preciseIncorrect = 0;
+			long modeCorrect = 0;
+			long modeIncorrect = 0;
+			long defaultCorrect = 0;
+			long defaultIncorrect = 0;
+		}
+		
 		InformationTable testInformationTable = testData.getInformationTable();
 		
 		if (testInformationTable.getDecisions(true) == null) {
@@ -46,22 +58,50 @@ public class ModeRuleClassifier implements ClassificationModel {
 		Decision[] orderOfDecisions = testInformationTable.getOrderedUniqueFullyDeterminedDecisions();
 		Decision[] originalDecisions = testInformationTable.getDecisions(true);
 		SimpleDecision[] assignedDecisions = new SimpleDecision[testDataSize]; //will contain assigned decisions
+		
+		ResolutionStrategy resolutionStrategy;
+		boolean strategySucceeded;
+		ResolutionCounters resolutionCounters = new ResolutionCounters();
 	
 		for (int testObjectIndex = 0; testObjectIndex < testDataSize; testObjectIndex++) {
 			assignedDecisions[testObjectIndex] = simpleOptimizingCountingRuleClassifier.classify(testObjectIndex, testInformationTable).getSuggestedDecision();
+			resolutionStrategy = simpleOptimizingCountingRuleClassifier.getLatestResolutionStrategy();
+			strategySucceeded = assignedDecisions[testObjectIndex].equals(originalDecisions[testObjectIndex]);
+			switch (resolutionStrategy) {
+			case MODE:
+				if (strategySucceeded) {
+					resolutionCounters.modeCorrect++;
+				} else {
+					resolutionCounters.modeIncorrect++;
+				}
+				break;
+			case DEFAULT:
+				if (strategySucceeded) {
+					resolutionCounters.defaultCorrect++;
+				} else {
+					resolutionCounters.defaultIncorrect++;
+				}
+				break;
+			default:
+				if (strategySucceeded) {
+					resolutionCounters.preciseCorrect++;
+				} else {
+					resolutionCounters.preciseIncorrect++;
+				}
+			}
 		}
 		
-		StringBuilder sb = new StringBuilder(80);
-		sb.append("Classification summary: ");
-		sb.append("precise: ").append(String.format("%.4f",
-				(double)( (simpleOptimizingCountingRuleClassifier.getResolvedToDownLimitCount() +
-				simpleOptimizingCountingRuleClassifier.getResolvedToEqualLimitCount() +
-				simpleOptimizingCountingRuleClassifier.getResolvedToUpLimitCount() ) / testDataSize) ));
-		sb.append("%, ");
-		sb.append("mode: ").append(String.format("%.4f", (double)simpleOptimizingCountingRuleClassifier.getResolvedToModeCount() / testDataSize));
-		sb.append("%, ");
-		sb.append("default ").append(String.format("%.4f", (double)simpleOptimizingCountingRuleClassifier.getResolvedToDefaultCount() / testDataSize));
-		sb.append("%.");
+		StringBuilder sb = new StringBuilder(120);
+		sb.append("[Classification summary]: ");
+		sb.append(String.format(Locale.US, "precise: %.2f%%(%.2f%% correct)",
+				100 * ((double)(resolutionCounters.preciseCorrect + resolutionCounters.preciseIncorrect) / testDataSize),
+				100 * ((double)resolutionCounters.preciseCorrect / testDataSize) ));
+		sb.append(String.format(Locale.US, ", mode: %.2f%%(%.2f%% correct)",
+				100 * ((double)(resolutionCounters.modeCorrect + resolutionCounters.modeIncorrect) / testDataSize),
+				100 * ((double)resolutionCounters.modeCorrect / testDataSize) ));
+		sb.append(String.format(Locale.US, ", default: %.2f%%(%.2f%% correct).",
+				100 * ((double)(resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect) / testDataSize),
+				100 * ((double)resolutionCounters.defaultCorrect / testDataSize) ));
 		
 		validationSummary = sb.toString();
 		
