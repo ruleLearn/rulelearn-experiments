@@ -54,3 +54,14 @@ junitPlatform {
 	// reportsDir file('build/test-results/junit-platform') // this is the default
 	logManager 'org.apache.logging.log4j.jul.LogManager'
 }
+
+task fatJar(type: Jar) {
+	group 'build'
+    manifest {
+        attributes 'Main-Class': 'org.rulelearn.experiments.BatchExperiment'
+    }
+    baseName = 'rulelearn-experiments'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
