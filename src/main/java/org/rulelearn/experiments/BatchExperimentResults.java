@@ -78,6 +78,12 @@ public class BatchExperimentResults {
 		
 		public DataAlgorithmParametersSelector() {}
 		
+		public DataAlgorithmParametersSelector(DataAlgorithmParametersSelector selector) { //copying constructor
+			this.dataSetNumber = selector.dataSetNumber;
+			this.learningAlgorithmNumber = selector.learningAlgorithmNumber;
+			this.parametersNumber = selector.parametersNumber;
+		}
+		
 		public DataAlgorithmParametersSelector dataSetNumber(int dataSetNumber) {
 			this.dataSetNumber = dataSetNumber;
 			return this;
@@ -165,10 +171,12 @@ public class BatchExperimentResults {
 		Map<Double, Double> consistencyThreshold2QualityOfApproximation = fullDataResults.consistencyThreshold2QualityOfApproximation;
 		Map<String, Double> algorithmNameWithParameters2Accuracy = fullDataResults.algorithmNameWithParameters2Accuracy;
 		
-		consistencyThreshold2QualityOfApproximation.forEach((consistencyThreshold, qualityOfApproximation) -> {
-			sb.append("Quality of approximation for ('").append(dataName).append("', consistency threshold=").append(consistencyThreshold).append("): ")
-			.append(qualityOfApproximation).append(".").append(System.lineSeparator());
-		});
+		if (consistencyThreshold2QualityOfApproximation != null) {
+			consistencyThreshold2QualityOfApproximation.forEach((consistencyThreshold, qualityOfApproximation) -> {
+				sb.append("Quality of approximation for ('").append(dataName).append("', consistency threshold=").append(consistencyThreshold).append("): ")
+				.append(qualityOfApproximation).append(".").append(System.lineSeparator());
+			});
+		}
 		
 		algorithmNameWithParameters2Accuracy.forEach(
 			(algorithmNameWithParameters, accuracy) ->
