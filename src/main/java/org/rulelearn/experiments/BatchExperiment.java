@@ -18,6 +18,7 @@ import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.experiments.BatchExperimentResults.AverageEvaluation;
 import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
+import org.rulelearn.experiments.BatchExperimentResults.CalculationTimes;
 import org.rulelearn.experiments.BatchExperimentResults.DataAlgorithmParametersSelector;
 import org.rulelearn.experiments.BatchExperimentResults.FullDataResults;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
@@ -27,6 +28,8 @@ import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.MultilayerPerceptron;
 import weka.classifiers.functions.SMO;
+import weka.classifiers.misc.OSDL;
+import weka.classifiers.rules.OLM;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
 
@@ -137,16 +140,12 @@ public class BatchExperiment {
 		return parametersList;
 	}
 	
+	/**
+	 * Runs this experiment.
+	 * 
+	 * @return results of this experiment
+	 */
 	public BatchExperimentResults run() {
-		
-		//calculate maximum number of cross validations among all data sets
-		int maxCrossValidationsCount = -1;
-		for (DataProvider dataProvider : dataProviders) {
-			if (dataProvider.getSeeds().length > maxCrossValidationsCount) {
-				maxCrossValidationsCount = dataProvider.getSeeds().length;
-			}
-		}
-		outN("Maximum number of cross-validations: %1.", maxCrossValidationsCount); //!
 		
 		//calculate maximum number of parameters for an algorithm
 		int maxParametersCount = -1;
@@ -163,6 +162,16 @@ public class BatchExperiment {
 			}
 		}
 		outN("Maximum number of algorithm vs data parameters, over all (data, algorithm) pairs: %1.", maxParametersCount); //!
+		
+		//calculate maximum number of cross validations among all data sets
+				int maxCrossValidationsCount = -1;
+				for (DataProvider dataProvider : dataProviders) {
+					if (dataProvider.getSeeds().length > maxCrossValidationsCount) {
+						maxCrossValidationsCount = dataProvider.getSeeds().length;
+					}
+				}
+				outN("Maximum number of cross-validations: %1.", maxCrossValidationsCount); //!
+		
 		outN(); //!
 		
 		BatchExperimentResults batchExperimentResults = (new BatchExperimentResults.Builder())
@@ -204,7 +213,9 @@ public class BatchExperiment {
 				
 				//if rule classifier is used for any data (thus in particular for the current data)
 				if (learningAlgorithms.stream().filter(algorithm -> algorithm.getName().equals(VCDomLEMRulesModeClassifier.getAlgorithmName())).collect(Collectors.toList()).size() > 0) {
+					
 					parametersList = parametersContainer.getParameters(VCDomLEMRulesModeClassifier.getAlgorithmName(), dataProvider.getDataName()); //get list of parameters for rule classifier
+					
 					if (parametersList != null) { //rule classifier is there (i.e., has at least one parameters) :)
 						for (LearningAlgorithmDataParameters parameters : parametersList) { //check quality of approximation for all considered consistency thresholds
 							double consistencyThreshold = Double.valueOf(parameters.getParameter(VCDomLEMRulesModeClassifierDataParameters.consistencyThresholdParameterName));
@@ -216,20 +227,47 @@ public class BatchExperiment {
 					}
 				}
 				
-				//print full data models for all algorithm/parameters pairs
+				//calculate and process full data models for all (algorithm, parameters) pairs
 				Data processedFullData = trainDataPreprocessor.process(fullData);
+				int algorithmNumber = -1;
+				//TODO: optimize the following loop using parallel stream
 				for (LearningAlgorithm algorithm : learningAlgorithms) {
+					algorithmNumber++;
+					
 					parametersList = processListOfParameters(parametersContainer.getParameters(algorithm.getName(), dataProvider.getDataName()));
+					int parameterNumber = -1;
+					
+					//TODO: optimize the following loop using parallel stream
 					for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for current algorithm
+						parameterNumber++;
+
+						/**/long trainingStartTime = System.currentTimeMillis();
+						//=====
 						ClassificationModel model = algorithm.learn(processedFullData, parameters); //can change result of processedFullData.getInformationTable()
+						//=====
+						/**/long fullDataTrainingTime = System.currentTimeMillis() - trainingStartTime;
+						
+						/**/long validationStartTime = System.currentTimeMillis();
+						//=====
 						OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = model.validate(fullData);
+						//=====
+						/**/long fullDataValidationTime = System.currentTimeMillis() - validationStartTime;
+
+						/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
+						/**/	.dataSetNumber(dataSetNumber).learningAlgorithmNumber(algorithmNumber).parametersNumber(parameterNumber);
+						/**/CalculationTimes fullDataCalculationTimes = batchExperimentResults.getFullDataCalculationTimes(selector);
+						/**/fullDataCalculationTimes.increaseTotalTrainingTime(fullDataTrainingTime);
+						/**/fullDataCalculationTimes.increaseTotalValidationTime(fullDataValidationTime);
+						
 						String validationSummary = model.getValidationSummary();
 						algorithmNameWithParameters2Accuracy.put(algorithm.getName()+"("+parameters+")", ordinalMisclassificationMatrix.getAccuracy());
-						outN("Train data accuracy for parameterized algorithm '%1(%2)': %3.\n%% %4",
+						outN("Train data accuracy for parameterized algorithm '%1(%2)': %3.\n%% %4 [Calculation times]: training: %5 [ms], validation: %6 [ms].",
 								algorithm.getName(),
 								parameters,
 								ordinalMisclassificationMatrix.getAccuracy(),
-								validationSummary);
+								validationSummary,
+								fullDataTrainingTime,
+								fullDataValidationTime);
 						outN("  /");
 						outN(" /");
 						outN("/");
@@ -293,8 +331,25 @@ public class BatchExperiment {
 							for (LearningAlgorithmDataParameters parameters : _parametersList) { //check all parameters from the list of parameters for current algorithm
 								parametersNumber++;
 								t5 = b(null);
+								
+								/**/long trainingStartTime = System.currentTimeMillis();
+								//=====
 								ClassificationModel model = algorithm.learn(processedTrainData, parameters); //can change result of processedTrainData.getInformationTable()
+								//=====
+								/**/long foldTrainingTime = System.currentTimeMillis() - trainingStartTime;
+								
+								/**/long validationStartTime = System.currentTimeMillis();
+								//=====
 								OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = model.validate(fold.getTestData());
+								//=====
+								/**/long foldValidationTime = System.currentTimeMillis() - validationStartTime;
+								
+								/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
+								/**/	.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
+								/**/CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+								/**/totalFoldCalculationTimes.increaseTotalTrainingTime(foldTrainingTime);
+								/**/totalFoldCalculationTimes.increaseTotalValidationTime(foldValidationTime);
+								
 								String validationSummary = model.getValidationSummary();
 								model = null; //facilitate GC
 								
@@ -302,7 +357,7 @@ public class BatchExperiment {
 										.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(streamCrossValidationNumber);
 								batchExperimentResults.storeFoldMisclassificationMatrix(cvSelector, fold.getIndex(), ordinalMisclassificationMatrix);
 								
-								e(t5, resolveText("      %1Finishing calculations for fold %2, algorithm %3(%4). [Accuracy]: %5.\n      %6%% %7",
+								e(t5, resolveText("      %1End of fold %2, algorithm %3(%4). [Accuracy]: %5.\n      %6%% %7",
 										foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters, ordinalMisclassificationMatrix.getAccuracy(), foldNumber2Spaces(fold.getIndex()), validationSummary));
 							}
 							
@@ -344,10 +399,11 @@ public class BatchExperiment {
 				outN("==========");
 				for (int learningAlgorithmNumber = 0; learningAlgorithmNumber < learningAlgorithms.size(); learningAlgorithmNumber++) {
 					parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(learningAlgorithmNumber).getName(), dataProvider.getDataName()));
-					int parametersNumber = -1;
+					
 					List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
 					double bestAccuracy = -1.0;
-					
+
+					int parametersNumber = -1;
 					for (LearningAlgorithmDataParameters parameters : parametersList) {
 						parametersNumber++;
 						DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
@@ -358,6 +414,8 @@ public class BatchExperiment {
 								parameters,
 								averageEvaluation.getAverage(),
 								averageEvaluation.getStdDev());
+						CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+						outN("%% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 						
 						if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
 							bestAccuracy = averageEvaluation.getAverage();
@@ -376,6 +434,9 @@ public class BatchExperiment {
 								parametersList.get(selector.parametersNumber),
 								averageEvaluation.getAverage(),
 								averageEvaluation.getStdDev());
+						
+						CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+						outN("  %% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 					}
 				}
 				outN("==========");
@@ -444,48 +505,48 @@ public class BatchExperiment {
 //				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
 //				k));
 		//-----
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/bank-churn-4000-v8 metadata.json",
-//				"data/json-objects/bank-churn-4000-v8 data.json",
-//				dataNameChurn4000v8,
-//				//SKIP_DATA,
-//				//new long[]{},
-//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-//				k));
+		dataProviders.add(new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata.json",
+				"data/json-objects/bank-churn-4000-v8 data.json",
+				dataNameChurn4000v8,
+				//SKIP_DATA,
+				//new long[]{},
+				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		//-----
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-//				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-//				dataNameChurn4000v8_0_05_mv2,
-//				//SKIP_DATA,
-//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-//				k));
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-//				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-//				dataNameChurn4000v8_0_05_mv15,
-//				//SKIP_DATA,
-//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-//				k));
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-//				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-//				dataNameChurn4000v8_0_10_mv2,
-//				//SKIP_DATA,
-//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-//				k));
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-//				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-//				dataNameChurn4000v8_0_10_mv15,
-//				//SKIP_DATA,
-//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-//				k));
+		dataProviders.add(new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+				dataNameChurn4000v8_0_05_mv2,
+				//SKIP_DATA,
+				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		dataProviders.add(new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+				dataNameChurn4000v8_0_05_mv15,
+				//SKIP_DATA,
+				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		dataProviders.add(new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+				dataNameChurn4000v8_0_10_mv2,
+				//SKIP_DATA,
+				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		dataProviders.add(new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+				dataNameChurn4000v8_0_10_mv15,
+				//SKIP_DATA,
+				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		dataProviders.add(new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
 				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
@@ -543,6 +604,8 @@ public class BatchExperiment {
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL()));
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
@@ -888,28 +951,28 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
+								new VCDomLEMRulesModeClassifierDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
 //								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 								//parameter space search 4
-								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
+//								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 						))
 				.putParameters(VCDomLEMRulesModeClassifier.getAlgorithmName(), dataNameChurn4000v8_0_15_mv15,
 						Arrays.asList(
@@ -936,7 +999,7 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
+								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
 								//parameter space search 3
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
@@ -947,25 +1010,25 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 								//parameter space search 4
-								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
+//								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 						))
 				.putParameters(VCDomLEMRulesModeClassifier.getAlgorithmName(), dataNameChurn4000v8_0_20_mv2,
 						Arrays.asList(
@@ -1001,27 +1064,27 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
+								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
 								//parameter space search 4
-								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
+//								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 						))
 				.putParameters(VCDomLEMRulesModeClassifier.getAlgorithmName(), dataNameChurn4000v8_0_20_mv15,
 						Arrays.asList(
@@ -1051,7 +1114,7 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 								//parameter space search 3
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
+								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
@@ -1059,25 +1122,25 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 								//parameter space search 4
-								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
+//								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 						))
 				.putParameters(VCDomLEMRulesModeClassifier.getAlgorithmName(), dataNameChurn4000v8_0_25_mv2,
 						Arrays.asList(
@@ -1113,27 +1176,27 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
+								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
 								//parameter space search 4
-								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
+//								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 						))
 				.putParameters(VCDomLEMRulesModeClassifier.getAlgorithmName(), dataNameChurn4000v8_0_25_mv15,
 						Arrays.asList(
@@ -1158,7 +1221,7 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
+								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
 								//parameter space search 3
@@ -1171,25 +1234,25 @@ public class BatchExperiment {
 //								new VCDomLEMRulesModeClassifierDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 //								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
 								//parameter space search 4
-								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
+//								new VCDomLEMRulesModeClassifierDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
+//								new VCDomLEMRulesModeClassifierDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 						))
 				//-----
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8,
@@ -1242,6 +1305,7 @@ public class BatchExperiment {
 		outN("####################");
 		for (String dataSetName : dataSetsNames) {
 			outN(results.reportFullDataResults(dataSetName));
+			
 			for (String algorithmName : algorithmsNames) {
 				parametersList = processListOfParameters(parametersContainer.getParameters(algorithmName, dataSetName));
 				parametersNumber = -1;
@@ -1254,6 +1318,10 @@ public class BatchExperiment {
 							.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
 					AverageEvaluation averageEvaluation = results.getAverageDataAlgorithmParametersAccuracy(selector);
 					outN("Avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5).", dataSetName, algorithmName, parameters, averageEvaluation.getAverage(), averageEvaluation.getStdDev());
+					
+					CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+					outN("%% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+					
 					if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
 						bestAccuracy = averageEvaluation.getAverage();
 						bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
@@ -1267,6 +1335,9 @@ public class BatchExperiment {
 				for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
 					AverageEvaluation averageEvaluation = results.getAverageDataAlgorithmParametersAccuracy(selector);
 					outN("  Best avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5).", dataSetName, algorithmName, parametersList.get(selector.parametersNumber), averageEvaluation.getAverage(), averageEvaluation.getStdDev());
+					
+					CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+					outN("  %% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 				}
 			}
 			outN("####################");

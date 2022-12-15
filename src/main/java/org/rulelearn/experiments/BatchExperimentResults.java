@@ -142,6 +142,44 @@ public class BatchExperimentResults {
 		}
 	}
 	
+	/**
+	 * A pair of total calculation times, with one total time concerning training of a classifier, and the other total time concerning validation of a classifier.
+	 * 
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	public class CalculationTimes {
+		private long totalTrainingTime = 0L; //duration of training (learning by) a classifier, in [ms]
+		private int totalTrainingTimeIncreaseCount = 0; //tells how many times total training time was increased
+		
+		private long totalValidationTime = 0L; //duration of validating a classifier, in [ms]
+		private int totalValidationTimeIncreaseCount = 0; //tells how many times total validation time was increased
+		
+		synchronized void increaseTotalTrainingTime(long increase) {
+			totalTrainingTime += increase;
+			totalTrainingTimeIncreaseCount++;
+		}
+		synchronized void increaseTotalValidationTime(long increase) {
+			totalValidationTime += increase;
+			totalValidationTimeIncreaseCount++;
+		}
+		
+		long getTotalTrainingTime() {
+			return totalTrainingTime;
+		}
+		
+		long getTotalValidationTime() {
+			return totalValidationTime;
+		}
+		
+		double getAverageTrainingTime() {
+			return (double)totalTrainingTime / totalTrainingTimeIncreaseCount;
+		}
+		
+		double getAverageValidationTime() {
+			return (double)totalValidationTime / totalValidationTimeIncreaseCount;
+		}
+	}
+	
 	FoldsResults[][][][] foldsResults; //usage: foldsResults[dataSetNumber][learningAlgorithmNumber][parametersNumber][crossValidationNumber] = foldsResults
 	
 	int dataSetsCount = -1;
@@ -151,6 +189,9 @@ public class BatchExperimentResults {
 	
 	Map<String, FullDataResults> dataName2FullDataResults;
 	
+	CalculationTimes[][][] totalFoldCalculationTimes; //usage: foldCalculationTimes[dataSetNumber][learningAlgorithmNumber][parametersNumber]; cumulated times over all folds (in any cross-validation)
+	CalculationTimes[][][] fullDataCalculationTimes; //usage: fullDataCalculationTimes[dataSetNumber][learningAlgorithmNumber][parametersNumber]; time concerning single training and validation on full data
+	
 	private BatchExperimentResults(int dataSetsCount, int learningAlgorithmsCount, int maxParametersCount, int maxCrossValidationsCount) {
 		this.dataSetsCount = dataSetsCount;
 		this.learningAlgorithmsCount = learningAlgorithmsCount;
@@ -159,6 +200,19 @@ public class BatchExperimentResults {
 		this.dataName2FullDataResults = new HashMap<String, FullDataResults>();
 		
 		this.foldsResults = new FoldsResults[dataSetsCount][learningAlgorithmsCount][maxParametersCount][maxCrossValidationsCount];
+		
+		this.fullDataCalculationTimes = new CalculationTimes[dataSetsCount][learningAlgorithmsCount][maxParametersCount];
+		this.totalFoldCalculationTimes = new CalculationTimes[dataSetsCount][learningAlgorithmsCount][maxParametersCount];
+		
+		//initialize calculation times
+		for (int i = 0; i < dataSetsCount; i++) {
+			for (int j = 0; j < learningAlgorithmsCount; j++) {
+				for (int k = 0; k < maxParametersCount; k++) {
+					this.fullDataCalculationTimes[i][j][k] = new CalculationTimes();
+					this.totalFoldCalculationTimes[i][j][k] = new CalculationTimes();
+				}
+			}
+		}
 	} //accessible only by the builder
 	
 	public void storeFullDataResults (String dataName, FullDataResults fullDataResults) {
@@ -247,6 +301,14 @@ public class BatchExperimentResults {
 		AverageEvaluation result = new AverageEvaluation(average, stdDev);
 		
 		return result;
+	}
+	
+	public CalculationTimes getFullDataCalculationTimes(DataAlgorithmParametersSelector selector) {
+		return fullDataCalculationTimes[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber];
+	}
+	
+	public CalculationTimes getTotalFoldCalculationTimes(DataAlgorithmParametersSelector selector) {
+		return totalFoldCalculationTimes[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber];
 	}
 	
 }
