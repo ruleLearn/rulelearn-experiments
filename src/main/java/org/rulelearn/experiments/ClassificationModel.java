@@ -3,8 +3,6 @@
  */
 package org.rulelearn.experiments;
 
-import org.rulelearn.validation.OrdinalMisclassificationMatrix;
-
 /**
  * Classification model learned from data.
  * 
@@ -12,7 +10,7 @@ import org.rulelearn.validation.OrdinalMisclassificationMatrix;
  */
 public interface ClassificationModel {
 	
-	public OrdinalMisclassificationMatrix validate(Data testData);
+	public ModelValidationResult validate(Data testData);
 	String getModelDescription();
 	String getValidationSummary();
 	

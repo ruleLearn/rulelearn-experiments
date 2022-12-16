@@ -21,6 +21,8 @@ import weka.classifiers.AbstractClassifier;
 import weka.core.Instances;
 
 /**
+ * Generic WEKA classifier.
+ * 
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
  */
 public class WEKAClassifer implements ClassificationModel {
@@ -34,7 +36,7 @@ public class WEKAClassifer implements ClassificationModel {
 	}
 
 	@Override
-	public OrdinalMisclassificationMatrix validate(Data testData) {
+	public ModelValidationResult validate(Data testData) {
 		Instances test = InformationTable2Instances.convert(testData.getInformationTable(), testData.getName());
 		double value;
 		
@@ -65,8 +67,9 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 		
 		//TODO: set validation summary?
+		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-		return new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
+		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)test.numInstances(), 0L, 0L); //all decisions assigned by main model (no abstaining!)
 	}
 	
 	public String getValidationSummary() {

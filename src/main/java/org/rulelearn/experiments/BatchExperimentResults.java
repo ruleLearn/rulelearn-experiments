@@ -8,10 +8,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import org.rulelearn.data.Decision;
-import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 /**
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
@@ -19,24 +19,24 @@ import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 public class BatchExperimentResults {
 	
 	private class FoldsResults { //results for all folds within single cross-validation
-		OrdinalMisclassificationMatrix[] foldMisclassificationMatrices; //matrix for each fold
-		Decision[] orderOfDecisions; //taken from entire data
-		OrdinalMisclassificationMatrix aggregatedMisclassificationMatrix; //matrix aggregated over all folds
+		ModelValidationResult[] foldModelValidationResults; //result for each fold
+		Decision[] orderOfDecisions; //order taken from entire data
+		ModelValidationResult aggregatedModelValidationResult; //result aggregated over all folds
 		
 		public FoldsResults(Decision[] orderOfDecisions, int foldsCount) {
 			this.orderOfDecisions = orderOfDecisions;
-			this.foldMisclassificationMatrices = new OrdinalMisclassificationMatrix[foldsCount];
-			this.aggregatedMisclassificationMatrix = null;
+			this.foldModelValidationResults = new ModelValidationResult[foldsCount];
+			this.aggregatedModelValidationResult = null;
 		}
 	}
 	
 	public static class FullDataResults { //full information table results for a single data set
 		Map<Double, Double> consistencyThreshold2QualityOfApproximation;
-		Map<String, Double> algorithmNameWithParameters2Accuracy; //maps "algorithm-name(parameters)" to accuracy
+		Map<String, Evaluations> algorithmNameWithParameters2Evaluations; //maps "algorithm-name(parameters)" to 3 accuracies
 		
-		public FullDataResults(Map<Double, Double> consistencyThreshold2QualityOfApproximation, Map<String, Double> algorithmNameWithParameters2Accuracy) { //linked hash maps should be passed!
+		public FullDataResults(Map<Double, Double> consistencyThreshold2QualityOfApproximation, Map<String, Evaluations> algorithmNameWithParameters2Evaluations) { //linked hash maps should be passed!
 			this.consistencyThreshold2QualityOfApproximation = consistencyThreshold2QualityOfApproximation;
-			this.algorithmNameWithParameters2Accuracy = algorithmNameWithParameters2Accuracy;
+			this.algorithmNameWithParameters2Evaluations = algorithmNameWithParameters2Evaluations;
 		}
 	}
 	
@@ -125,7 +125,56 @@ public class BatchExperimentResults {
 		}
 	}
 	
-	public class AverageEvaluation {
+	public static class Evaluations {
+		double overallEvaluation;
+		double mainModelEvaluation;
+		double defaultModelEvaluation;
+		
+		public Evaluations(double overallEvaluation, double mainModelEvaluation, double defaultModelEvaluation) {
+			this.overallEvaluation = overallEvaluation;
+			this.mainModelEvaluation = mainModelEvaluation;
+			this.defaultModelEvaluation = defaultModelEvaluation;
+		}
+
+		public double getOverallEvaluation() {
+			return overallEvaluation;
+		}
+
+		public double getMainModelEvaluation() {
+			return mainModelEvaluation;
+		}
+
+		public double getDefaultModelEvaluation() {
+			return defaultModelEvaluation;
+		}
+	}
+	
+	public static class AverageEvaluations {
+		AverageEvaluation overallAverageEvaluation;
+		AverageEvaluation mainModelAverageEvaluation;
+		AverageEvaluation defaultModelAverageEvaluation;
+		
+		public AverageEvaluations(AverageEvaluation overallAverageEvaluation, AverageEvaluation mainModelAverageEvaluation, AverageEvaluation defaultModelAverageEvaluation) {
+			this.overallAverageEvaluation = overallAverageEvaluation;
+			this.mainModelAverageEvaluation = mainModelAverageEvaluation;
+			this.defaultModelAverageEvaluation = defaultModelAverageEvaluation;
+		}
+
+		public AverageEvaluation getOverallAverageEvaluation() {
+			return overallAverageEvaluation;
+		}
+
+		public AverageEvaluation getMainModelAverageEvaluation() {
+			return mainModelAverageEvaluation;
+		}
+
+		public AverageEvaluation getDefaultModelAverageEvaluation() {
+			return defaultModelAverageEvaluation;
+		}
+		
+	}
+	
+	public static class AverageEvaluation {
 		double average;
 		double stdDev; //standard deviation
 		
@@ -223,7 +272,7 @@ public class BatchExperimentResults {
 		StringBuilder sb = new StringBuilder();
 		FullDataResults fullDataResults = dataName2FullDataResults.get(dataName);
 		Map<Double, Double> consistencyThreshold2QualityOfApproximation = fullDataResults.consistencyThreshold2QualityOfApproximation;
-		Map<String, Double> algorithmNameWithParameters2Accuracy = fullDataResults.algorithmNameWithParameters2Accuracy;
+		Map<String, Evaluations> algorithmNameWithParameters2AvgEvaluations = fullDataResults.algorithmNameWithParameters2Evaluations;
 		
 		if (consistencyThreshold2QualityOfApproximation != null) {
 			consistencyThreshold2QualityOfApproximation.forEach((consistencyThreshold, qualityOfApproximation) -> {
@@ -232,9 +281,13 @@ public class BatchExperimentResults {
 			});
 		}
 		
-		algorithmNameWithParameters2Accuracy.forEach(
-			(algorithmNameWithParameters, accuracy) ->
-				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f.", dataName, algorithmNameWithParameters, accuracy)).append(System.lineSeparator())
+		algorithmNameWithParameters2AvgEvaluations.forEach(
+			(algorithmNameWithParameters, evaluations) ->
+				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f # %f # %f.", dataName, algorithmNameWithParameters,
+						evaluations.getOverallEvaluation(),
+						evaluations.getMainModelEvaluation(),
+						evaluations.getDefaultModelEvaluation()))
+				.append(System.lineSeparator())
 		);
 		
 		return sb.toString();
@@ -245,62 +298,76 @@ public class BatchExperimentResults {
 		foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber][selector.crossValidationNumber] = new FoldsResults(orderOfDecisions, foldsCount);
 	}
 	
-	public void storeFoldMisclassificationMatrix(CVSelector selector, int foldNumber, OrdinalMisclassificationMatrix foldResult) { //do initializeFoldResults before!
-		foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber][selector.crossValidationNumber].foldMisclassificationMatrices[foldNumber] = foldResult;
+	public void storeFoldModelValidationResult(CVSelector selector, int foldNumber, ModelValidationResult modelValidationResult) { //do initializeFoldResults before!
+		foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber][selector.crossValidationNumber]
+				.foldModelValidationResults[foldNumber] = modelValidationResult;
 	}
 	
-	//gets average misclassification matrix or null, if there are no fold results stored for given selector
-	public OrdinalMisclassificationMatrix getAverageCVMisclassificationMatrix(CVSelector selector) {
+	//gets aggregated over folds model validation result for selected single cross-validation, or null (if there are no fold results stored for given CV selector)
+	public ModelValidationResult getAggregatedCVModelValidationResult(CVSelector selector) {
 		FoldsResults _foldResults = foldsResults[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber][selector.crossValidationNumber];
 		
-//		System.out.println("Getting avg misclassification matrix for: "+selector.dataSetNumber+", "+selector.learningAlgorithmNumber+", "+selector.crossValidationNumber);
-		
 		if (_foldResults != null) {
-			if (_foldResults.aggregatedMisclassificationMatrix == null) { //there is already an aggregated matrix
-				_foldResults.aggregatedMisclassificationMatrix = new OrdinalMisclassificationMatrix(_foldResults.orderOfDecisions, _foldResults.foldMisclassificationMatrices);
+			if (_foldResults.aggregatedModelValidationResult == null) { //there is no aggregated matrix yet
+				_foldResults.aggregatedModelValidationResult = new ModelValidationResult(_foldResults.orderOfDecisions, _foldResults.foldModelValidationResults);
 			}
-			return _foldResults.aggregatedMisclassificationMatrix;
+			return _foldResults.aggregatedModelValidationResult;
 		} else {
 			return null;
 		}
 	}
 	
-	public AverageEvaluation getAverageDataAlgorithmParametersAccuracy(DataAlgorithmParametersSelector selector) {
-//		List<OrdinalMisclassificationMatrix> matrices = new ArrayList<>(maxCrossValidationsCount);
-		double sumCVAccuracies = 0.0;
-		OrdinalMisclassificationMatrix averageCVMisclassificationMatrix;
-		
-		List<Double> cvAccuracies = new ArrayList<Double>();
-		
-		int numberOfCrossValidations = 0;
-		for (int i = 0; i < maxCrossValidationsCount; i++) {
-			averageCVMisclassificationMatrix = getAverageCVMisclassificationMatrix(
-					(new CVSelector()).dataSetNumber(selector.dataSetNumber).learningAlgorithmNumber(selector.learningAlgorithmNumber).parametersNumber(selector.parametersNumber).crossValidationNumber(i));
-			
-			if (averageCVMisclassificationMatrix != null) {
-				numberOfCrossValidations++;
-//				matrices.add(ordinalMisclassificationMatrix); //TODO: use this list of matrices, if more information is needed
-				sumCVAccuracies += averageCVMisclassificationMatrix.getAccuracy();
-				cvAccuracies.add(averageCVMisclassificationMatrix.getAccuracy());
+	public AverageEvaluations getAverageDataAlgorithmParametersEvaluations(DataAlgorithmParametersSelector selector) {
+//		List<ModelValidationResult> modelValidationResults = new ArrayList<>(maxCrossValidationsCount);
+
+		BiFunction<Integer, ModelValidationResult, Double> modelIndex2Accuracy = (modelIndex, modelValidationResult) -> {
+			if (modelIndex == 0) {
+				return modelValidationResult.getOverallAccuracy();
+			} else if (modelIndex == 1) {
+				return modelValidationResult.getMainModelAccuracy();
 			} else {
-				break; //there are no more cross-validations stored
+				return modelValidationResult.getDefaultModelAccuracy();
 			}
-		}
+		};
 		
-		double average = 0.0;
-		double stdDev = 0.0;
+		List<AverageEvaluation> averageEvaluationsList = new ArrayList<AverageEvaluation>(3);
 		
-		if (numberOfCrossValidations >= 1) {
-			average = sumCVAccuracies / numberOfCrossValidations;
-			final double streamAverage = average;
-			if (numberOfCrossValidations > 1) {
-				stdDev = Math.sqrt(((double)1 / (numberOfCrossValidations - 1)) * cvAccuracies.stream().map(a -> Math.pow(a - streamAverage, 2)).collect(Collectors.summingDouble(n -> n))); //divide by (N-1)
+		for (int modelIndex = 0; modelIndex < 3; modelIndex++) { //0: general model, 1: main model; 2: default model
+			double sumCVAccuracies = 0.0;
+			List<Double> cvAccuracies = new ArrayList<Double>();
+			int numberOfCrossValidations = 0;
+			
+			for (int i = 0; i < maxCrossValidationsCount; i++) {
+				
+				ModelValidationResult aggregatedCVModelValidationResult = getAggregatedCVModelValidationResult(
+						(new CVSelector()).dataSetNumber(selector.dataSetNumber).learningAlgorithmNumber(selector.learningAlgorithmNumber)
+						.parametersNumber(selector.parametersNumber).crossValidationNumber(i));
+				
+				if (aggregatedCVModelValidationResult != null) {
+					numberOfCrossValidations++;
+	//				modelValidationResults.add(aggregatedCVModelValidationResult); //use this list of results, if more information is needed
+					sumCVAccuracies += modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult);
+					cvAccuracies.add(modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult));
+				} else {
+					break; //there are no more cross-validations stored
+				}
 			}
-		}
+			
+			double average = 0.0;
+			double stdDev = 0.0;
+			
+			if (numberOfCrossValidations >= 1) {
+				average = sumCVAccuracies / numberOfCrossValidations;
+				final double streamAverage = average;
+				if (numberOfCrossValidations > 1) {
+					stdDev = Math.sqrt(((double)1 / (numberOfCrossValidations - 1)) * cvAccuracies.stream().map(a -> Math.pow(a - streamAverage, 2)).collect(Collectors.summingDouble(n -> n))); //divide by (N-1)
+				}
+			}
+			
+			averageEvaluationsList.add(new AverageEvaluation(average, stdDev));
+		} //for
 		
-		AverageEvaluation result = new AverageEvaluation(average, stdDev);
-		
-		return result;
+		return new AverageEvaluations(averageEvaluationsList.get(0), averageEvaluationsList.get(1), averageEvaluationsList.get(2));
 	}
 	
 	public CalculationTimes getFullDataCalculationTimes(DataAlgorithmParametersSelector selector) {

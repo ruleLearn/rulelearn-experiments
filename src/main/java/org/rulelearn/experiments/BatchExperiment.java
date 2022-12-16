@@ -17,13 +17,13 @@ import org.rulelearn.approximations.VCDominanceBasedRoughSetCalculator;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.experiments.BatchExperimentResults.AverageEvaluation;
+import org.rulelearn.experiments.BatchExperimentResults.AverageEvaluations;
 import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
 import org.rulelearn.experiments.BatchExperimentResults.CalculationTimes;
 import org.rulelearn.experiments.BatchExperimentResults.DataAlgorithmParametersSelector;
 import org.rulelearn.experiments.BatchExperimentResults.FullDataResults;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
 import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
-import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.MultilayerPerceptron;
@@ -203,7 +203,7 @@ public class BatchExperiment {
 				double epsilonDRSAConsistencyThreshold = 0.0;
 				double qualityOfDRSAApproximation;
 				double qualityOfVCDRSAApproximation;
-				Map<String, Double> algorithmNameWithParameters2Accuracy = new LinkedHashMap<String, Double>();
+				Map<String, BatchExperimentResults.Evaluations> algorithmNameWithParameters2Evaluations = new LinkedHashMap<String, BatchExperimentResults.Evaluations>();
 				Map<Double, Double> consistencyThreshold2QualityOfApproximation = new LinkedHashMap<Double, Double>();
 				
 				//print full data set accuracies
@@ -230,14 +230,14 @@ public class BatchExperiment {
 				//calculate and process full data models for all (algorithm, parameters) pairs
 				Data processedFullData = trainDataPreprocessor.process(fullData);
 				int algorithmNumber = -1;
-				//TODO: optimize the following loop using parallel stream
+				//TODO: optimize the following loop using a parallel stream
 				for (LearningAlgorithm algorithm : learningAlgorithms) {
 					algorithmNumber++;
 					
 					parametersList = processListOfParameters(parametersContainer.getParameters(algorithm.getName(), dataProvider.getDataName()));
 					int parameterNumber = -1;
 					
-					//TODO: optimize the following loop using parallel stream
+					//TODO: optimize the following loop using a parallel stream
 					for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for current algorithm
 						parameterNumber++;
 
@@ -249,7 +249,7 @@ public class BatchExperiment {
 						
 						/**/long validationStartTime = System.currentTimeMillis();
 						//=====
-						OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = model.validate(fullData);
+						ModelValidationResult modelValidationResult = model.validate(fullData);
 						//=====
 						/**/long fullDataValidationTime = System.currentTimeMillis() - validationStartTime;
 
@@ -260,11 +260,18 @@ public class BatchExperiment {
 						/**/fullDataCalculationTimes.increaseTotalValidationTime(fullDataValidationTime);
 						
 						String validationSummary = model.getValidationSummary();
-						algorithmNameWithParameters2Accuracy.put(algorithm.getName()+"("+parameters+")", ordinalMisclassificationMatrix.getAccuracy());
-						outN("Train data accuracy for parameterized algorithm '%1(%2)': %3.\n%% %4 [Calculation times]: training: %5 [ms], validation: %6 [ms].",
+						algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")",
+								new BatchExperimentResults.Evaluations(
+										modelValidationResult.getOverallAccuracy(),
+										modelValidationResult.getMainModelAccuracy(),
+										modelValidationResult.getDefaultModelAccuracy()
+								));
+						outN("Train data accuracy for parameterized algorithm '%1(%2)': %3 # %4 # %5.\n%% %6 [Times]: training: %7 [ms], validation: %8 [ms].",
 								algorithm.getName(),
 								parameters,
-								ordinalMisclassificationMatrix.getAccuracy(),
+								modelValidationResult.getOverallAccuracy(),
+								modelValidationResult.getMainModelAccuracy(),
+								modelValidationResult.getDefaultModelAccuracy(),
 								validationSummary,
 								fullDataTrainingTime,
 								fullDataValidationTime);
@@ -280,7 +287,7 @@ public class BatchExperiment {
 				}
 				
 				//save quality of approximation and results of all parameterized algorithms for full data
-				FullDataResults fullDataResults = new FullDataResults(consistencyThreshold2QualityOfApproximation, algorithmNameWithParameters2Accuracy);
+				FullDataResults fullDataResults = new FullDataResults(consistencyThreshold2QualityOfApproximation, algorithmNameWithParameters2Evaluations);
 				batchExperimentResults.storeFullDataResults(dataProvider.getDataName(), fullDataResults);
 				//<<<<<
 
@@ -340,7 +347,7 @@ public class BatchExperiment {
 								
 								/**/long validationStartTime = System.currentTimeMillis();
 								//=====
-								OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = model.validate(fold.getTestData());
+								ModelValidationResult modelValidationResult = model.validate(fold.getTestData());
 								//=====
 								/**/long foldValidationTime = System.currentTimeMillis() - validationStartTime;
 								
@@ -355,10 +362,12 @@ public class BatchExperiment {
 								
 								BatchExperimentResults.CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
 										.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(streamCrossValidationNumber);
-								batchExperimentResults.storeFoldMisclassificationMatrix(cvSelector, fold.getIndex(), ordinalMisclassificationMatrix);
+								batchExperimentResults.storeFoldModelValidationResult(cvSelector, fold.getIndex(), modelValidationResult);
 								
-								e(t5, resolveText("      %1End of fold %2, algorithm %3(%4). [Accuracy]: %5.\n      %6%% %7",
-										foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters, ordinalMisclassificationMatrix.getAccuracy(), foldNumber2Spaces(fold.getIndex()), validationSummary));
+								e(t5, resolveText("      %1End of fold %2, algorithm %3(%4). [Accuracy]: %5 # %6 # %7.\n      %8%% %9",
+										foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters,
+										modelValidationResult.getOverallAccuracy(), modelValidationResult.getMainModelAccuracy(), modelValidationResult.getDefaultModelAccuracy(),
+										foldNumber2Spaces(fold.getIndex()), validationSummary));
 							}
 							
 							//e(t4, resolveText("      %1Finishing calculations for fold %2, algorithm %3.", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName()));
@@ -384,10 +393,12 @@ public class BatchExperiment {
 							CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
 									.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(crossValidationNumber);
 							
-							outN("  Avg. accuracy over folds for algorithm '%1(%2)': %3.",
+							outN("  Avg. accuracy over folds for algorithm '%1(%2)': %3 # %4 # %5",
 									learningAlgorithms.get(learningAlgorithmNumber).getName(),
 									parameters,
-									batchExperimentResults.getAverageCVMisclassificationMatrix(cvSelector).getAccuracy());
+									batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getOverallAccuracy(),
+									batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getMainModelAccuracy(),
+									batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getDefaultModelAccuracy());
 						}
 					}
 					outN("  ----------");
@@ -408,14 +419,19 @@ public class BatchExperiment {
 						parametersNumber++;
 						DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
 								.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
-						AverageEvaluation averageEvaluation = batchExperimentResults.getAverageDataAlgorithmParametersAccuracy(selector);
-						outN("Avg. accuracy over cross-validations for algorithm '%1(%2)': %3 (stdDev: %4).",
+						AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
+						AverageEvaluation averageEvaluation = averageEvaluations.getOverallAverageEvaluation();
+						outN("Avg. accuracy over cross-validations for algorithm '%1(%2)': %3 (stdDev: %4) # %5 (stdDev: %6) # %7 (stdDev: %8).",
 								learningAlgorithms.get(learningAlgorithmNumber).getName(),
 								parameters,
 								averageEvaluation.getAverage(),
-								averageEvaluation.getStdDev());
+								averageEvaluation.getStdDev(),
+								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev());
 						CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-						outN("%% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+						outN("%% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 						
 						if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
 							bestAccuracy = averageEvaluation.getAverage();
@@ -428,15 +444,20 @@ public class BatchExperiment {
 					
 					//print the best parameters + accuracy for the current algorithm
 					for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-						AverageEvaluation averageEvaluation = batchExperimentResults.getAverageDataAlgorithmParametersAccuracy(selector);
-						outN("  Best avg. accuracy over cross-validations for algorithm '%1(%2)': %3 (stdDev: %4).",
+						AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
+						AverageEvaluation averageEvaluation = averageEvaluations.getOverallAverageEvaluation();
+						outN("  Best avg. accuracy over cross-validations for algorithm '%1(%2)': %3 (stdDev: %4) # %5 (stdDev: %6) # %7 (stdDev: %8).",
 								learningAlgorithms.get(learningAlgorithmNumber).getName(),
 								parametersList.get(selector.parametersNumber),
 								averageEvaluation.getAverage(),
-								averageEvaluation.getStdDev());
+								averageEvaluation.getStdDev(),
+								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev());
 						
 						CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-						outN("  %% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+						outN("  %% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 					}
 				}
 				outN("==========");
@@ -599,13 +620,13 @@ public class BatchExperiment {
 		//HINT: comment algorithm addition if given algorithm should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new VCDomLEMRulesModeClassifier());
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //does not work because of numerical attributes
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
@@ -1256,27 +1277,27 @@ public class BatchExperiment {
 						))
 				//-----
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv2,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv15,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_10_mv2,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_10_mv15,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_15_mv2,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_15_mv15,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_20_mv2,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_20_mv15,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv2,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))); //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))); //option -D means discretize numeric attributes
 		
 		//------------------------------------------------------------------------------------------------------------------------------
 		
@@ -1316,11 +1337,19 @@ public class BatchExperiment {
 					parametersNumber++;
 					DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
 							.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
-					AverageEvaluation averageEvaluation = results.getAverageDataAlgorithmParametersAccuracy(selector);
-					outN("Avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5).", dataSetName, algorithmName, parameters, averageEvaluation.getAverage(), averageEvaluation.getStdDev());
+					AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
+					AverageEvaluation averageEvaluation = averageEvaluations.getOverallAverageEvaluation();
+					outN("Avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9).",
+							dataSetName, algorithmName, parameters,
+							averageEvaluation.getAverage(),
+							averageEvaluation.getStdDev(),
+							averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+							averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+							averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+							averageEvaluations.getDefaultModelAverageEvaluation().getStdDev());
 					
 					CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-					outN("%% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+					outN("%% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 					
 					if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
 						bestAccuracy = averageEvaluation.getAverage();
@@ -1333,11 +1362,19 @@ public class BatchExperiment {
 				
 				//print the best parameters + accuracy for the current algorithm
 				for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-					AverageEvaluation averageEvaluation = results.getAverageDataAlgorithmParametersAccuracy(selector);
-					outN("  Best avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5).", dataSetName, algorithmName, parametersList.get(selector.parametersNumber), averageEvaluation.getAverage(), averageEvaluation.getStdDev());
+					AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
+					AverageEvaluation averageEvaluation = averageEvaluations.getOverallAverageEvaluation();
+					outN("  Best avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9).",
+							dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
+							averageEvaluation.getAverage(),
+							averageEvaluation.getStdDev(),
+							averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+							averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+							averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+							averageEvaluations.getDefaultModelAverageEvaluation().getStdDev());
 					
 					CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-					outN("  %% [Avg. calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+					outN("  %% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 				}
 			}
 			outN("####################");
