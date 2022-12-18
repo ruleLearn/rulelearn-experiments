@@ -18,6 +18,7 @@ public class ModelValidationResult {
 	
 	OrdinalMisclassificationMatrix ordinalMisclassificationMatrix;
 	
+	//total numbers of decisions
 	long numberOfCorrectDecisionsAssignedByMainModel = 0; //concerns the part of validation data for which main model was applied to classify objects (e.g., covering decision rule(s))
 	long numberOfAllDecisionsAssignedByMainModel = 0;
 	long numberOfCorrectDecisionsAssignedByDefaultModel = 0; //concerns the part of validation data for which default model was applied to classify objects (e.g., assigning default decision class)
@@ -63,4 +64,25 @@ public class ModelValidationResult {
 	public double getDefaultModelAccuracy() { //gets accuracy concerning the part of validation data for which default model was applied to classify objects
 		return numberOfAllDecisionsAssignedByDefaultModel > 0 ? (double)numberOfCorrectDecisionsAssignedByDefaultModel / numberOfAllDecisionsAssignedByDefaultModel : 0.0;
 	}
+	
+	public double getMainModelDecisionsRatio() { //percent of situations when main model suggested decision
+		return (double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel);
+	}
+
+	public long getNumberOfCorrectDecisionsAssignedByMainModel() {
+		return numberOfCorrectDecisionsAssignedByMainModel;
+	}
+
+	public long getNumberOfAllDecisionsAssignedByMainModel() {
+		return numberOfAllDecisionsAssignedByMainModel;
+	}
+
+	public long getNumberOfCorrectDecisionsAssignedByDefaultModel() {
+		return numberOfCorrectDecisionsAssignedByDefaultModel;
+	}
+
+	public long getNumberOfAllDecisionsAssignedByDefaultModel() {
+		return numberOfAllDecisionsAssignedByDefaultModel;
+	}
+	
 }

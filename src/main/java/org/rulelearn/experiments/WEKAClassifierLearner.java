@@ -13,6 +13,9 @@ import weka.core.Instances;
  */
 public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 	
+	/**
+	 * Supplies new instance of an {@link AbstractClassifier}.
+	 */
 	Supplier<AbstractClassifier> wekaClassifierProvider;
 	
 	public WEKAClassifierLearner(Supplier<AbstractClassifier> wekaClassifierProvider) {
@@ -20,7 +23,7 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 	}
 
 	@Override
-	public ClassificationModel learn(Data data, LearningAlgorithmDataParameters parameters) { //parameters can be null, if not used (i.e., WEKA algorithm is used with default options)
+	public WEKAClassifer learn(Data data, LearningAlgorithmDataParameters parameters) { //parameters can be null, if not used (i.e., WEKA algorithm is used with default options)
 		Instances train = InformationTable2Instances.convert(data.getInformationTable(), data.getName());
 		AbstractClassifier wekaClassifier = wekaClassifierProvider.get();
 
@@ -32,11 +35,12 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 			wekaClassifier.buildClassifier(train); //train the classifier
 		} catch (Exception e) {
 			e.printStackTrace();
-			return null; //TODO
+			return null; //TODO: handle exception?
 		}
 		
-		//Arrays.asList(j48.getOptions()).stream().forEach(System.out::println);
-		return new WEKAClassifer(wekaClassifier);
+		String modelLearnerDescription = (new StringBuilder(getName())).append("(").append(parameters).append(")").toString();
+		
+		return new WEKAClassifer(wekaClassifier, modelLearnerDescription);
 	}
 
 	@Override

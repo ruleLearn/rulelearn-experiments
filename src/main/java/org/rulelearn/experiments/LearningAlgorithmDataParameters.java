@@ -10,6 +10,14 @@ package org.rulelearn.experiments;
  */
 public interface LearningAlgorithmDataParameters {
 	
-	abstract String getParameter(String parameterName);
+	String getParameter(String parameterName);
+	
+	/**
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	public interface Builder {
+		Builder parameters(String parameters);
+		LearningAlgorithmDataParameters build(); //uses textual representation of parameters
+	}
 	
 }

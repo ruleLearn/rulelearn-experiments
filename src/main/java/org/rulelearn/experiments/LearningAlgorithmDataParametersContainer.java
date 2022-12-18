@@ -41,4 +41,26 @@ public class LearningAlgorithmDataParametersContainer {
 	public List<LearningAlgorithmDataParameters> getParameters(LearningAlgorithm algorithm, Data data) {
 		return getParameters(algorithm.getName(), data.getName());
 	}
+	
+	//concerns only parameters of VCDomLEMModeRuleClassifierLearner algorithm, for any data set
+	public void sortParametersLists() {
+		map.forEach((algorithmName, dataName2ParametersList) -> {
+			if (algorithmName.equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())) {
+				dataName2ParametersList.forEach((dataName, parametersList) -> {
+					parametersList.sort((firstParameters, secondParameters) -> {
+						double threshold1 = Double.valueOf(firstParameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.consistencyThresholdParameterName));
+						double threshold2 = Double.valueOf(secondParameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.consistencyThresholdParameterName));
+						if (threshold1 < threshold2) {
+							return -1;
+						} else if (threshold1 == threshold2) {
+							return 0;
+						} else {
+							return 1;
+						}
+					});
+				});
+			}
+		});
+	}
+	
 }

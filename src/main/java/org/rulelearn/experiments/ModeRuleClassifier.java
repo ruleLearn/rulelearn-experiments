@@ -26,12 +26,28 @@ import it.unimi.dsi.fastutil.ints.IntList;
 public class ModeRuleClassifier implements ClassificationModel {
 	
 	RuleSetWithComputableCharacteristics ruleSet;
+	SimpleClassificationResult defaultClassificationResult;
 	SimpleOptimizingCountingRuleClassifier simpleOptimizingCountingRuleClassifier;
+	ClassificationModel defaultClassificationModel = null; //classification model (classifier) used when no rule matches classified object (if the model is != null)
+	
+	String modelLearnerDescription;
 	String validationSummary;
 
-	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult) {
+	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult, String modelLearnerDescription) {
 		this.ruleSet = ruleSet;
+		this.defaultClassificationResult = defaultClassificationResult;
 		simpleOptimizingCountingRuleClassifier = new SimpleOptimizingCountingRuleClassifier(ruleSet, defaultClassificationResult);
+		this.modelLearnerDescription = modelLearnerDescription;
+		validationSummary = "";
+	}
+	
+	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult,
+			ClassificationModel defaultClassificationModel, String modelLearnerDescription) {
+		this.ruleSet = ruleSet;
+		this.defaultClassificationResult = defaultClassificationResult;
+		simpleOptimizingCountingRuleClassifier = new SimpleOptimizingCountingRuleClassifier(ruleSet, defaultClassificationResult);
+		this.defaultClassificationModel = defaultClassificationModel;
+		this.modelLearnerDescription = modelLearnerDescription;
 		validationSummary = "";
 	}
 
@@ -73,7 +89,14 @@ public class ModeRuleClassifier implements ClassificationModel {
 			totalCoveringRulesCount += indicesOfCoveringRules.size();
 			
 			resolutionStrategy = simpleOptimizingCountingRuleClassifier.getLatestResolutionStrategy();
+			
+			//SUPPORT FOR DEFAULT MODEL (fired when no rule matches classified object)
+			if (resolutionStrategy == ResolutionStrategy.DEFAULT && defaultClassificationModel != null) {
+				assignedDecisions[testObjectIndex] = defaultClassificationModel.classify(testObjectIndex, testData); //override rule classifier's default decision with default model's decision
+			}
+			
 			strategySucceeded = assignedDecisions[testObjectIndex].equals(originalDecisions[testObjectIndex]);
+			
 			switch (resolutionStrategy) {
 			case MODE:
 				if (strategySucceeded) {
@@ -119,7 +142,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 		sb.append(String.format(Locale.US, ", using rules: %.2f%% r.hit", //accuracy among objects covered by 1+ rule
 				accuracyWhenClassifiedByRules));
 		sb.append(accuracyWhenClassifiedByRules > ordinalMisclassificationMatrix.getAccuracy() ? " [UP]" : " [!UP]");
-		sb.append(String.format(Locale.US, ", using default: %.2f%% r.hit", //accuracy among objects not covered by any rule
+		sb.append(String.format(Locale.US, ", using %s: %.2f%% r.hit", //accuracy among objects not covered by any rule
+				defaultClassificationModel != null ? "default classifier" : "default class",
 				accuracyWhenClassifiedByDefault));
 		sb.append(String.format(Locale.US, ", avg. number of cov. rules: %.2f.",
 				(double)totalCoveringRulesCount / testDataSize));
@@ -148,11 +172,24 @@ public class ModeRuleClassifier implements ClassificationModel {
 			sumLength += ruleSet.getRuleCharacteristics(i).getNumberOfConditions();
 			sumSupport += ruleSet.getRuleCharacteristics(i).getSupport();
 		}
-		sb.append(", ");
-		sb.append("average length: ").append(((double)sumLength) / size);
-		sb.append(", ");
-		sb.append("average support: ").append(((double)sumSupport) / size);
+		sb.append(", average length: ").append(((double)sumLength) / size);
+		sb.append(", average support: ").append(((double)sumSupport) / size);
+		if (defaultClassificationModel != null) {
+			sb.append(", default model learned using: ").append(defaultClassificationModel.getModelLearnerDescription());
+		} else {
+			sb.append(", default class: ").append(((SimpleDecision)defaultClassificationResult.getSuggestedDecision()).getEvaluation());
+		}
 		return sb.toString();
+	}
+
+	@Override
+	public SimpleDecision classify(int i, Data testData) {
+		return simpleOptimizingCountingRuleClassifier.classify(i, testData.getInformationTable()).getSuggestedDecision();
+	}
+
+	@Override
+	public String getModelLearnerDescription() {
+		return modelLearnerDescription;
 	}
 
 }

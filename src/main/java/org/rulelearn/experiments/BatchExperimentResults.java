@@ -153,11 +153,14 @@ public class BatchExperimentResults {
 		AverageEvaluation overallAverageEvaluation;
 		AverageEvaluation mainModelAverageEvaluation;
 		AverageEvaluation defaultModelAverageEvaluation;
+		double mainModelDecisionsRatio; 
 		
-		public AverageEvaluations(AverageEvaluation overallAverageEvaluation, AverageEvaluation mainModelAverageEvaluation, AverageEvaluation defaultModelAverageEvaluation) {
+		public AverageEvaluations(AverageEvaluation overallAverageEvaluation, AverageEvaluation mainModelAverageEvaluation, AverageEvaluation defaultModelAverageEvaluation,
+				double mainModelDecisionsRatio) {
 			this.overallAverageEvaluation = overallAverageEvaluation;
 			this.mainModelAverageEvaluation = mainModelAverageEvaluation;
 			this.defaultModelAverageEvaluation = defaultModelAverageEvaluation;
+			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
 		}
 
 		public AverageEvaluation getOverallAverageEvaluation() {
@@ -170,6 +173,10 @@ public class BatchExperimentResults {
 
 		public AverageEvaluation getDefaultModelAverageEvaluation() {
 			return defaultModelAverageEvaluation;
+		}
+		
+		public double getMainModelDecisionsRatio() {
+			return mainModelDecisionsRatio;
 		}
 		
 	}
@@ -331,6 +338,8 @@ public class BatchExperimentResults {
 		};
 		
 		List<AverageEvaluation> averageEvaluationsList = new ArrayList<AverageEvaluation>(3);
+		long numberOfAllDecisionsAssignedByMainModel = 0;
+		long numberOfAllDecisionsAssignedByDefaultModel = 0;
 		
 		for (int modelIndex = 0; modelIndex < 3; modelIndex++) { //0: general model, 1: main model; 2: default model
 			double sumCVAccuracies = 0.0;
@@ -348,6 +357,11 @@ public class BatchExperimentResults {
 	//				modelValidationResults.add(aggregatedCVModelValidationResult); //use this list of results, if more information is needed
 					sumCVAccuracies += modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult);
 					cvAccuracies.add(modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult));
+					
+					if (modelIndex == 0) {
+						numberOfAllDecisionsAssignedByMainModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByMainModel();
+						numberOfAllDecisionsAssignedByDefaultModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByDefaultModel();
+					}
 				} else {
 					break; //there are no more cross-validations stored
 				}
@@ -365,9 +379,10 @@ public class BatchExperimentResults {
 			}
 			
 			averageEvaluationsList.add(new AverageEvaluation(average, stdDev));
-		} //for
+		} //for(modelIndex)
 		
-		return new AverageEvaluations(averageEvaluationsList.get(0), averageEvaluationsList.get(1), averageEvaluationsList.get(2));
+		return new AverageEvaluations(averageEvaluationsList.get(0), averageEvaluationsList.get(1), averageEvaluationsList.get(2),
+				(double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel));
 	}
 	
 	public CalculationTimes getFullDataCalculationTimes(DataAlgorithmParametersSelector selector) {

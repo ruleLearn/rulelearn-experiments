@@ -3,6 +3,8 @@
  */
 package org.rulelearn.experiments;
 
+import org.rulelearn.data.SimpleDecision;
+
 /**
  * Classification model learned from data.
  * 
@@ -11,7 +13,9 @@ package org.rulelearn.experiments;
 public interface ClassificationModel {
 	
 	public ModelValidationResult validate(Data testData);
+	SimpleDecision classify(int i, Data data); //gets simple decision of a single object from data
 	String getModelDescription();
+	String getModelLearnerDescription();
 	String getValidationSummary();
 	
 }
