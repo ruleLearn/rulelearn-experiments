@@ -47,7 +47,7 @@ public class BatchExperiment {
 	List<LearningAlgorithm> learningAlgorithms;
 	LearningAlgorithmDataParametersContainer parametersContainer;
 	
-	static boolean useMainModelAccuracy = true; //false = use overall accuracy
+	static boolean useMainModelAccuracy = false; //false = use overall accuracy
 	
 	/**
 	 * Constructs this experiment.
