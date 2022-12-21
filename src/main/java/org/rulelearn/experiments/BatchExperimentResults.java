@@ -129,11 +129,13 @@ public class BatchExperimentResults {
 		double overallEvaluation;
 		double mainModelEvaluation;
 		double defaultModelEvaluation;
+		double mainModelDecisionsRatio;
 		
-		public Evaluations(double overallEvaluation, double mainModelEvaluation, double defaultModelEvaluation) {
+		public Evaluations(double overallEvaluation, double mainModelEvaluation, double defaultModelEvaluation, double mainModelDecisionsRatio) {
 			this.overallEvaluation = overallEvaluation;
 			this.mainModelEvaluation = mainModelEvaluation;
 			this.defaultModelEvaluation = defaultModelEvaluation;
+			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
 		}
 
 		public double getOverallEvaluation() {
@@ -147,13 +149,17 @@ public class BatchExperimentResults {
 		public double getDefaultModelEvaluation() {
 			return defaultModelEvaluation;
 		}
+		
+		public double getMainModelDecisionsRatio() {
+			return mainModelDecisionsRatio;
+		}
 	}
 	
 	public static class AverageEvaluations {
 		AverageEvaluation overallAverageEvaluation;
 		AverageEvaluation mainModelAverageEvaluation;
 		AverageEvaluation defaultModelAverageEvaluation;
-		double mainModelDecisionsRatio; 
+		double mainModelDecisionsRatio;
 		
 		public AverageEvaluations(AverageEvaluation overallAverageEvaluation, AverageEvaluation mainModelAverageEvaluation, AverageEvaluation defaultModelAverageEvaluation,
 				double mainModelDecisionsRatio) {
@@ -290,10 +296,11 @@ public class BatchExperimentResults {
 		
 		algorithmNameWithParameters2AvgEvaluations.forEach(
 			(algorithmNameWithParameters, evaluations) ->
-				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f # %f # %f.", dataName, algorithmNameWithParameters,
+				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f # %f # %f. Main model decisions ratio: %f.", dataName, algorithmNameWithParameters,
 						evaluations.getOverallEvaluation(),
 						evaluations.getMainModelEvaluation(),
-						evaluations.getDefaultModelEvaluation()))
+						evaluations.getDefaultModelEvaluation(),
+						evaluations.getMainModelDecisionsRatio()))
 				.append(System.lineSeparator())
 		);
 		

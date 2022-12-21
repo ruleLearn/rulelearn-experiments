@@ -47,7 +47,11 @@ public class BatchExperiment {
 	List<LearningAlgorithm> learningAlgorithms;
 	LearningAlgorithmDataParametersContainer parametersContainer;
 	
-	static boolean useMainModelAccuracy = false; //false = use overall accuracy
+	//<BEGIN EXPERIMENT CONFIG>
+	static boolean useMainModelAccuracy = false; //true = use main model accuracy; false = use overall accuracy
+	static final boolean doFullDataReclassification = true;
+	static final boolean doCrossValidations = false; //true = perform CVs; false = skip CVs
+	//<END EXPERIMENT CONFIG>
 	
 	/**
 	 * Constructs this experiment.
@@ -188,7 +192,7 @@ public class BatchExperiment {
 		BatchExperimentResults.CVSelector initializingCVSelector;
 		
 		long t1, t2;
-		boolean calculationsForProvider;
+		boolean doCrossValidationsForProvider;
 		List<LearningAlgorithmDataParameters> parametersList;
 		
 		dataSetNumber = -1;
@@ -196,283 +200,293 @@ public class BatchExperiment {
 			dataSetNumber++;
 			final int streamDataSetNumber = dataSetNumber;
 			
-			calculationsForProvider = dataProvider.getSeeds().length > 0;
+			doCrossValidationsForProvider = dataProvider.getSeeds().length > 0 && doCrossValidations;
 			
-			if (calculationsForProvider) {
+			if (doCrossValidationsForProvider || doFullDataReclassification) {
 				t1 = b(resolveText("Starting calculations for data %1.", dataProvider.getDataName()));
 
 				//>>>>> PROCESS FULL DATA
-				double epsilonDRSAConsistencyThreshold = 0.0;
-				double qualityOfDRSAApproximation;
-				double qualityOfVCDRSAApproximation;
-				Map<String, BatchExperimentResults.Evaluations> algorithmNameWithParameters2Evaluations = new LinkedHashMap<String, BatchExperimentResults.Evaluations>();
-				Map<Double, Double> consistencyThreshold2QualityOfApproximation = new LinkedHashMap<Double, Double>();
-				
-				//print full data set accuracies
-				Data fullData = dataProvider.provideOriginalData();
-				outN("Quality of approximation for consistency threshold=%1: %2.", epsilonDRSAConsistencyThreshold, qualityOfDRSAApproximation = calculateQualityOfApproximation(fullData.getInformationTable(), 0.0));
-				consistencyThreshold2QualityOfApproximation.put(Double.valueOf(epsilonDRSAConsistencyThreshold), qualityOfDRSAApproximation);
-				
-				//if rule classifier is used for any data (thus in particular for the current data)
-				if (learningAlgorithms.stream().filter(algorithm -> algorithm.getName().equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())).collect(Collectors.toList()).size() > 0) {
+				if (doFullDataReclassification) {
+					double epsilonDRSAConsistencyThreshold = 0.0;
+					double qualityOfDRSAApproximation;
+					double qualityOfVCDRSAApproximation;
+					Map<String, BatchExperimentResults.Evaluations> algorithmNameWithParameters2Evaluations = new LinkedHashMap<String, BatchExperimentResults.Evaluations>();
+					Map<Double, Double> consistencyThreshold2QualityOfApproximation = new LinkedHashMap<Double, Double>();
 					
-					parametersList = parametersContainer.getParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataProvider.getDataName()); //get list of parameters for rule classifier
+					//print full data set accuracies
+					Data fullData = dataProvider.provideOriginalData();
+					outN("Quality of approximation for consistency threshold=%1: %2.", epsilonDRSAConsistencyThreshold, qualityOfDRSAApproximation = calculateQualityOfApproximation(fullData.getInformationTable(), 0.0));
+					consistencyThreshold2QualityOfApproximation.put(Double.valueOf(epsilonDRSAConsistencyThreshold), qualityOfDRSAApproximation);
 					
-					if (parametersList != null) { //rule classifier is there (i.e., has at least one parameters) :)
-						for (LearningAlgorithmDataParameters parameters : parametersList) { //check quality of approximation for all considered consistency thresholds
-							double consistencyThreshold = Double.valueOf(parameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.consistencyThresholdParameterName));
-							if (!consistencyThreshold2QualityOfApproximation.containsKey(Double.valueOf(consistencyThreshold))) { //ensure that quality of approximation is calculated for each consistency threshold only once
-								outN("Quality of approximation for consistency threshold=%1: %2.", consistencyThreshold, qualityOfVCDRSAApproximation = calculateQualityOfApproximation(fullData.getInformationTable(), consistencyThreshold));
-								consistencyThreshold2QualityOfApproximation.put(consistencyThreshold, qualityOfVCDRSAApproximation);
+					//if rule classifier is used for any data (thus in particular for the current data)
+					if (learningAlgorithms.stream().filter(algorithm -> algorithm.getName().equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())).collect(Collectors.toList()).size() > 0) {
+						
+						parametersList = parametersContainer.getParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataProvider.getDataName()); //get list of parameters for rule classifier
+						
+						if (parametersList != null) { //rule classifier is there (i.e., has at least one parameters) :)
+							for (LearningAlgorithmDataParameters parameters : parametersList) { //check quality of approximation for all considered consistency thresholds
+								double consistencyThreshold = Double.valueOf(parameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.consistencyThresholdParameterName));
+								if (!consistencyThreshold2QualityOfApproximation.containsKey(Double.valueOf(consistencyThreshold))) { //ensure that quality of approximation is calculated for each consistency threshold only once
+									outN("Quality of approximation for consistency threshold=%1: %2.", consistencyThreshold, qualityOfVCDRSAApproximation = calculateQualityOfApproximation(fullData.getInformationTable(), consistencyThreshold));
+									consistencyThreshold2QualityOfApproximation.put(consistencyThreshold, qualityOfVCDRSAApproximation);
+								}
 							}
 						}
 					}
-				}
-				
-				//calculate and process full data models for all (algorithm, parameters) pairs
-				Data processedFullData = trainDataPreprocessor.process(fullData);
-				int algorithmNumber = -1;
-				//TODO: optimize the following loop using a parallel stream
-				for (LearningAlgorithm algorithm : learningAlgorithms) {
-					algorithmNumber++;
 					
-					parametersList = processListOfParameters(parametersContainer.getParameters(algorithm.getName(), dataProvider.getDataName()));
-					int parameterNumber = -1;
-					
+					//calculate and process full data models for all (algorithm, parameters) pairs
+					Data processedFullData = trainDataPreprocessor.process(fullData);
+					int algorithmNumber = -1;
 					//TODO: optimize the following loop using a parallel stream
-					for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for current algorithm
-						parameterNumber++;
-
-						/**/long trainingStartTime = System.currentTimeMillis();
-						//=====
-						ClassificationModel model = algorithm.learn(processedFullData, parameters); //can change result of processedFullData.getInformationTable()
-						//=====
-						/**/long fullDataTrainingTime = System.currentTimeMillis() - trainingStartTime;
+					for (LearningAlgorithm algorithm : learningAlgorithms) {
+						algorithmNumber++;
 						
-						/**/long validationStartTime = System.currentTimeMillis();
-						//=====
-						ModelValidationResult modelValidationResult = model.validate(fullData);
-						//=====
-						/**/long fullDataValidationTime = System.currentTimeMillis() - validationStartTime;
-
-						/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
-						/**/	.dataSetNumber(dataSetNumber).learningAlgorithmNumber(algorithmNumber).parametersNumber(parameterNumber);
-						/**/CalculationTimes fullDataCalculationTimes = batchExperimentResults.getFullDataCalculationTimes(selector);
-						/**/fullDataCalculationTimes.increaseTotalTrainingTime(fullDataTrainingTime);
-						/**/fullDataCalculationTimes.increaseTotalValidationTime(fullDataValidationTime);
+						parametersList = processListOfParameters(parametersContainer.getParameters(algorithm.getName(), dataProvider.getDataName()));
+						int parameterNumber = -1;
 						
-						String validationSummary = model.getValidationSummary();
-						algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")",
-								new BatchExperimentResults.Evaluations(
-										modelValidationResult.getOverallAccuracy(),
-										modelValidationResult.getMainModelAccuracy(),
-										modelValidationResult.getDefaultModelAccuracy()
-								));
-						outN("Train data accuracy for parameterized algorithm '%1(%2)': %3 # %4 # %5.\n%% %6 [Times]: training: %7 [ms], validation: %8 [ms].",
-								algorithm.getName(),
-								parameters,
-								modelValidationResult.getOverallAccuracy(),
-								modelValidationResult.getMainModelAccuracy(),
-								modelValidationResult.getDefaultModelAccuracy(),
-								validationSummary,
-								fullDataTrainingTime,
-								fullDataValidationTime);
-						outN("  /");
-						outN(" /");
-						outN("/");
-						outN(model.getModelDescription());
-						outN("\\");
-						outN(" \\");
-						outN("  \\");
-						model = null; //facilitate GC
-					}
-				}
-				
-				//save quality of approximation and results of all parameterized algorithms for full data
-				FullDataResults fullDataResults = new FullDataResults(consistencyThreshold2QualityOfApproximation, algorithmNameWithParameters2Evaluations);
-				batchExperimentResults.storeFullDataResults(dataProvider.getDataName(), fullDataResults);
-				
-				VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
-				//<<<<<
-
-				crossValidationsCount = dataProvider.getSeeds().length; //get number of cross-validations for current data
-				//>>>>> DO MULTIPLE CROSS-VALIDATIONS
-				for (int crossValidationNumber = 0; crossValidationNumber < crossValidationsCount; crossValidationNumber++) {
-					t2 = b(resolveText("  Starting calculations for %1, cross-validation %2.", dataProvider.getDataName(), crossValidationNumber));
-					data = dataProvider.provide(crossValidationNumber);
-					
-					crossValidation = crossValidationProvider.provide();
-					crossValidation.setSeed(dataProvider.getSeeds()[crossValidationNumber]);
-					crossValidation.setNumberOfFolds(dataProvider.getNumberOfFolds());
-					
-					final int streamCrossValidationNumber = crossValidationNumber;
-					
-					//for each (algorithm, parameters) pair initialize storage for results of particular folds
-					for (int i = 0; i < learningAlgorithms.size(); i++) {
-						parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(i).getName(), dataProvider.getDataName()));
-						for (int j = 0; j < parametersList.size(); j++) {
-							initializingCVSelector = (new BatchExperimentResults.CVSelector())
-									.dataSetNumber(dataSetNumber).learningAlgorithmNumber(i).parametersNumber(j).crossValidationNumber(crossValidationNumber);
-							batchExperimentResults.initializeFoldResults(initializingCVSelector, data.getInformationTable().getOrderedUniqueFullyDeterminedDecisions(), crossValidation.getNumberOfFolds());
-						}
-					}
-					
-					crossValidationFolds = crossValidation.getStratifiedFolds(data);
-					
-					//run each fold in parallel!
-					crossValidationFolds.parallelStream().forEach(fold -> {
-						//long t3;
-						//t3 = b("    Starting calculations for fold "+fold.getIndex()+".");
-						//t3 = b(null);
-						b(null);
-						Data processedTrainData = trainDataPreprocessor.process(fold.getTrainData()); //e.g.: over-sampling, under-sampling, bagging
-						
-						//long t4;
-						
-						int learningAlgorithmNumber = -1;
-						for (LearningAlgorithm algorithm : learningAlgorithms) {
-							learningAlgorithmNumber++;
-							//t4 = b("      Starting calculations for fold "+fold.getIndex()+", algorithm "+algorithm.getName()+".");
-							//t4 = b(null);
-							
-							long t5;
-							
-							List<LearningAlgorithmDataParameters> _parametersList = processListOfParameters(parametersContainer.getParameters(algorithm.getName(), dataProvider.getDataName()));
-							int parametersNumber = -1;
-							for (LearningAlgorithmDataParameters parameters : _parametersList) { //check all parameters from the list of parameters for current algorithm
-								parametersNumber++;
-								t5 = b(null);
-								
-								/**/long trainingStartTime = System.currentTimeMillis();
-								//=====
-								ClassificationModel model = algorithm.learn(processedTrainData, parameters); //can change result of processedTrainData.getInformationTable()
-								//=====
-								/**/long foldTrainingTime = System.currentTimeMillis() - trainingStartTime;
-								
-								/**/long validationStartTime = System.currentTimeMillis();
-								//=====
-								ModelValidationResult modelValidationResult = model.validate(fold.getTestData());
-								//=====
-								/**/long foldValidationTime = System.currentTimeMillis() - validationStartTime;
-								
-								/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
-								/**/	.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
-								/**/CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-								/**/totalFoldCalculationTimes.increaseTotalTrainingTime(foldTrainingTime);
-								/**/totalFoldCalculationTimes.increaseTotalValidationTime(foldValidationTime);
-								
-								String validationSummary = model.getValidationSummary();
-								model = null; //facilitate GC
-								
-								BatchExperimentResults.CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
-										.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(streamCrossValidationNumber);
-								batchExperimentResults.storeFoldModelValidationResult(cvSelector, fold.getIndex(), modelValidationResult);
-								
-								e(t5, resolveText("      %1End of fold %2, algorithm %3(%4). [Accuracy]: %5 # %6 # %7.\n      %8%% %9",
-										foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters,
-										modelValidationResult.getOverallAccuracy(), modelValidationResult.getMainModelAccuracy(), modelValidationResult.getDefaultModelAccuracy(),
-										foldNumber2Spaces(fold.getIndex()), validationSummary));
-							}
-							
-							//e(t4, resolveText("      %1Finishing calculations for fold %2, algorithm %3.", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName()));
-						}
-						
-						VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(processedTrainData.getName()); //release references to allow GC
-						processedTrainData = null; //facilitate GC
+						//TODO: optimize the following loop using a parallel stream
+						for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for current algorithm
+							parameterNumber++;
 	
-						//e(t3, "    Finishing calculations for fold "+fold.getIndex()+".");
-						fold.done(); //facilitate GC
-					});
-				
-					data = null; //facilitate GC
-					crossValidation = null; //facilitate GC
-					crossValidationFolds = null; //facilitate GC
-					
-					e(t2, resolveText("  Finishing calculations for %1, cross-validation %2.", dataProvider.getDataName(), crossValidationNumber));
-					outN("  ----------");
-					for (int learningAlgorithmNumber = 0; learningAlgorithmNumber < learningAlgorithms.size(); learningAlgorithmNumber++) {
-						parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(learningAlgorithmNumber).getName(), dataProvider.getDataName()));
-						int parametersNumber = -1;
-						for (LearningAlgorithmDataParameters parameters : parametersList) {
-							parametersNumber++;
-							CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
-									.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(crossValidationNumber);
+							/**/long trainingStartTime = System.currentTimeMillis();
+							//=====
+							ClassificationModel model = algorithm.learn(processedFullData, parameters); //can change result of processedFullData.getInformationTable()
+							//=====
+							/**/long fullDataTrainingTime = System.currentTimeMillis() - trainingStartTime;
 							
-							outN("  Avg. accuracy over folds for algorithm '%1(%2)': %3 # %4 # %5. Avg. main model decisions ratio: %6.",
-									learningAlgorithms.get(learningAlgorithmNumber).getName(),
+							/**/long validationStartTime = System.currentTimeMillis();
+							//=====
+							ModelValidationResult modelValidationResult = model.validate(fullData);
+							//=====
+							/**/long fullDataValidationTime = System.currentTimeMillis() - validationStartTime;
+	
+							/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
+							/**/	.dataSetNumber(dataSetNumber).learningAlgorithmNumber(algorithmNumber).parametersNumber(parameterNumber);
+							/**/CalculationTimes fullDataCalculationTimes = batchExperimentResults.getFullDataCalculationTimes(selector);
+							/**/fullDataCalculationTimes.increaseTotalTrainingTime(fullDataTrainingTime);
+							/**/fullDataCalculationTimes.increaseTotalValidationTime(fullDataValidationTime);
+							
+							String validationSummary = model.getValidationSummary();
+							algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")",
+									new BatchExperimentResults.Evaluations(
+											modelValidationResult.getOverallAccuracy(),
+											modelValidationResult.getMainModelAccuracy(),
+											modelValidationResult.getDefaultModelAccuracy(),
+											modelValidationResult.getMainModelDecisionsRatio()
+									));
+							outN("Train data accuracy for parameterized algorithm '%1(%2)': %3 # %4 # %5. Main model decisions ratio: %6.\n%% %7 [Times]: training: %8 [ms], validation: %9 [ms].",
+									algorithm.getName(),
 									parameters,
-									batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getOverallAccuracy(),
-									batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getMainModelAccuracy(),
-									batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getDefaultModelAccuracy(),
-									batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getMainModelDecisionsRatio());
+									modelValidationResult.getOverallAccuracy(),
+									modelValidationResult.getMainModelAccuracy(),
+									modelValidationResult.getDefaultModelAccuracy(),
+									modelValidationResult.getMainModelDecisionsRatio(),
+									validationSummary,
+									fullDataTrainingTime,
+									fullDataValidationTime);
+							outN("  /");
+							outN(" /");
+							outN("/");
+							outN(model.getModelDescription());
+							outN("\\");
+							outN(" \\");
+							outN("  \\");
+							model = null; //facilitate GC
 						}
 					}
-					outN("  ----------");
+					
+					//save quality of approximation and results of all parameterized algorithms for full data
+					FullDataResults fullDataResults = new FullDataResults(consistencyThreshold2QualityOfApproximation, algorithmNameWithParameters2Evaluations);
+					batchExperimentResults.storeFullDataResults(dataProvider.getDataName(), fullDataResults);
 					
 					VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
-				} //for crossValidationNumber
+				}
+				//<<<<<
+
+				//>>>>> DO MULTIPLE CROSS-VALIDATIONS
+				if (doCrossValidationsForProvider) {
+					crossValidationsCount = dataProvider.getSeeds().length; //get number of cross-validations for current data
+					for (int crossValidationNumber = 0; crossValidationNumber < crossValidationsCount; crossValidationNumber++) {
+						t2 = b(resolveText("  Starting calculations for %1, cross-validation %2.", dataProvider.getDataName(), crossValidationNumber));
+						data = dataProvider.provide(crossValidationNumber);
+						
+						crossValidation = crossValidationProvider.provide();
+						crossValidation.setSeed(dataProvider.getSeeds()[crossValidationNumber]);
+						crossValidation.setNumberOfFolds(dataProvider.getNumberOfFolds());
+						
+						final int streamCrossValidationNumber = crossValidationNumber;
+						
+						//for each (algorithm, parameters) pair initialize storage for results of particular folds
+						for (int i = 0; i < learningAlgorithms.size(); i++) {
+							parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(i).getName(), dataProvider.getDataName()));
+							for (int j = 0; j < parametersList.size(); j++) {
+								initializingCVSelector = (new BatchExperimentResults.CVSelector())
+										.dataSetNumber(dataSetNumber).learningAlgorithmNumber(i).parametersNumber(j).crossValidationNumber(crossValidationNumber);
+								batchExperimentResults.initializeFoldResults(initializingCVSelector, data.getInformationTable().getOrderedUniqueFullyDeterminedDecisions(), crossValidation.getNumberOfFolds());
+							}
+						}
+						
+						crossValidationFolds = crossValidation.getStratifiedFolds(data);
+						
+						//run each fold in parallel!
+						crossValidationFolds.parallelStream().forEach(fold -> {
+							//long t3;
+							//t3 = b("    Starting calculations for fold "+fold.getIndex()+".");
+							//t3 = b(null);
+							b(null);
+							Data processedTrainData = trainDataPreprocessor.process(fold.getTrainData()); //e.g.: over-sampling, under-sampling, bagging
+							
+							//long t4;
+							
+							int learningAlgorithmNumber = -1;
+							for (LearningAlgorithm algorithm : learningAlgorithms) {
+								learningAlgorithmNumber++;
+								//t4 = b("      Starting calculations for fold "+fold.getIndex()+", algorithm "+algorithm.getName()+".");
+								//t4 = b(null);
+								
+								long t5;
+								
+								List<LearningAlgorithmDataParameters> _parametersList = processListOfParameters(parametersContainer.getParameters(algorithm.getName(), dataProvider.getDataName()));
+								int parametersNumber = -1;
+								for (LearningAlgorithmDataParameters parameters : _parametersList) { //check all parameters from the list of parameters for current algorithm
+									parametersNumber++;
+									t5 = b(null);
+									
+									/**/long trainingStartTime = System.currentTimeMillis();
+									//=====
+									ClassificationModel model = algorithm.learn(processedTrainData, parameters); //can change result of processedTrainData.getInformationTable()
+									//=====
+									/**/long foldTrainingTime = System.currentTimeMillis() - trainingStartTime;
+									
+									/**/long validationStartTime = System.currentTimeMillis();
+									//=====
+									ModelValidationResult modelValidationResult = model.validate(fold.getTestData());
+									//=====
+									/**/long foldValidationTime = System.currentTimeMillis() - validationStartTime;
+									
+									/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
+									/**/	.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
+									/**/CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+									/**/totalFoldCalculationTimes.increaseTotalTrainingTime(foldTrainingTime);
+									/**/totalFoldCalculationTimes.increaseTotalValidationTime(foldValidationTime);
+									
+									String validationSummary = model.getValidationSummary();
+									model = null; //facilitate GC
+									
+									BatchExperimentResults.CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
+											.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(streamCrossValidationNumber);
+									batchExperimentResults.storeFoldModelValidationResult(cvSelector, fold.getIndex(), modelValidationResult);
+									
+									e(t5, resolveText("      %1End of fold %2, algorithm %3(%4). [Accuracy]: %5 # %6 # %7.\n      %8%% %9",
+											foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters,
+											modelValidationResult.getOverallAccuracy(), modelValidationResult.getMainModelAccuracy(), modelValidationResult.getDefaultModelAccuracy(),
+											foldNumber2Spaces(fold.getIndex()), validationSummary));
+								}
+								
+								//e(t4, resolveText("      %1Finishing calculations for fold %2, algorithm %3.", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName()));
+							}
+							
+							VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(processedTrainData.getName()); //release references to allow GC
+							processedTrainData = null; //facilitate GC
+		
+							//e(t3, "    Finishing calculations for fold "+fold.getIndex()+".");
+							fold.done(); //facilitate GC
+						});
+					
+						data = null; //facilitate GC
+						crossValidation = null; //facilitate GC
+						crossValidationFolds = null; //facilitate GC
+						
+						e(t2, resolveText("  Finishing calculations for %1, cross-validation %2.", dataProvider.getDataName(), crossValidationNumber));
+						outN("  ----------");
+						for (int learningAlgorithmNumber = 0; learningAlgorithmNumber < learningAlgorithms.size(); learningAlgorithmNumber++) {
+							parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(learningAlgorithmNumber).getName(), dataProvider.getDataName()));
+							int parametersNumber = -1;
+							for (LearningAlgorithmDataParameters parameters : parametersList) {
+								parametersNumber++;
+								CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
+										.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(crossValidationNumber);
+								
+								outN("  Avg. accuracy over folds for algorithm '%1(%2)': %3 # %4 # %5. Avg. main model decisions ratio: %6.",
+										learningAlgorithms.get(learningAlgorithmNumber).getName(),
+										parameters,
+										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getOverallAccuracy(),
+										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getMainModelAccuracy(),
+										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getDefaultModelAccuracy(),
+										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getMainModelDecisionsRatio());
+							}
+						}
+						outN("  ----------");
+						
+						VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
+					} //for crossValidationNumber
+				} //if (doCrossValidations)
 				//<<<<<
 
 				e(t1, resolveText("Finishing calculations for data '%1'.", dataProvider.getDataName()));
 				
-				outN("==========");
-				for (int learningAlgorithmNumber = 0; learningAlgorithmNumber < learningAlgorithms.size(); learningAlgorithmNumber++) {
-					parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(learningAlgorithmNumber).getName(), dataProvider.getDataName()));
-					
-					List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
-					double bestAccuracy = -1.0;
-
-					int parametersNumber = -1;
-					for (LearningAlgorithmDataParameters parameters : parametersList) {
-						parametersNumber++;
-						DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
-								.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
-						AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
-						outN("Avg. accuracy over cross-validations for algorithm '%1(%2)': %3 (stdDev: %4) # %5 (stdDev: %6) # %7 (stdDev: %8). Avg. main model decisions ratio: %9.",
-								learningAlgorithms.get(learningAlgorithmNumber).getName(),
-								parameters,
-								averageEvaluations.getOverallAverageEvaluation().getAverage(),
-								averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelDecisionsRatio());
-						CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-						outN("%% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
-
-						AverageEvaluation averageEvaluation = useMainModelAccuracy ? averageEvaluations.getMainModelAverageEvaluation() : averageEvaluations.getOverallAverageEvaluation();
-						if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
-							bestAccuracy = averageEvaluation.getAverage();
-							bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
-							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
-						} else if (averageEvaluation.getAverage() == bestAccuracy) {
-							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+				//>>>>> SUMMARIZE MULTIPLE CROSS-VALIDATIONS
+				if (doCrossValidationsForProvider) {
+					outN("==========");
+					for (int learningAlgorithmNumber = 0; learningAlgorithmNumber < learningAlgorithms.size(); learningAlgorithmNumber++) {
+						parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(learningAlgorithmNumber).getName(), dataProvider.getDataName()));
+						
+						List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
+						double bestAccuracy = -1.0;
+	
+						int parametersNumber = -1;
+						for (LearningAlgorithmDataParameters parameters : parametersList) {
+							parametersNumber++;
+							DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
+									.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
+							AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
+							outN("Avg. accuracy over cross-validations for algorithm '%1(%2)': %3 (stdDev: %4) # %5 (stdDev: %6) # %7 (stdDev: %8). Avg. main model decisions ratio: %9.",
+									learningAlgorithms.get(learningAlgorithmNumber).getName(),
+									parameters,
+									averageEvaluations.getOverallAverageEvaluation().getAverage(),
+									averageEvaluations.getOverallAverageEvaluation().getStdDev(),
+									averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+									averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+									averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+									averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
+									averageEvaluations.getMainModelDecisionsRatio());
+							CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+							outN("%% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+	
+							AverageEvaluation averageEvaluation = useMainModelAccuracy ? averageEvaluations.getMainModelAverageEvaluation() : averageEvaluations.getOverallAverageEvaluation();
+							if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
+								bestAccuracy = averageEvaluation.getAverage();
+								bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
+								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+							} else if (averageEvaluation.getAverage() == bestAccuracy) {
+								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+							}
+						}
+						
+						//print the best parameters + accuracy for the current algorithm
+						for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
+							AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
+							outN("  Best avg. %1 accuracy over cross-validations for algorithm '%2(%3)': %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10.",
+									useMainModelAccuracy ? "main model" : "overall",
+									learningAlgorithms.get(learningAlgorithmNumber).getName(),
+									parametersList.get(selector.parametersNumber),
+									averageEvaluations.getOverallAverageEvaluation().getAverage(),
+									averageEvaluations.getOverallAverageEvaluation().getStdDev(),
+									averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+									averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+									averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+									averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
+									averageEvaluations.getMainModelDecisionsRatio());
+							
+							CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+							outN("  %% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 						}
 					}
-					
-					//print the best parameters + accuracy for the current algorithm
-					for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-						AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
-						outN("  Best avg. %1 accuracy over cross-validations for algorithm '%2(%3)': %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10.",
-								useMainModelAccuracy ? "main model" : "overall",
-								learningAlgorithms.get(learningAlgorithmNumber).getName(),
-								parametersList.get(selector.parametersNumber),
-								averageEvaluations.getOverallAverageEvaluation().getAverage(),
-								averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelDecisionsRatio());
-						
-						CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-						outN("  %% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
-					}
-				}
-				outN("==========");
+					outN("==========");
+				} //if (doCrossValidations)
+				//<<<<<
 				outN();
-			} //if (calculationsForProvider)
+			} //if (doCrossValidations || doFullDataReclassification)
 			
 			dataProvider.done(); //facilitate GC
 			VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
@@ -754,60 +768,64 @@ public class BatchExperiment {
 		//print experiment summary:
 		outN("####################");
 		for (String dataSetName : dataSetsNames) {
-			outN(results.reportFullDataResults(dataSetName));
+			if (doFullDataReclassification) {
+				outN(results.reportFullDataResults(dataSetName));
+			} //if (doFullDataReclassification)
 			
-			for (String algorithmName : algorithmsNames) {
-				parametersList = processListOfParameters(parametersContainer.getParameters(algorithmName, dataSetName));
-				parametersNumber = -1;
-				List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
-				double bestAccuracy = -1.0;
-				
-				for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for the current algorithm
-					parametersNumber++;
-					DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
-							.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
-					AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
-					outN("Avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10.",
-							dataSetName, algorithmName, parameters,
-							averageEvaluations.getOverallAverageEvaluation().getAverage(),
-							averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-							averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-							averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-							averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-							averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-							averageEvaluations.getMainModelDecisionsRatio());
+			if (doCrossValidations) {
+				for (String algorithmName : algorithmsNames) {
+					parametersList = processListOfParameters(parametersContainer.getParameters(algorithmName, dataSetName));
+					parametersNumber = -1;
+					List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
+					double bestAccuracy = -1.0;
 					
-					CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-					outN("%% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
-
-					AverageEvaluation averageEvaluation = useMainModelAccuracy ? averageEvaluations.getMainModelAverageEvaluation() : averageEvaluations.getOverallAverageEvaluation();
-					if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
-						bestAccuracy = averageEvaluation.getAverage();
-						bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
-						bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
-					} else if (averageEvaluation.getAverage() == bestAccuracy) {
-						bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+					for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for the current algorithm
+						parametersNumber++;
+						DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
+								.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
+						AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
+						outN("Avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10.",
+								dataSetName, algorithmName, parameters,
+								averageEvaluations.getOverallAverageEvaluation().getAverage(),
+								averageEvaluations.getOverallAverageEvaluation().getStdDev(),
+								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
+								averageEvaluations.getMainModelDecisionsRatio());
+						
+						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+						outN("%% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+	
+						AverageEvaluation averageEvaluation = useMainModelAccuracy ? averageEvaluations.getMainModelAverageEvaluation() : averageEvaluations.getOverallAverageEvaluation();
+						if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
+							bestAccuracy = averageEvaluation.getAverage();
+							bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
+							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+						} else if (averageEvaluation.getAverage() == bestAccuracy) {
+							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+						}
 					}
-				}
-				
-				//print the best parameters + accuracy for the current algorithm
-				for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-					AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
-					outN("  Best avg. %1 accuracy for ('%2', %3(%4)): %5 (stdDev: %6) # %7 (stdDev: %8) # %9 (stdDev: %10). Avg. main model decisions ratio: %11.",
-							useMainModelAccuracy ? "main model" : "overall",
-							dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
-							averageEvaluations.getOverallAverageEvaluation().getAverage(),
-							averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-							averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-							averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-							averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-							averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-							averageEvaluations.getMainModelDecisionsRatio());
 					
-					CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-					outN("  %% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
-				}
-			}
+					//print the best parameters + accuracy for the current algorithm
+					for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
+						AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
+						outN("  Best avg. %1 accuracy for ('%2', %3(%4)): %5 (stdDev: %6) # %7 (stdDev: %8) # %9 (stdDev: %10). Avg. main model decisions ratio: %11.",
+								useMainModelAccuracy ? "main model" : "overall",
+								dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
+								averageEvaluations.getOverallAverageEvaluation().getAverage(),
+								averageEvaluations.getOverallAverageEvaluation().getStdDev(),
+								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
+								averageEvaluations.getMainModelDecisionsRatio());
+						
+						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+						outN("  %% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+					}
+				} //for
+			} //if (doCrossValidations)
 			outN("####################");
 		}
 		
@@ -868,7 +886,20 @@ public class BatchExperiment {
 //		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
 //		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
 //		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
-		
+
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+				
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
@@ -877,6 +908,8 @@ public class BatchExperiment {
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
@@ -884,63 +917,80 @@ public class BatchExperiment {
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
+	
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
+	
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		);
 	}
 	
