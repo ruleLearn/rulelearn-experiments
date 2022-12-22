@@ -50,7 +50,7 @@ public class BatchExperiment {
 	//<BEGIN EXPERIMENT CONFIG>
 	static boolean useMainModelAccuracy = false; //true = use main model accuracy; false = use overall accuracy
 	static final boolean doFullDataReclassification = true;
-	static final boolean doCrossValidations = false; //true = perform CVs; false = skip CVs
+	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -300,8 +300,9 @@ public class BatchExperiment {
 					batchExperimentResults.storeFullDataResults(dataProvider.getDataName(), fullDataResults);
 					
 					VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
+					
+					outN(batchExperimentResults.reportFullDataResults(dataProvider.getDataName()));
 				}
-				outN(batchExperimentResults.reportFullDataResults(dataProvider.getDataName()));
 				//<<<<<
 
 				//>>>>> DO MULTIPLE CROSS-VALIDATIONS
@@ -502,6 +503,8 @@ public class BatchExperiment {
 		//-----
 		final String dataNameMonumentsNoMV = "zabytki";
 		//-----
+		final String dataNameMonumentsNoMV_K9_K10 = "zabytki-K9-K10";
+		//-----
 		final String dataNameMonumentsNoMV01 = "zabytki01";
 		final String dataNameMonumentsNoMV01_K9_K10 = "zabytki01-K9-K10";
 		//-----
@@ -523,134 +526,144 @@ public class BatchExperiment {
 		//HINT: comment addition of data provider if given data set should not be used in this batch experiment OR give empty list array of seed
 		List<DataProvider> dataProviders = new ArrayList<DataProvider>();
 		//-----
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-//				"data/csv/zabytki-data-noMV.csv",
-//				false, ';',
-//				dataNameMonumentsNoMV,
-//				//SKIP_DATA,
-//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-//				k));
-		//-----
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-//				"data/csv/zabytki-data-noMV-0-1.csv",
-//				false, ';',
-//				dataNameMonumentsNoMV01,
-//				//SKIP_DATA,
-//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-//				k));
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-//				"data/csv/zabytki-data-noMV-0-1.csv",
-//				false, ';',
-//				dataNameMonumentsNoMV01_K9_K10,
-//				//SKIP_DATA,
-//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-//				k));
-		//-----
 		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata.json",
-				"data/json-objects/bank-churn-4000-v8 data.json",
-				dataNameChurn4000v8,
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
+				"data/csv/zabytki-data-noMV.csv",
+				false, ';',
+				dataNameMonumentsNoMV,
 				//SKIP_DATA,
-				//new long[]{},
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
 				k));
 		//-----
 		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataNameChurn4000v8_0_05_mv2,
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
+				"data/csv/zabytki-data-noMV.csv",
+				false, ';',
+				dataNameMonumentsNoMV_K9_K10,
 				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
+				k));
+		//-----
+		dataProviders.add(new BasicDataProvider(
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
+				"data/csv/zabytki-data-noMV-0-1.csv",
+				false, ';',
+				dataNameMonumentsNoMV01,
+				//SKIP_DATA,
+				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
 				k));
 		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataNameChurn4000v8_0_05_mv15,
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
+				"data/csv/zabytki-data-noMV-0-1.csv",
+				false, ';',
+				dataNameMonumentsNoMV01_K9_K10,
 				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
 				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataNameChurn4000v8_0_10_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataNameChurn4000v8_0_10_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataNameChurn4000v8_0_15_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataNameChurn4000v8_0_15_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataNameChurn4000v8_0_20_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataNameChurn4000v8_0_20_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataNameChurn4000v8_0_25_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataNameChurn4000v8_0_25_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
+		//-----
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata.json",
+//				"data/json-objects/bank-churn-4000-v8 data.json",
+//				dataNameChurn4000v8,
+//				//SKIP_DATA,
+//				//new long[]{},
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+		//-----
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+//				dataNameChurn4000v8_0_05_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+//				dataNameChurn4000v8_0_05_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+//				dataNameChurn4000v8_0_10_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+//				dataNameChurn4000v8_0_10_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+//				dataNameChurn4000v8_0_15_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+//				dataNameChurn4000v8_0_15_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+//				dataNameChurn4000v8_0_20_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+//				dataNameChurn4000v8_0_20_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+//				dataNameChurn4000v8_0_25_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+//				dataNameChurn4000v8_0_25_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
 		
 		//HINT: comment algorithm addition if given algorithm should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //does not work because of numerical attributes
 		
@@ -659,28 +672,60 @@ public class BatchExperiment {
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV,
 						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes")
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
+								//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), DefaultClassificationResultChoiceMethod.MODE))
 						))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), DefaultClassificationResultChoiceMethod.MODE))
+						
+				//-----
+				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV_K9_K10,
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
+								//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), DefaultClassificationResultChoiceMethod.MODE))
+						))
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV01,
 						Arrays.asList(
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes")
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
 						))
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV01_K9_K10,
 						Arrays.asList(
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes")
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
 						))
+				//-----
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV,
+						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+				//------
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV_K9_K10,
+						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+				//------
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01,
+						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01_K9_K10,
+						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8,
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0"), //BEST w.r.t. overall accuracy when using default class
@@ -888,15 +933,15 @@ public class BatchExperiment {
 //		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
 //		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 				
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
