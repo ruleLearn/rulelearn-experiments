@@ -52,6 +52,7 @@ public class BatchExperiment {
 	static boolean useMainModelAccuracy = false; //true = use main model accuracy; false = use overall accuracy
 	static final boolean doFullDataReclassification = true;
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
+	static final boolean generalizeConditions = true;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
