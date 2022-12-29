@@ -529,45 +529,45 @@ public class BatchExperiment {
 		//TODO: comment data sets not used in the experiment
 		List<DataProvider> dataProviders = new ArrayList<DataProvider>();
 
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-				"data/csv/zabytki-data-noMV.csv",
-				false, ';',
-				dataNameMonumentsNoMV,
-				//SKIP_DATA,
-				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-				k));
-		/*-----*/
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-				"data/csv/zabytki-data-noMV.csv",
-				false, ';',
-				dataNameMonumentsNoMV_K9_K10,
-				//SKIP_DATA,
-				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-				k));
-		/*-----*/
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-				"data/csv/zabytki-data-noMV-0-1.csv",
-				false, ';',
-				dataNameMonumentsNoMV01,
-				//SKIP_DATA,
-				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-				"data/csv/zabytki-data-noMV-0-1.csv",
-				false, ';',
-				dataNameMonumentsNoMV01_K9_K10,
-				//SKIP_DATA,
-				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-				k));
-		/*-----*/
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
+//				"data/csv/zabytki-data-noMV.csv",
+//				false, ';',
+//				dataNameMonumentsNoMV,
+//				//SKIP_DATA,
+//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
+//				k));
+//		/*-----*/
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
+//				"data/csv/zabytki-data-noMV.csv",
+//				false, ';',
+//				dataNameMonumentsNoMV_K9_K10,
+//				//SKIP_DATA,
+//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
+//				k));
+//		/*-----*/
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
+//				"data/csv/zabytki-data-noMV-0-1.csv",
+//				false, ';',
+//				dataNameMonumentsNoMV01,
+//				//SKIP_DATA,
+//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
+//				"data/csv/zabytki-data-noMV-0-1.csv",
+//				false, ';',
+//				dataNameMonumentsNoMV01_K9_K10,
+//				//SKIP_DATA,
+//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
+//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
+//				k));
+//		/*-----*/
 		dataProviders.add(new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata.json",
 				"data/json-objects/bank-churn-4000-v8 data.json",
@@ -663,12 +663,12 @@ public class BatchExperiment {
 		//TODO: comment algorithms not used in the experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //does not work because of numerical attributes
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
@@ -733,38 +733,60 @@ public class BatchExperiment {
 				//-----
 				
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8,
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList()
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv2,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv15,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv2,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+						//getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv15,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv2,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv15,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv2,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv15,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv2,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv15,
+						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0",
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
+//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				//-----
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8,
 						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
