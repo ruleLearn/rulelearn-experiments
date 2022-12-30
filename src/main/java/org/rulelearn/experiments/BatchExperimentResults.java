@@ -131,11 +131,20 @@ public class BatchExperimentResults {
 		double defaultModelEvaluation;
 		double mainModelDecisionsRatio;
 		
-		public Evaluations(double overallEvaluation, double mainModelEvaluation, double defaultModelEvaluation, double mainModelDecisionsRatio) {
+		String info;
+		long modelTrainingTime; //training time of overall model
+		long modelValidationTime; //validation time of overall model
+		
+		public Evaluations(double overallEvaluation, double mainModelEvaluation, double defaultModelEvaluation, double mainModelDecisionsRatio,
+				String info, long modelTrainingTime, long modelValidationTime) {
 			this.overallEvaluation = overallEvaluation;
 			this.mainModelEvaluation = mainModelEvaluation;
 			this.defaultModelEvaluation = defaultModelEvaluation;
 			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
+			
+			this.info = info;
+			this.modelTrainingTime = modelTrainingTime;
+			this.modelValidationTime = modelValidationTime;
 		}
 
 		public double getOverallEvaluation() {
@@ -152,6 +161,18 @@ public class BatchExperimentResults {
 		
 		public double getMainModelDecisionsRatio() {
 			return mainModelDecisionsRatio;
+		}
+		
+		public String getInfo() {
+			return info;
+		}
+
+		public long getModelTrainingTime() {
+			return modelTrainingTime;
+		}
+
+		public long getModelValidationTime() {
+			return modelValidationTime;
 		}
 	}
 	
@@ -296,11 +317,15 @@ public class BatchExperimentResults {
 		
 		algorithmNameWithParameters2AvgEvaluations.forEach(
 			(algorithmNameWithParameters, evaluations) ->
-				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f # %f # %f. Main model decisions ratio: %f.", dataName, algorithmNameWithParameters,
+				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f # %f # %f. Main model decisions ratio: %f. [Info]: %s. [Times]: training: %d [ms], validation: %d [ms].",
+						dataName, algorithmNameWithParameters,
 						evaluations.getOverallEvaluation(),
 						evaluations.getMainModelEvaluation(),
 						evaluations.getDefaultModelEvaluation(),
-						evaluations.getMainModelDecisionsRatio()))
+						evaluations.getMainModelDecisionsRatio(),
+						evaluations.getInfo(),
+						evaluations.getModelTrainingTime(),
+						evaluations.getModelValidationTime()))
 				.append(System.lineSeparator())
 		);
 		

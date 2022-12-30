@@ -32,6 +32,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 	
 	String modelLearnerDescription;
 	String validationSummary;
+	
+	static final String avgNumberOfRulesIndicator = "avg. number of cov. rules";
 
 	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult, String modelLearnerDescription) {
 		this.ruleSet = ruleSet;
@@ -145,7 +147,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 		sb.append(String.format(Locale.US, ", using %s: %.2f%% r.hit", //accuracy among objects not covered by any rule
 				defaultClassificationModel != null ? "default classifier" : "default class",
 				accuracyWhenClassifiedByDefault));
-		sb.append(String.format(Locale.US, ", avg. number of cov. rules: %.2f.",
+		sb.append(String.format(Locale.US, ", "+avgNumberOfRulesIndicator+": %.2f.",
 				(double)totalCoveringRulesCount / testDataSize));
 		
 		validationSummary = sb.toString();
@@ -174,11 +176,11 @@ public class ModeRuleClassifier implements ClassificationModel {
 		}
 		sb.append(", average length: ").append(((double)sumLength) / size);
 		sb.append(", average support: ").append(((double)sumSupport) / size);
-		if (defaultClassificationModel != null) {
-			sb.append(", default model learned using: ").append(defaultClassificationModel.getModelLearnerDescription());
-		} else {
-			sb.append(", default class: ").append(((SimpleDecision)defaultClassificationResult.getSuggestedDecision()).getEvaluation());
-		}
+//		if (defaultClassificationModel != null) {
+//			sb.append(", default model learned using: ").append(defaultClassificationModel.getModelLearnerDescription());
+//		} else {
+//			sb.append(", default class: ").append(((SimpleDecision)defaultClassificationResult.getSuggestedDecision()).getEvaluation());
+//		}
 		return sb.toString();
 	}
 

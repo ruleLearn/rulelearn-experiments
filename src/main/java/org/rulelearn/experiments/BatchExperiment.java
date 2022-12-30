@@ -269,12 +269,22 @@ public class BatchExperiment {
 							/**/fullDataCalculationTimes.increaseTotalValidationTime(fullDataValidationTime);
 							
 							String validationSummary = model.getValidationSummary();
+							
+							int avgNumberOfRulesStartIndex = validationSummary.indexOf(ModeRuleClassifier.avgNumberOfRulesIndicator);
+							String info = (avgNumberOfRulesStartIndex >= 0 ? validationSummary.substring(avgNumberOfRulesStartIndex) : "--");
+							if (info.endsWith(".")) {
+								info = info.substring(0, info.length() - 1); //drop dot at the end of info
+							}
+							
 							algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")",
 									new BatchExperimentResults.Evaluations(
 											modelValidationResult.getOverallAccuracy(),
 											modelValidationResult.getMainModelAccuracy(),
 											modelValidationResult.getDefaultModelAccuracy(),
-											modelValidationResult.getMainModelDecisionsRatio()
+											modelValidationResult.getMainModelDecisionsRatio(),
+											(model instanceof ModeRuleClassifier ? model.getModelDescription()+", " : "") + info,
+											fullDataTrainingTime,
+											fullDataValidationTime
 									));
 							outN("Train data accuracy for parameterized algorithm '%1(%2)': %3 # %4 # %5. Main model decisions ratio: %6.\n%% %7 [Times]: training: %8 [ms], validation: %9 [ms].",
 									algorithm.getName(),
@@ -303,7 +313,9 @@ public class BatchExperiment {
 					
 					VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
 					
-					outN(batchExperimentResults.reportFullDataResults(dataProvider.getDataName()));
+					outN("@@@@@ [BEGIN] Full train data reports:");
+					out(batchExperimentResults.reportFullDataResults(dataProvider.getDataName()));
+					outN("@@@@@ [END]");
 				}
 				//<<<<<
 
@@ -663,12 +675,12 @@ public class BatchExperiment {
 		//TODO: comment algorithms not used in the experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //does not work because of numerical attributes
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
