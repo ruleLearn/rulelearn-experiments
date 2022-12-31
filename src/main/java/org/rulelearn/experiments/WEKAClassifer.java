@@ -27,9 +27,33 @@ import weka.core.Instances;
  */
 public class WEKAClassifer implements ClassificationModel {
 	
+	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
+		@Override
+		public String toString() {
+			return "[Classification]: --.";
+		}
+	}
+	
+	public static class ModelDescription extends ClassificationModel.ModelDescription {
+		String options;
+		String trainedClassifier;
+		
+		public ModelDescription(String options, String trainedClassifier) {
+			this.options = options;
+			this.trainedClassifier = trainedClassifier;
+		}
+
+		@Override
+		public String toString() {
+			return "[Options: " + options + "]" + System.lineSeparator() + trainedClassifier;
+		}
+	}
+	
 	AbstractClassifier trainedClassifier; //trained classifier
+	
+	ValidationSummary validationSummary = null;
 	String modelLearnerDescription;
-	String validationSummary = "[Classification]: --.";
+	ModelDescription modelDescription = null;
 
 	public WEKAClassifer(AbstractClassifier trainedClassifier, String modelLearnerDescription) {
 		this.trainedClassifier = trainedClassifier;
@@ -59,8 +83,9 @@ public class WEKAClassifer implements ClassificationModel {
 			}
 		}
 		
-		//TODO: set validation summary?
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
+		
+		validationSummary = new ValidationSummary();
 		
 		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(), 0L, 0L); //all decisions assigned by main model (no abstaining!)
 	}
@@ -78,14 +103,19 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 	}
 	
-	public String getValidationSummary() {
+	public ValidationSummary getValidationSummary() {
 		return validationSummary;
 	}
 
 	@Override
-	public String getModelDescription() {
-		String options = Arrays.asList(trainedClassifier.getOptions()).stream().collect(Collectors.joining(" "));
-		return "[Options: " + options + "]" + System.lineSeparator() + trainedClassifier.toString();
+	public ModelDescription getModelDescription() {
+		if (modelDescription == null) {
+			String options = Arrays.asList(trainedClassifier.getOptions()).stream().collect(Collectors.joining(" "));
+			
+			modelDescription = new ModelDescription(options, trainedClassifier.toString());
+		}
+		
+		return modelDescription;
 	}
 
 	@Override

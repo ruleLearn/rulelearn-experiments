@@ -12,10 +12,17 @@ import org.rulelearn.data.SimpleDecision;
  */
 public interface ClassificationModel {
 	
-	public ModelValidationResult validate(Data testData);
-	SimpleDecision classify(int i, Data data); //gets simple decision of a single object from data
-	String getModelDescription();
-	String getModelLearnerDescription();
-	String getValidationSummary();
+	public abstract class ValidationSummary {
+		public abstract String toString();
+	}
 	
+	public abstract class ModelDescription {
+		public abstract String toString();
+	}
+	
+	ModelValidationResult validate(Data testData);
+	SimpleDecision classify(int i, Data data); //gets simple decision of a single object from data
+	ValidationSummary getValidationSummary();
+	ModelDescription getModelDescription();
+	String getModelLearnerDescription();
 }

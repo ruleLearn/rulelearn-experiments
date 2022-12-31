@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -22,6 +23,7 @@ import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
 import org.rulelearn.experiments.BatchExperimentResults.CalculationTimes;
 import org.rulelearn.experiments.BatchExperimentResults.DataAlgorithmParametersSelector;
 import org.rulelearn.experiments.BatchExperimentResults.FullDataResults;
+import org.rulelearn.experiments.ClassificationModel.ValidationSummary;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
 import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
 
@@ -268,12 +270,14 @@ public class BatchExperiment {
 							/**/fullDataCalculationTimes.increaseTotalTrainingTime(fullDataTrainingTime);
 							/**/fullDataCalculationTimes.increaseTotalValidationTime(fullDataValidationTime);
 							
-							String validationSummary = model.getValidationSummary();
+							ValidationSummary validationSummary = model.getValidationSummary();
 							
-							int avgNumberOfRulesStartIndex = validationSummary.indexOf(ModeRuleClassifier.avgNumberOfRulesIndicator);
-							String info = (avgNumberOfRulesStartIndex >= 0 ? validationSummary.substring(avgNumberOfRulesStartIndex) : "--");
-							if (info.endsWith(".")) {
-								info = info.substring(0, info.length() - 1); //drop dot at the end of info
+							String info;
+							if (validationSummary instanceof ModeRuleClassifier.ValidationSummary) {
+								info = String.format(Locale.US, "%s: %f",
+										ModeRuleClassifier.avgNumberOfRulesIndicator, ((ModeRuleClassifier.ValidationSummary)validationSummary).avgNumberOfCoveringRules);
+							} else {
+								info = "--";
 							}
 							
 							algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")",
@@ -293,13 +297,13 @@ public class BatchExperiment {
 									modelValidationResult.getMainModelAccuracy(),
 									modelValidationResult.getDefaultModelAccuracy(),
 									modelValidationResult.getMainModelDecisionsRatio(),
-									validationSummary,
+									validationSummary.toString(),
 									fullDataTrainingTime,
 									fullDataValidationTime);
 							outN("  /");
 							outN(" /");
 							outN("/");
-							outN(model.getModelDescription());
+							outN(model.getModelDescription().toString());
 							outN("\\");
 							outN(" \\");
 							outN("  \\");
@@ -386,7 +390,7 @@ public class BatchExperiment {
 									/**/totalFoldCalculationTimes.increaseTotalTrainingTime(foldTrainingTime);
 									/**/totalFoldCalculationTimes.increaseTotalValidationTime(foldValidationTime);
 									
-									String validationSummary = model.getValidationSummary();
+									String validationSummary = model.getValidationSummary().toString();
 									model = null; //facilitate GC
 									
 									BatchExperimentResults.CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
@@ -745,7 +749,9 @@ public class BatchExperiment {
 				//-----
 				
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
+						Arrays.asList(
+								//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0"),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
 								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList()
 				//-----
