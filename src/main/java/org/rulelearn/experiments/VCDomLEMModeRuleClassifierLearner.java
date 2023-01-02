@@ -41,7 +41,6 @@ import org.rulelearn.rules.UnionProvider;
 import org.rulelearn.rules.UnionWithSingleLimitingDecisionRuleDecisionsProvider;
 import org.rulelearn.rules.VCDomLEM;
 import org.rulelearn.types.EvaluationField;
-import org.rulelearn.wrappers.VCDomLEMWrapper;
 
 /**
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
@@ -228,18 +227,12 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 	}
 	
 	RuleSetWithComputableCharacteristics learnRules(InformationTable informationTable, double consistencyThreshold) {
-		if (BatchExperiment.generalizeConditions) {
-			RuleSetWithComputableCharacteristics result = (new VCDomLEMWrapper()).induceRulesWithCharacteristics(informationTable, consistencyThreshold);
-			
-			//System.out.println(result.serialize()); //TODO: remove
-			
-			return result;
-		} else {
-			//the code below is copied from method VCDomLEMWrapper.induceRulesWithCharacteristics(InformationTable informationTable, double consistencyThreshold, with changed rule conditions generalizer
-			final RuleInductionStoppingConditionChecker stoppingConditionChecker = 
-					new EvaluationAndCoverageStoppingConditionChecker(EpsilonConsistencyMeasure.getInstance(), EpsilonConsistencyMeasure.getInstance(),
-							EpsilonConsistencyMeasure.getInstance(), consistencyThreshold);
-			
+		//the code below is copied from method VCDomLEMWrapper.induceRulesWithCharacteristics(InformationTable informationTable, double consistencyThreshold,
+		//with adjusted rule conditions generalizer and skipped calculation of all rule characteristics
+		final RuleInductionStoppingConditionChecker stoppingConditionChecker = 
+				new EvaluationAndCoverageStoppingConditionChecker(EpsilonConsistencyMeasure.getInstance(), EpsilonConsistencyMeasure.getInstance(),
+						EpsilonConsistencyMeasure.getInstance(), consistencyThreshold);
+		
 //			RuleInducerComponents ruleInducerComponents = new CertainRuleInducerComponents.Builder().
 //					ruleInductionStoppingConditionChecker(stoppingConditionChecker).
 //					ruleConditionsPruner(new DummyRuleConditionsPruner()).
@@ -248,37 +241,35 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 //					ruleMinimalityChecker(new DummyRuleMinimalityChecker()).
 //					allowedNegativeObjectsType(AllowedNegativeObjectsType.ANY_REGION).
 //					build(); //TODO: remove!
-			
-			RuleInducerComponents ruleInducerComponents = new CertainRuleInducerComponents.Builder().
-					ruleInductionStoppingConditionChecker(stoppingConditionChecker).
-					ruleConditionsPruner(new AttributeOrderRuleConditionsPruner(stoppingConditionChecker)).
-					ruleConditionsGeneralizer(new DummyRuleConditionsGeneralizer()). //THE CHANGE!
-					build();
-			
-			InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
-					(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
-			
-			Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, 
-									   new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
-			ApproximatedSetProvider unionAtLeastProvider = new UnionProvider(Union.UnionType.AT_LEAST, unions);
-			ApproximatedSetProvider unionAtMostProvider = new UnionProvider(Union.UnionType.AT_MOST, unions);
-			ApproximatedSetRuleDecisionsProvider unionRuleDecisionsProvider = new UnionWithSingleLimitingDecisionRuleDecisionsProvider();
-			
-			List<VCDomLEM> vcDomLEMs = new ArrayList<VCDomLEM>(2);
-			vcDomLEMs.add(new VCDomLEM(ruleInducerComponents, unionAtLeastProvider, unionRuleDecisionsProvider));
-			vcDomLEMs.add(new VCDomLEM(ruleInducerComponents, unionAtMostProvider, unionRuleDecisionsProvider));
-			
-			//calculate rules and their characteristics in parallel
-			List<RuleSetWithComputableCharacteristics> ruleSets = vcDomLEMs.parallelStream().map(vcDomLem -> vcDomLem.generateRules()).collect(Collectors.toList());
-			//List<RuleSetWithComputableCharacteristics> ruleSets = vcDomLEMs.stream().map(vcDomLem -> vcDomLem.generateRules()).collect(Collectors.toList()); //TODO: remove!
-			ruleSets.parallelStream().forEach(ruleSet -> ruleSet.calculateAllCharacteristics());
-			
+		
+		RuleInducerComponents ruleInducerComponents = new CertainRuleInducerComponents.Builder().
+				ruleInductionStoppingConditionChecker(stoppingConditionChecker).
+				ruleConditionsPruner(new AttributeOrderRuleConditionsPruner(stoppingConditionChecker)).
+				ruleConditionsGeneralizer(BatchExperiment.generalizeConditions ? new OptimizingRuleConditionsGeneralizer(stoppingConditionChecker) : new DummyRuleConditionsGeneralizer()). //THE CHANGE HERE!
+				build();
+		
+		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
+				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
+		
+		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, 
+								   new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
+		ApproximatedSetProvider unionAtLeastProvider = new UnionProvider(Union.UnionType.AT_LEAST, unions);
+		ApproximatedSetProvider unionAtMostProvider = new UnionProvider(Union.UnionType.AT_MOST, unions);
+		ApproximatedSetRuleDecisionsProvider unionRuleDecisionsProvider = new UnionWithSingleLimitingDecisionRuleDecisionsProvider();
+		
+		List<VCDomLEM> vcDomLEMs = new ArrayList<VCDomLEM>(2);
+		vcDomLEMs.add(new VCDomLEM(ruleInducerComponents, unionAtLeastProvider, unionRuleDecisionsProvider));
+		vcDomLEMs.add(new VCDomLEM(ruleInducerComponents, unionAtMostProvider, unionRuleDecisionsProvider));
+		
+		//calculate rules and their characteristics in parallel
+		List<RuleSetWithComputableCharacteristics> ruleSets = vcDomLEMs.parallelStream().map(vcDomLem -> vcDomLem.generateRules()).collect(Collectors.toList());
+		//ruleSets.parallelStream().forEach(ruleSet -> ruleSet.calculateAllCharacteristics()); //THE CHANGE HERE!
+		
 //			System.out.println(ruleSets.get(0).serialize()); //TODO: remove
 //			System.out.println();
 //			System.out.println(ruleSets.get(1).serialize());
 //			
-			return RuleSetWithComputableCharacteristics.join(ruleSets.get(0), ruleSets.get(1));
-		}
+		return RuleSetWithComputableCharacteristics.join(ruleSets.get(0), ruleSets.get(1));
 	}
 
 }

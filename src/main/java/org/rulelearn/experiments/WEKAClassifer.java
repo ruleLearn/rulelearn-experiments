@@ -4,12 +4,14 @@
 package org.rulelearn.experiments;
 
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.rulelearn.core.InvalidValueException;
 import org.rulelearn.data.Decision;
 import org.rulelearn.data.EvaluationAttribute;
 import org.rulelearn.data.SimpleDecision;
+import org.rulelearn.experiments.ModeRuleClassifier.ValidationSummary;
 import org.rulelearn.types.EnumerationField;
 import org.rulelearn.types.EnumerationFieldFactory;
 import org.rulelearn.types.IntegerField;
@@ -29,9 +31,29 @@ import weka.core.Instances;
 public class WEKAClassifer implements ClassificationModel {
 	
 	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
+		double originalDecisionsQualityOfApproximation; //not used if -1.0
+		double assignedDecisionsQualityOfApproximation; //not used if -1.0
+		
+		public ValidationSummary(double originalDecisionsQualityOfApproximation,
+				double assignedDecisionsQualityOfApproximation) {
+			this.originalDecisionsQualityOfApproximation = originalDecisionsQualityOfApproximation;
+			this.assignedDecisionsQualityOfApproximation = assignedDecisionsQualityOfApproximation;
+		}
+
 		@Override
 		public String toString() {
-			return "[Summary]: --.";
+			StringBuilder sb = new StringBuilder(120);
+			
+			sb.append("[Summary]: ");
+			if (originalDecisionsQualityOfApproximation >= 0.0) {
+				sb.append(String.format(Locale.US, "original quality: %.4f", originalDecisionsQualityOfApproximation));
+			}
+			if (assignedDecisionsQualityOfApproximation >= 0.0) {
+				sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
+			}
+			sb.append(".");
+			
+			return sb.toString();
 		}
 	}
 	
@@ -132,7 +154,21 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-		validationSummary = new ValidationSummary();
+		double originalDecisionsQualityOfApproximation = -1.0;
+		long originalDecisionsConsistentObjectsCount = -1L;
+		
+		double assignedDecisionsQualityOfApproximation = -1.0;
+		long assignedDecisionsConsistentObjectsCount = -1L;
+		
+		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
+			originalDecisionsQualityOfApproximation = getQualityOfApproximation(testData.getInformationTable(), 0.0);
+			originalDecisionsConsistentObjectsCount = Math.round(originalDecisionsQualityOfApproximation * testDataSize); //go back to integer number
+			
+			assignedDecisionsQualityOfApproximation = getQualityOfApproximationForDecisions(testData.getInformationTable(), assignedDecisions, 0.0);
+			assignedDecisionsConsistentObjectsCount = Math.round(assignedDecisionsQualityOfApproximation * testDataSize); //go back to integer number
+		}
+		
+		this.validationSummary = new ValidationSummary(originalDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
 		
 		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(), 0L, 0L, //all decisions assigned by main model (no abstaining!)
 				getModelDescription(),

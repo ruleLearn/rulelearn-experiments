@@ -133,6 +133,7 @@ public class BatchExperimentResults {
 		double mainModelDecisionsRatio;
 		
 		String info;
+		
 		long modelTrainingTime; //training time of overall model
 		long modelValidationTime; //validation time of overall model
 		
@@ -144,6 +145,7 @@ public class BatchExperimentResults {
 			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
 			
 			this.info = info;
+			
 			this.modelTrainingTime = modelTrainingTime;
 			this.modelValidationTime = modelValidationTime;
 		}

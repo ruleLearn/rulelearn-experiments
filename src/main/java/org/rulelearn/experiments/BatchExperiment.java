@@ -55,6 +55,7 @@ public class BatchExperiment {
 	static final boolean doFullDataReclassification = true;
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
 	static final boolean generalizeConditions = true;
+	static final boolean checkConsistencyOfAssignedDecisions = true;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -296,7 +297,7 @@ public class BatchExperiment {
 									));
 							outN("Train data accuracy for '%1(%2)': "+System.lineSeparator()+
 									"%3 # %4 # %5. Main model decisions ratio: %6."+System.lineSeparator()+
-									"%% %7 "+System.lineSeparator()+
+									"%7"+System.lineSeparator()+
 									"%% [Times]: training: %8 [ms], validation: %9 [ms].",
 									algorithm.getName(),
 									parameters,
@@ -304,7 +305,9 @@ public class BatchExperiment {
 									modelValidationResult.getMainModelAccuracy(),
 									modelValidationResult.getDefaultModelAccuracy(),
 									modelValidationResult.getMainModelDecisionsRatio(),
-									validationSummary.toString(),
+									Arrays.asList(validationSummary.toString().split(System.lineSeparator())).stream()
+									.map(line -> (new StringBuilder("%% ")).append(line).toString())
+									.collect(Collectors.joining(System.lineSeparator())), //print validation summary in several lines
 									fullDataTrainingTime,
 									fullDataValidationTime);
 							outN("  /");
@@ -404,10 +407,16 @@ public class BatchExperiment {
 											.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(streamCrossValidationNumber);
 									batchExperimentResults.storeFoldModelValidationResult(cvSelector, fold.getIndex(), modelValidationResult);
 									
-									e(t5, resolveText("      %1End of fold %2, algorithm %3(%4). [Accuracy]: %5 # %6 # %7.\n      %8%% %9",
+									e(t5, resolveText("      %1End of fold %2, algorithm %3(%4)."+System.lineSeparator()+
+													  "      %5%% [Accuracy]: %6 # %7 # %8."+System.lineSeparator()+
+													  "%9",
 											foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters,
+											foldNumber2Spaces(fold.getIndex()),
 											modelValidationResult.getOverallAccuracy(), modelValidationResult.getMainModelAccuracy(), modelValidationResult.getDefaultModelAccuracy(),
-											foldNumber2Spaces(fold.getIndex()), validationSummary));
+											Arrays.asList(validationSummary.split(System.lineSeparator())).stream()
+											.map(line -> (new StringBuilder("      ")).append(foldNumber2Spaces(fold.getIndex())).append("%% ").append(line).toString())
+											.collect(Collectors.joining(System.lineSeparator())) //print validation summary in several lines
+									));
 								}
 								
 								//e(t4, resolveText("      %1Finishing calculations for fold %2, algorithm %3.", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName()));
