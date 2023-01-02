@@ -25,6 +25,8 @@ import it.unimi.dsi.fastutil.ints.IntList;
  */
 public class ModeRuleClassifier implements ClassificationModel {
 	
+	static final String avgNumberOfRulesIndicator = "avg. number of covering rules";
+	
 	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
 		double preciseClassificationPercentage; //w.r.t. the size of validation set
 		double correctPreciseClassificationPercentage; //w.r.t. the size of validation set
@@ -46,28 +48,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 		double accuracyWhenClassifiedByDefaultClassifier;
 		
 		double avgNumberOfCoveringRules;
-		//TODO: more statistics (like avg. confidence?)
+		//TODO: define more statistics (like avg. confidence?)
 		
-		
-		
-		@Override
-		public String toString() {
-			StringBuilder sb = new StringBuilder(120);
-			
-			sb.append("[Classification]: ");
-			sb.append(String.format(Locale.US, "precise: %.2f%%(%.2f%% hit)", preciseClassificationPercentage, correctPreciseClassificationPercentage));
-			sb.append(String.format(Locale.US, ", mode: %.2f%%(%.2f%% hit)", modeClassificationPercentage, correctModeClassificationPercentage));
-			sb.append(String.format(Locale.US, ", default class: %.2f%%(%.2f%% hit)", defaultClassClassificationPercentage, correctDefaultClassClassificationPercentage));
-			sb.append(String.format(Locale.US, ", default classifier: %.2f%%(%.2f%% hit)", defaultClassifierClassificationPercentage, correctDefaultClassifierClassificationPercentage));
-			sb.append(String.format(Locale.US, ", using rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
-			sb.append(accuracyWhenClassifiedByRules > accuracy ? " [UP]" : " [!UP]");
-			sb.append(String.format(Locale.US, ", using default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
-			sb.append(String.format(Locale.US, ", using default classifier: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
-			sb.append(String.format(Locale.US, ", "+avgNumberOfRulesIndicator+": %.2f.", avgNumberOfCoveringRules));
-			//TODO: show more statistics (like avg. confidence?)
-			
-			return sb.toString();
-		}
 		public ValidationSummary(double preciseClassificationPercentage, double correctPreciseClassificationPercentage,
 				double modeClassificationPercentage, double correctModeClassificationPercentage,
 				boolean defaultClassifierUsed,
@@ -91,26 +73,82 @@ public class ModeRuleClassifier implements ClassificationModel {
 			this.accuracyWhenClassifiedByDefaultClassifier = accuracyWhenClassifiedByDefaultClassifier;
 			this.avgNumberOfCoveringRules = avgNumberOfCoveringRules;
 		}
+		
+		@Override
+		public String toString() {
+			StringBuilder sb = new StringBuilder(120);
+			
+			sb.append("[Summary]: ");
+			sb.append(String.format(Locale.US, "precise: %.2f%%(%.2f%% hit)", preciseClassificationPercentage, correctPreciseClassificationPercentage));
+			sb.append(String.format(Locale.US, ", mode: %.2f%%(%.2f%% hit)", modeClassificationPercentage, correctModeClassificationPercentage));
+			sb.append(String.format(Locale.US, ", default class: %.2f%%(%.2f%% hit)", defaultClassClassificationPercentage, correctDefaultClassClassificationPercentage));
+			sb.append(String.format(Locale.US, ", default classifier: %.2f%%(%.2f%% hit)", defaultClassifierClassificationPercentage, correctDefaultClassifierClassificationPercentage));
+			sb.append(String.format(Locale.US, ", by rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
+			sb.append(accuracyWhenClassifiedByRules > accuracy ? " [UP]" : " [!UP]");
+			sb.append(String.format(Locale.US, ", by default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
+			sb.append(String.format(Locale.US, ", by default classifier: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
+			sb.append(String.format(Locale.US, ", "+avgNumberOfRulesIndicator+": %.2f.", avgNumberOfCoveringRules));
+			//TODO: show more statistics (like avg. confidence?)
+			
+			return sb.toString();
+		}
+	}
+	
+	public static class ModelDescriptionBuilder extends ClassificationModel.ModelDescriptionBuilder {
+		/**
+		 * @throws ClassCastException if given array is not an instance of {@link ModelDescription[]}.
+		 */
+		@Override
+		ModelDescription build(ClassificationModel.ModelDescription... genericModelDescriptions) {
+			ModelDescription[] modelDescriptions = new ModelDescription[genericModelDescriptions.length];
+			int index = 0;
+			for (ClassificationModel.ModelDescription genericModelDescription : genericModelDescriptions) {
+				modelDescriptions[index++] = (ModelDescription)genericModelDescription;
+			}
+			return new ModelDescription(modelDescriptions);
+		}
 	}
 	
 	public static class ModelDescription extends ClassificationModel.ModelDescription {
-		double rulesCount;
-		double avgRuleLength;
-		double avgRuleSupport;
+		long totalRulesCount = 0L; //sumRulesCount
+		long sumRuleLength = 0L; //sum of lengths of rules
+		long sumRuleSupport = 0L;  //sum of supports of rules
 		
-		private ModelDescription(double rulesCount, double avgRuleLength, double avgRuleSupport) {
-			this.rulesCount = rulesCount;
-			this.avgRuleLength = avgRuleLength;
-			this.avgRuleSupport = avgRuleSupport;
+		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
+		
+		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport) {
+			this.totalRulesCount = totalRulesCount;
+			this.sumRuleLength = sumRuleLength;
+			this.sumRuleSupport = sumRuleSupport;
+			
+			aggregationCount = 1;
 		}
-
+		
+		public ModelDescription(ModelDescription... modelDescriptions) {
+			for (ModelDescription modelDescription : modelDescriptions) {
+				totalRulesCount += modelDescription.totalRulesCount;
+				sumRuleLength += modelDescription.sumRuleLength;
+				sumRuleSupport += modelDescription.sumRuleSupport;
+				aggregationCount += modelDescription.aggregationCount;
+			}
+		}		
+		
 		@Override
 		public String toString() {
 			StringBuilder sb = new StringBuilder(100);
-			sb.append("number of rules: ").append(rulesCount);
-			sb.append(", average length: ").append(avgRuleLength);
-			sb.append(", average support: ").append(avgRuleSupport);
+			if (aggregationCount == 1) {
+				sb.append("Number of rules: ").append(totalRulesCount);
+			} else {
+				sb.append("Avg. number of rules: ").append((double)totalRulesCount / aggregationCount);
+			}
+			sb.append(String.format(Locale.US, ", average length: %.2f", (double)sumRuleLength / totalRulesCount));
+			sb.append(String.format(Locale.US, ", average support: %.2f", (double)sumRuleSupport / totalRulesCount));
 			return sb.toString();
+		}
+
+		@Override
+		public ModelDescriptionBuilder getModelDescriptionBuilder() {
+			return new ModelDescriptionBuilder();
 		}
 		
 	}
@@ -124,8 +162,6 @@ public class ModeRuleClassifier implements ClassificationModel {
 	String modelLearnerDescription;
 	ModelDescription modelDescription = null;
 	
-	static final String avgNumberOfRulesIndicator = "avg. number of cov. rules";
-
 	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult, String modelLearnerDescription) {
 		this.ruleSet = ruleSet;
 		this.defaultClassificationResult = defaultClassificationResult;
@@ -243,7 +279,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 		
 //		double accuracyWhenClassifiedByDefault = 100 * ((double)resolutionCounters.defaultCorrect / (resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect));
 		
-		validationSummary = new ValidationSummary(
+		this.validationSummary = new ValidationSummary(
 				100 * ((double)(resolutionCounters.preciseCorrect + resolutionCounters.preciseIncorrect) / testDataSize),
 				100 * ((double)resolutionCounters.preciseCorrect / testDataSize),
 				100 * ((double)(resolutionCounters.modeCorrect + resolutionCounters.modeIncorrect) / testDataSize),
@@ -266,17 +302,20 @@ public class ModeRuleClassifier implements ClassificationModel {
 				resolutionCounters.preciseCorrect + resolutionCounters.modeCorrect,
 				(long)testDataSize - (resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect),
 				resolutionCounters.defaultCorrect,
-				resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect); //possible abstaining taken into account!
+				resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect,
+				getModelDescription(),
+				totalCoveringRulesCount,
+				testDataSize); //possible abstaining taken into account!
 	}
 	
-	public ValidationSummary getValidationSummary() {
+	public ValidationSummary getValidationSummary() { //gets summary of last validate method invocation
 		return validationSummary;
 	}
 
 	@Override
 	public ModelDescription getModelDescription() {
 		if (modelDescription == null) {
-			int size = ruleSet.size();
+			long size = ruleSet.size();
 			long sumLength = 0L;
 			long sumSupport = 0L;
 			for (int i = 0; i < size; i++) {
@@ -284,7 +323,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 				sumSupport += ruleSet.getRuleCharacteristics(i).getSupport();
 			}
 			
-			modelDescription = new ModelDescription(size, ((double)sumLength) / size, ((double)sumSupport) / size);
+			modelDescription = new ModelDescription(size, sumLength, sumSupport);
 		}
 		
 		return modelDescription;

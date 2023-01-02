@@ -12,6 +12,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import org.rulelearn.data.Decision;
+import org.rulelearn.experiments.ClassificationModel.ModelDescription;
 
 /**
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
@@ -182,12 +183,19 @@ public class BatchExperimentResults {
 		AverageEvaluation defaultModelAverageEvaluation;
 		double mainModelDecisionsRatio;
 		
+		ModelDescription aggregatedModelDescription; //model description aggregated over all cross-validations, where model description concerning each CV is also an aggregated model description (over all folds)
+		double avgNumberOfCoveringRules;
+		
 		public AverageEvaluations(AverageEvaluation overallAverageEvaluation, AverageEvaluation mainModelAverageEvaluation, AverageEvaluation defaultModelAverageEvaluation,
-				double mainModelDecisionsRatio) {
+				double mainModelDecisionsRatio,
+				ModelDescription aggregatedModelDescription,
+				double avgNumberOfCoveringRules) {
 			this.overallAverageEvaluation = overallAverageEvaluation;
 			this.mainModelAverageEvaluation = mainModelAverageEvaluation;
 			this.defaultModelAverageEvaluation = defaultModelAverageEvaluation;
 			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
+			this.aggregatedModelDescription = aggregatedModelDescription;
+			this.avgNumberOfCoveringRules = avgNumberOfCoveringRules;
 		}
 
 		public AverageEvaluation getOverallAverageEvaluation() {
@@ -204,6 +212,14 @@ public class BatchExperimentResults {
 		
 		public double getMainModelDecisionsRatio() {
 			return mainModelDecisionsRatio;
+		}
+
+		public ModelDescription getAggregatedModelDescription() {
+			return aggregatedModelDescription;
+		}
+
+		public double getAvgNumberOfCoveringRules() {
+			return avgNumberOfCoveringRules;
 		}
 		
 	}
@@ -315,9 +331,11 @@ public class BatchExperimentResults {
 			});
 		}
 		
+		sb.append("--").append(System.lineSeparator());
+		
 		algorithmNameWithParameters2AvgEvaluations.forEach(
 			(algorithmNameWithParameters, evaluations) ->
-				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s): %f # %f # %f. Main model decisions ratio: %f. [Info]: %s. [Times]: training: %d [ms], validation: %d [ms].",
+				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s):%n  %f # %f # %f. Main model decisions ratio: %f.%n  [Info]: %s.%n  [Times]: training: %d [ms], validation: %d [ms].",
 						dataName, algorithmNameWithParameters,
 						evaluations.getOverallEvaluation(),
 						evaluations.getMainModelEvaluation(),
@@ -370,8 +388,12 @@ public class BatchExperimentResults {
 		};
 		
 		List<AverageEvaluation> averageEvaluationsList = new ArrayList<AverageEvaluation>(3);
-		long numberOfAllDecisionsAssignedByMainModel = 0;
-		long numberOfAllDecisionsAssignedByDefaultModel = 0;
+		long numberOfAllDecisionsAssignedByMainModel = 0L;
+		long numberOfAllDecisionsAssignedByDefaultModel = 0L;
+		
+		List<ModelDescription> modelDescriptionsList = new ArrayList<ClassificationModel.ModelDescription>(maxCrossValidationsCount);
+		long totalNumberOfCoveringRules = 0L;
+		long totalNumberOfClassifiedObjects = 0L;
 		
 		for (int modelIndex = 0; modelIndex < 3; modelIndex++) { //0: general model, 1: main model; 2: default model
 			double sumCVAccuracies = 0.0;
@@ -393,6 +415,11 @@ public class BatchExperimentResults {
 					if (modelIndex == 0) {
 						numberOfAllDecisionsAssignedByMainModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByMainModel();
 						numberOfAllDecisionsAssignedByDefaultModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByDefaultModel();
+						
+						modelDescriptionsList.add(aggregatedCVModelValidationResult.getModelDescription());
+						
+						totalNumberOfCoveringRules += aggregatedCVModelValidationResult.getTotalNumberOfCoveringRules();
+						totalNumberOfClassifiedObjects += aggregatedCVModelValidationResult.getTotalNumberOfClassifiedObjects();
 					}
 				} else {
 					break; //there are no more cross-validations stored
@@ -413,8 +440,12 @@ public class BatchExperimentResults {
 			averageEvaluationsList.add(new AverageEvaluation(average, stdDev));
 		} //for(modelIndex)
 		
+		ModelDescription[] modelDescriptions = modelDescriptionsList.toArray(new ModelDescription[0]);
+		
 		return new AverageEvaluations(averageEvaluationsList.get(0), averageEvaluationsList.get(1), averageEvaluationsList.get(2),
-				(double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel));
+				(double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel),
+				modelDescriptions[0].getModelDescriptionBuilder().build(modelDescriptions),
+				(double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects);
 	}
 	
 	public CalculationTimes getFullDataCalculationTimes(DataAlgorithmParametersSelector selector) {

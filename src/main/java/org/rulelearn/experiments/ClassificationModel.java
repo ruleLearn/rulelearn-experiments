@@ -16,8 +16,13 @@ public interface ClassificationModel {
 		public abstract String toString();
 	}
 	
+	public abstract class ModelDescriptionBuilder {
+		abstract ModelDescription build(ModelDescription... modelDescriptions); //builds new model description from given array of model descriptions
+	}
+	
 	public abstract class ModelDescription {
 		public abstract String toString();
+		public abstract ModelDescriptionBuilder getModelDescriptionBuilder();
 	}
 	
 	ModelValidationResult validate(Data testData);

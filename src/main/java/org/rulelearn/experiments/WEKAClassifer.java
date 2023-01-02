@@ -6,6 +6,7 @@ package org.rulelearn.experiments;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+import org.rulelearn.core.InvalidValueException;
 import org.rulelearn.data.Decision;
 import org.rulelearn.data.EvaluationAttribute;
 import org.rulelearn.data.SimpleDecision;
@@ -30,23 +31,69 @@ public class WEKAClassifer implements ClassificationModel {
 	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
 		@Override
 		public String toString() {
-			return "[Classification]: --.";
+			return "[Summary]: --.";
+		}
+	}
+	
+	public static class ModelDescriptionBuilder extends ClassificationModel.ModelDescriptionBuilder {
+		/**
+		 * @throws ClassCastException if given array is not an instance of {@link ModelDescription[]}.
+		 */
+		@Override
+		ModelDescription build(ClassificationModel.ModelDescription... genericModelDescriptions) {
+			ModelDescription[] modelDescriptions = new ModelDescription[genericModelDescriptions.length];
+			int index = 0;
+			for (ClassificationModel.ModelDescription genericModelDescription : genericModelDescriptions) {
+				modelDescriptions[index++] = (ModelDescription)genericModelDescription;
+			}
+			return new ModelDescription(modelDescriptions);
 		}
 	}
 	
 	public static class ModelDescription extends ClassificationModel.ModelDescription {
 		String options;
 		String trainedClassifier;
+		boolean aggregated = false;
 		
 		public ModelDescription(String options, String trainedClassifier) {
 			this.options = options;
 			this.trainedClassifier = trainedClassifier;
+			aggregated = false;
+		}
+		
+		/**
+		 * @throws InvalidValueException if given array is empty
+		 * 
+		 * @param modelDescriptions array with model descriptions
+		 */
+		public ModelDescription(ModelDescription... modelDescriptions) {
+			if (modelDescriptions.length == 0) {
+				throw new InvalidValueException("Cannot aggregate over an empty array of model descriptions.");
+			} else if (modelDescriptions.length == 1) {
+				options = modelDescriptions[0].options;
+				trainedClassifier = modelDescriptions[0].trainedClassifier;
+				aggregated = false;
+			} else {
+				options = modelDescriptions[0].options;
+				trainedClassifier = "classifier not available when aggregating model descriptions";
+				aggregated = true;
+			}
 		}
 
 		@Override
 		public String toString() {
-			return "[Options: " + options + "]" + System.lineSeparator() + trainedClassifier;
+			if (!aggregated) {
+				return "[Options: " + options + "]" + System.lineSeparator() + trainedClassifier;
+			} else {
+				return "[Options: " + options + "]";
+			}
 		}
+
+		@Override
+		public ModelDescriptionBuilder getModelDescriptionBuilder() {
+			return new ModelDescriptionBuilder();
+		}
+
 	}
 	
 	AbstractClassifier trainedClassifier; //trained classifier
@@ -73,7 +120,7 @@ public class WEKAClassifer implements ClassificationModel {
 		Instances instances = testData.getInstances(); //InformationTable2Instances.convert(testData.getInformationTable(), testData.getName());
 		double value;
 		
-		for (int i = 0; i < instances.numInstances(); i++) {
+		for (int i = 0; i < testDataSize; i++) {
 			try {
 				value = trainedClassifier.classifyInstance(instances.instance(i));
 				assignedDecisions[i] = wekaClassificationResult2SimpleDecision(value, decisionAttribute, decisionAttributeIndex);
@@ -87,7 +134,9 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		validationSummary = new ValidationSummary();
 		
-		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(), 0L, 0L); //all decisions assigned by main model (no abstaining!)
+		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(), 0L, 0L, //all decisions assigned by main model (no abstaining!)
+				getModelDescription(),
+				0L, testDataSize); //no rules
 	}
 	
 	private SimpleDecision wekaClassificationResult2SimpleDecision(double wekaClassificationResult, EvaluationAttribute decisionAttribute, int decisionAttributeIndex) {

@@ -30,7 +30,7 @@ import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.MultilayerPerceptron;
 import weka.classifiers.functions.SMO;
-import weka.classifiers.misc.OSDL;
+//import weka.classifiers.misc.OSDL;
 import weka.classifiers.rules.OLM;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
@@ -217,6 +217,8 @@ public class BatchExperiment {
 					Map<String, BatchExperimentResults.Evaluations> algorithmNameWithParameters2Evaluations = new LinkedHashMap<String, BatchExperimentResults.Evaluations>();
 					Map<Double, Double> consistencyThreshold2QualityOfApproximation = new LinkedHashMap<Double, Double>();
 					
+					outN("--");
+					
 					//print full data set accuracies
 					Data fullData = dataProvider.provideOriginalData();
 					outN("Quality of approximation for consistency threshold=%1: %2.", epsilonDRSAConsistencyThreshold, qualityOfDRSAApproximation = calculateQualityOfApproximation(fullData.getInformationTable(), 0.0));
@@ -237,6 +239,8 @@ public class BatchExperiment {
 							}
 						}
 					}
+					
+					outN("--");
 					
 					//calculate and process full data models for all (algorithm, parameters) pairs
 					Data processedFullData = trainDataPreprocessor.process(fullData);
@@ -272,12 +276,12 @@ public class BatchExperiment {
 							
 							ValidationSummary validationSummary = model.getValidationSummary();
 							
-							String info;
+							String infoSuffix;
 							if (validationSummary instanceof ModeRuleClassifier.ValidationSummary) {
-								info = String.format(Locale.US, "%s: %f",
+								infoSuffix = String.format(Locale.US, "%s: %.2f",
 										ModeRuleClassifier.avgNumberOfRulesIndicator, ((ModeRuleClassifier.ValidationSummary)validationSummary).avgNumberOfCoveringRules);
 							} else {
-								info = "--";
+								infoSuffix = "--";
 							}
 							
 							algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")",
@@ -286,11 +290,14 @@ public class BatchExperiment {
 											modelValidationResult.getMainModelAccuracy(),
 											modelValidationResult.getDefaultModelAccuracy(),
 											modelValidationResult.getMainModelDecisionsRatio(),
-											(model instanceof ModeRuleClassifier ? model.getModelDescription()+", " : "") + info,
+											(model instanceof ModeRuleClassifier ? model.getModelDescription()+", " : "") + infoSuffix,
 											fullDataTrainingTime,
 											fullDataValidationTime
 									));
-							outN("Train data accuracy for parameterized algorithm '%1(%2)': %3 # %4 # %5. Main model decisions ratio: %6.\n%% %7 [Times]: training: %8 [ms], validation: %9 [ms].",
+							outN("Train data accuracy for '%1(%2)': "+System.lineSeparator()+
+									"%3 # %4 # %5. Main model decisions ratio: %6."+System.lineSeparator()+
+									"%% %7 "+System.lineSeparator()+
+									"%% [Times]: training: %8 [ms], validation: %9 [ms].",
 									algorithm.getName(),
 									parameters,
 									modelValidationResult.getOverallAccuracy(),
@@ -427,7 +434,8 @@ public class BatchExperiment {
 								CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
 										.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(crossValidationNumber);
 								
-								outN("  Avg. accuracy over folds for algorithm '%1(%2)': %3 # %4 # %5. Avg. main model decisions ratio: %6.",
+								outN("  Avg. accuracy over folds for algorithm '%1(%2)': "+System.lineSeparator()+
+										"    %3 # %4 # %5. Avg. main model decisions ratio: %6.",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parameters,
 										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getOverallAccuracy(),
@@ -460,7 +468,9 @@ public class BatchExperiment {
 							DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
 									.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
 							AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
-							outN("Avg. accuracy over cross-validations for algorithm '%1(%2)': %3 (stdDev: %4) # %5 (stdDev: %6) # %7 (stdDev: %8). Avg. main model decisions ratio: %9.",
+							outN("Avg. accuracy over CVs for algorithm '%1(%2)': "+System.lineSeparator()+
+									"%3 (stdDev: %4) # %5 (stdDev: %6) # %7 (stdDev: %8). Avg. main model decisions ratio: %9. "+System.lineSeparator()+
+									"%10%11",
 									learningAlgorithms.get(learningAlgorithmNumber).getName(),
 									parameters,
 									averageEvaluations.getOverallAverageEvaluation().getAverage(),
@@ -469,7 +479,11 @@ public class BatchExperiment {
 									averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
 									averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
 									averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-									averageEvaluations.getMainModelDecisionsRatio());
+									averageEvaluations.getMainModelDecisionsRatio(),
+									averageEvaluations.getAggregatedModelDescription(),
+									averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
+											String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+								);
 							CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
 							outN("%% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 	
@@ -481,25 +495,35 @@ public class BatchExperiment {
 							} else if (averageEvaluation.getAverage() == bestAccuracy) {
 								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
 							}
-						}
+						} //for
 						
 						//print the best parameters + accuracy for the current algorithm
-						for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-							AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
-							outN("  Best avg. %1 accuracy over cross-validations for algorithm '%2(%3)': %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10.",
-									useMainModelAccuracy ? "main model" : "overall",
-									learningAlgorithms.get(learningAlgorithmNumber).getName(),
-									parametersList.get(selector.parametersNumber),
-									averageEvaluations.getOverallAverageEvaluation().getAverage(),
-									averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-									averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-									averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-									averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-									averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-									averageEvaluations.getMainModelDecisionsRatio());
-							
-							CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-							outN("  %% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+						if (parametersList.size() > 1) {
+							for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
+								AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
+								outN("  Best avg. %1 accuracy over cross-validations for algorithm '%2(%3)': "+System.lineSeparator()+
+									 "  %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10. "+System.lineSeparator()+
+									 "  %11%12",
+										useMainModelAccuracy ? "main model" : "overall",
+										learningAlgorithms.get(learningAlgorithmNumber).getName(),
+										parametersList.get(selector.parametersNumber),
+										averageEvaluations.getOverallAverageEvaluation().getAverage(),
+										averageEvaluations.getOverallAverageEvaluation().getStdDev(),
+										averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+										averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+										averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+										averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
+										averageEvaluations.getMainModelDecisionsRatio(),
+										averageEvaluations.getAggregatedModelDescription(),
+										averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
+												String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+									);
+								
+								CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+								outN("  %% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+							} //for
+						} else {
+							outN("--");
 						}
 					}
 					outN("==========");
@@ -675,8 +699,7 @@ public class BatchExperiment {
 				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
 				k));
 		
-		//HINT: comment algorithm addition if given algorithm should not be used in this batch experiment
-		//TODO: comment algorithms not used in the experiment
+		//TODO: comment algorithms that should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
@@ -685,7 +708,7 @@ public class BatchExperiment {
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //does not work because of numerical attributes
+		//learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //does not work because of numerical attributes
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
@@ -873,7 +896,9 @@ public class BatchExperiment {
 						DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
 								.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
 						AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
-						outN("Avg. accuracy for ('%1', %2(%3)): %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10.",
+						outN("Avg. accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
+								"%4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10. "+System.lineSeparator()+
+								"%11%12",
 								dataSetName, algorithmName, parameters,
 								averageEvaluations.getOverallAverageEvaluation().getAverage(),
 								averageEvaluations.getOverallAverageEvaluation().getStdDev(),
@@ -881,7 +906,11 @@ public class BatchExperiment {
 								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
 								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
 								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelDecisionsRatio());
+								averageEvaluations.getMainModelDecisionsRatio(),
+								averageEvaluations.getAggregatedModelDescription(),
+								averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
+										String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+							);
 						
 						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 						outN("%% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
@@ -894,24 +923,34 @@ public class BatchExperiment {
 						} else if (averageEvaluation.getAverage() == bestAccuracy) {
 							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
 						}
-					}
+					} //for
 					
 					//print the best parameters + accuracy for the current algorithm
-					for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-						AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
-						outN("  Best avg. %1 accuracy for ('%2', %3(%4)): %5 (stdDev: %6) # %7 (stdDev: %8) # %9 (stdDev: %10). Avg. main model decisions ratio: %11.",
-								useMainModelAccuracy ? "main model" : "overall",
-								dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
-								averageEvaluations.getOverallAverageEvaluation().getAverage(),
-								averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelDecisionsRatio());
-						
-						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-						outN("  %% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+					if (parametersList.size() > 1) {
+						for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
+							AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
+							outN("  Best avg. %1 accuracy for ('%2', %3(%4)): "+System.lineSeparator()+
+								 "  %5 (stdDev: %6) # %7 (stdDev: %8) # %9 (stdDev: %10). Avg. main model decisions ratio: %11. "+System.lineSeparator()+
+								 "  %12%13",
+									useMainModelAccuracy ? "main model" : "overall",
+									dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
+									averageEvaluations.getOverallAverageEvaluation().getAverage(),
+									averageEvaluations.getOverallAverageEvaluation().getStdDev(),
+									averageEvaluations.getMainModelAverageEvaluation().getAverage(),
+									averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
+									averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
+									averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
+									averageEvaluations.getMainModelDecisionsRatio(),
+									averageEvaluations.getAggregatedModelDescription(),
+									averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
+											String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+								);
+							
+							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+							outN("  %% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
+						} //for
+					} else {
+						outN("--");
 					}
 				} //for
 			} //if (doCrossValidations)
