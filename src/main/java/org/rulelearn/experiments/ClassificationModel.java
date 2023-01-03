@@ -41,6 +41,29 @@ public interface ClassificationModel {
 		InformationTable informationTableWithAssignedDecisions = new InformationTable(informationTable, decisions, true);
 		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = new InformationTableWithDecisionDistributions(informationTableWithAssignedDecisions, true);
 		
+//		InformationTableWriter informationTableWriter = new InformationTableWriter(true);
+//		try (FileWriter fileWriter = new FileWriter("src/main/resources/data/json-objects/bank-churn-4000-v8_0.05-assigned-decisions data.json")) {
+//			informationTableWriter.writeObjects(informationTableWithAssignedDecisions, fileWriter);
+//			System.out.println("JSON objects file written.");
+//		}
+//		catch (IOException exception) {
+//			exception.printStackTrace();
+//		}
+		
+//		int size = informationTableWithAssignedDecisions.getNumberOfObjects();
+//		for (int i = 0; i < size; i++) {
+//			if ( ((EnumerationField)((SimpleDecision)informationTableWithAssignedDecisions.getDecision(i)).getEvaluation()).getElement().equals("0") ) { //object from better class
+//				IntSortedSet sortedSet = DominanceConeCalculator.INSTANCE.calculatePositiveDCone(i, informationTableWithAssignedDecisions);
+//				System.out.print((i+1)+": ");
+//				sortedSet.forEach(objIndex -> {
+//					if ( ((EnumerationField)((SimpleDecision)informationTableWithAssignedDecisions.getDecision(objIndex)).getEvaluation()).getElement().equals("1") ) { //object from worse class
+//						System.out.print((objIndex + 1)+" ");
+//					}
+//				});
+//				System.out.println();
+//			}
+//		}
+		
 		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
 		
 		return unions.getQualityOfApproximation();

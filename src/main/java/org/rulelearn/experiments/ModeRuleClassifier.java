@@ -100,7 +100,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 			sb.append(String.format(Locale.US, "; by rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
 			sb.append(accuracyWhenClassifiedByRules > accuracy ? " [UP]" : " [!UP]");
 			sb.append(String.format(Locale.US, " (precise: %.2f%% r.hit", accuracyWhenClassifiedByRulesPrecise)); //accuracy among objects covered by 1+ rule(s) of the same type (at least or at most)
-			sb.append(String.format(Locale.US, ", mode: %.2f%% r.hit)", accuracyWhenClassifiedByRulesMode)); //accuracy among objects covered by 1+ rule(s) of different types (at least and at most)
+			sb.append(String.format(Locale.US, ", mode: %.2f%% r.hit),", accuracyWhenClassifiedByRulesMode)); //accuracy among objects covered by 1+ rule(s) of different types (at least and at most)
 			sb.append(String.format(Locale.US, "%n[Summary]: "));
 			sb.append(String.format(Locale.US, "by default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
 			sb.append(String.format(Locale.US, ", by default classifier: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
@@ -205,18 +205,22 @@ public class ModeRuleClassifier implements ClassificationModel {
 		this.modelLearnerDescription = modelLearnerDescription;
 	}
 	
-	private SimpleDecision[] blendDecisions(SimpleDecision[] to, SimpleDecision[] from) { //modifies array "to" + returns the modified array
+	private SimpleDecision[] blendDecisions(SimpleDecision[] to, SimpleDecision[] from) { //returns blended array - what is not in "to", will be taken from "from"
+		SimpleDecision[] result = new SimpleDecision[to.length];
+		
 		if (defaultClassificationModel != null) {
 			for (int i = 0; i < to.length; i++) {
-				if (to[i] == null) {
-					to[i] = from[i]; //take undefined decision from array "from"
+				if (to[i] != null) {
+					result[i] = to[i];
+				} else {
+					result[i] = from[i]; //take undefined decision from array "from"
 				}
 			}
 		} else {
-			to = from;
+			result = from.clone();
 		}
 		
-		return to;
+		return result;
 	}
 	
 	/**
@@ -336,7 +340,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 			originalDecisionsConsistentObjectsCount = Math.round(originalDecisionsQualityOfApproximation * testDataSize); //go back to integer number
 			
 			//synchronizes defaultClassAssignedDecisions
-			assignedDefaultClassDecisionsQualityOfApproximation = getQualityOfApproximationForDecisions(testInformationTable, blendDecisions(defaultClassAssignedDecisions, assignedDecisions), 0.0);
+			SimpleDecision[] blendedDecisions = blendDecisions(defaultClassAssignedDecisions, assignedDecisions);
+			assignedDefaultClassDecisionsQualityOfApproximation = getQualityOfApproximationForDecisions(testInformationTable, blendedDecisions, 0.0);
 			assignedDefaultClassDecisionsConsistentObjectsCount = Math.round(assignedDefaultClassDecisionsQualityOfApproximation * testDataSize); //go back to integer number
 			
 			assignedDecisionsQualityOfApproximation = getQualityOfApproximationForDecisions(testInformationTable, assignedDecisions, 0.0);

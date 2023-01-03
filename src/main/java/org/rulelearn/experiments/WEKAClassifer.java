@@ -44,12 +44,18 @@ public class WEKAClassifer implements ClassificationModel {
 		public String toString() {
 			StringBuilder sb = new StringBuilder(120);
 			
+			boolean appended = false;
 			sb.append("[Summary]: ");
 			if (originalDecisionsQualityOfApproximation >= 0.0) {
 				sb.append(String.format(Locale.US, "original quality: %.4f", originalDecisionsQualityOfApproximation));
+				appended = true;
 			}
 			if (assignedDecisionsQualityOfApproximation >= 0.0) {
 				sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
+				appended = true;
+			}
+			if (!appended) {
+				sb.append("--");
 			}
 			sb.append(".");
 			
@@ -105,7 +111,7 @@ public class WEKAClassifer implements ClassificationModel {
 		@Override
 		public String toString() {
 			if (!aggregated) {
-				return "[Options: " + options + "]" + System.lineSeparator() + trainedClassifier;
+				return "[Options: " + options + "]" + (BatchExperiment.printWEKATrainedClassifiers ?  System.lineSeparator() + trainedClassifier : "");
 			} else {
 				return "[Options: " + options + "]";
 			}
@@ -170,7 +176,8 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		this.validationSummary = new ValidationSummary(originalDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
 		
-		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(), 0L, 0L, //all decisions assigned by main model (no abstaining!)
+		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(),
+				0L, 0L, //all decisions assigned by main model (no abstaining of main model!), so default model is not used
 				getModelDescription(),
 				0L, testDataSize); //no rules
 	}

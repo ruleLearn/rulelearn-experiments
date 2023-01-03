@@ -56,6 +56,7 @@ public class BatchExperiment {
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
 	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfAssignedDecisions = true;
+	static final boolean printWEKATrainedClassifiers = false;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -789,37 +790,38 @@ public class BatchExperiment {
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv2,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
+						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "1")
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv15,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv2,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 						//getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv15,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv2,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv15,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv2,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv15,
@@ -829,12 +831,12 @@ public class BatchExperiment {
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv2,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv15,
 						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				//-----

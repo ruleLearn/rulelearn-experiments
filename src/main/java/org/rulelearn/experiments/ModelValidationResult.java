@@ -91,17 +91,17 @@ public class ModelValidationResult {
 		return (double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel);
 	}
 
-	public long getNumberOfCorrectDecisionsAssignedByMainModel() {
-		return numberOfCorrectDecisionsAssignedByMainModel;
-	}
+//	public long getNumberOfCorrectDecisionsAssignedByMainModel() {
+//		return numberOfCorrectDecisionsAssignedByMainModel;
+//	}
 
 	public long getNumberOfAllDecisionsAssignedByMainModel() {
 		return numberOfAllDecisionsAssignedByMainModel;
 	}
 
-	public long getNumberOfCorrectDecisionsAssignedByDefaultModel() {
-		return numberOfCorrectDecisionsAssignedByDefaultModel;
-	}
+//	public long getNumberOfCorrectDecisionsAssignedByDefaultModel() {
+//		return numberOfCorrectDecisionsAssignedByDefaultModel;
+//	}
 
 	public long getNumberOfAllDecisionsAssignedByDefaultModel() {
 		return numberOfAllDecisionsAssignedByDefaultModel;
@@ -119,8 +119,8 @@ public class ModelValidationResult {
 		return totalNumberOfClassifiedObjects;
 	}
 
-	public double getAvgNumberOfCoveringRules() {
-		return (double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects;
-	}
+//	public double getAvgNumberOfCoveringRules() {
+//		return (double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects;
+//	}
 
 }
