@@ -12,6 +12,8 @@ import org.rulelearn.data.Decision;
 import org.rulelearn.data.EvaluationAttribute;
 import org.rulelearn.data.SimpleDecision;
 import org.rulelearn.experiments.ModeRuleClassifier.ValidationSummary;
+import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
+import org.rulelearn.experiments.ModelValidationResult.DefaultClassificationType;
 import org.rulelearn.types.EnumerationField;
 import org.rulelearn.types.EnumerationFieldFactory;
 import org.rulelearn.types.IntegerField;
@@ -148,38 +150,46 @@ public class WEKAClassifer implements ClassificationModel {
 		Instances instances = testData.getInstances(); //InformationTable2Instances.convert(testData.getInformationTable(), testData.getName());
 		double value;
 		
+		ClassificationStatistics classificationStatistics = new ClassificationStatistics(DefaultClassificationType.NONE);
+		
 		for (int i = 0; i < testDataSize; i++) {
 			try {
 				value = trainedClassifier.classifyInstance(instances.instance(i));
 				assignedDecisions[i] = wekaClassificationResult2SimpleDecision(value, decisionAttribute, decisionAttributeIndex);
+				if (assignedDecisions[i].equals(originalDecisions[i])) {
+					classificationStatistics.preciseCorrectCount++;
+				} else {
+					classificationStatistics.preciseIncorrectCount++;
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 				return null; //TODO: handle exception?
 			}
 		}
 		
+		classificationStatistics.totalNumberOfClassifiedObjects = testDataSize;
+		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
 		double originalDecisionsQualityOfApproximation = -1.0;
-		long originalDecisionsConsistentObjectsCount = -1L;
-		
 		double assignedDecisionsQualityOfApproximation = -1.0;
-		long assignedDecisionsConsistentObjectsCount = -1L;
 		
 		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
-			originalDecisionsQualityOfApproximation = getQualityOfApproximation(testData.getInformationTable(), 0.0);
-			originalDecisionsConsistentObjectsCount = Math.round(originalDecisionsQualityOfApproximation * testDataSize); //go back to integer number
+			classificationStatistics.originalDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), 0.0);
+			originalDecisionsQualityOfApproximation = (double)classificationStatistics.originalDecisionsConsistentObjectsCount / testDataSize;
 			
-			assignedDecisionsQualityOfApproximation = getQualityOfApproximationForDecisions(testData.getInformationTable(), assignedDecisions, 0.0);
-			assignedDecisionsConsistentObjectsCount = Math.round(assignedDecisionsQualityOfApproximation * testDataSize); //go back to integer number
+			classificationStatistics.assignedDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
+			assignedDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDecisionsConsistentObjectsCount / testDataSize;
 		}
 		
 		this.validationSummary = new ValidationSummary(originalDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
 		
-		return new ModelValidationResult(ordinalMisclassificationMatrix, (long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(),
-				0L, 0L, //all decisions assigned by main model (no abstaining of main model!), so default model is not used
-				getModelDescription(),
-				0L, testDataSize); //no rules
+		return new ModelValidationResult(ordinalMisclassificationMatrix,
+				classificationStatistics,
+//				(long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(),
+//				0L, 0L, //all decisions assigned by main model (no abstaining of main model!), so default model is not used
+				getModelDescription());
+//				0L, testDataSize); //no rules
 	}
 	
 	private SimpleDecision wekaClassificationResult2SimpleDecision(double wekaClassificationResult, EvaluationAttribute decisionAttribute, int decisionAttributeIndex) {

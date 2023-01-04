@@ -9,9 +9,13 @@ import org.rulelearn.classification.SimpleClassificationResult;
 import org.rulelearn.classification.SimpleOptimizingCountingRuleClassifier;
 import org.rulelearn.classification.SimpleOptimizingRuleClassifier;
 import org.rulelearn.classification.SimpleOptimizingCountingRuleClassifier.ResolutionStrategy;
+import org.rulelearn.core.InvalidValueException;
+import org.rulelearn.core.Precondition;
 import org.rulelearn.data.Decision;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.SimpleDecision;
+import org.rulelearn.experiments.ModelValidationResult.DefaultClassificationType;
+import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
 import org.rulelearn.rules.RuleSetWithComputableCharacteristics;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
@@ -231,23 +235,6 @@ public class ModeRuleClassifier implements ClassificationModel {
 	@Override
 	public ModelValidationResult validate(Data testData) {
 		
-		final class ResolutionCounters {
-			long preciseCorrect = 0;
-			long preciseIncorrect = 0;
-			
-			long modeCorrect = 0;
-			long modeIncorrect = 0;
-			
-			long defaultCorrect = 0;
-			long defaultIncorrect = 0;
-			
-			long defaultClassCorrect = 0;
-			long defaultClassIncorrect = 0;
-			
-			long defaultClassifierCorrect = 0;
-			long defaultClassifierIncorrect = 0;
-		}
-		
 		InformationTable testInformationTable = testData.getInformationTable();
 		
 		if (testInformationTable.getDecisions(true) == null) {
@@ -262,7 +249,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 		
 		ResolutionStrategy resolutionStrategy;
 		boolean strategySucceeded;
-		ResolutionCounters resolutionCounters = new ResolutionCounters();
+		ClassificationStatistics classificationStatistics = new ClassificationStatistics(
+				defaultClassificationModel != null ? DefaultClassificationType.USING_DEFAULT_CLASSIFIER : DefaultClassificationType.USING_DEFAULT_CLASS);
 		long totalCoveringRulesCount = 0;
 	
 		for (int testObjectIndex = 0; testObjectIndex < testDataSize; testObjectIndex++) {
@@ -282,16 +270,16 @@ public class ModeRuleClassifier implements ClassificationModel {
 			switch (resolutionStrategy) {
 			case MODE:
 				if (strategySucceeded) {
-					resolutionCounters.modeCorrect++;
+					classificationStatistics.resolvingConflictCorrectCount++;
 				} else {
-					resolutionCounters.modeIncorrect++;
+					classificationStatistics.resolvingConflictIncorrectCount++;
 				}
 				break;
 			case DEFAULT:
 				if (strategySucceeded) {
-					resolutionCounters.defaultClassCorrect++;
+					classificationStatistics.defaultClassCorrectCount++;
 				} else {
-					resolutionCounters.defaultClassIncorrect++;
+					classificationStatistics.defaultClassIncorrectCount++;
 				}
 				
 				if (defaultClassificationModel != null) { //SUPPORT FOR DEFAULT MODEL (fired when no rule matches classified object)
@@ -300,86 +288,80 @@ public class ModeRuleClassifier implements ClassificationModel {
 					strategySucceeded = assignedDecisions[testObjectIndex].equals(originalDecisions[testObjectIndex]);
 					
 					if (strategySucceeded) {
-						resolutionCounters.defaultClassifierCorrect++;
+						classificationStatistics.defaultClassifierCorrectCount++;
 					} else {
-						resolutionCounters.defaultClassifierIncorrect++;
+						classificationStatistics.defaultClassifierIncorrectCount++;
 					}
 				}
 				break;
 			default:
 				if (strategySucceeded) {
-					resolutionCounters.preciseCorrect++;
+					classificationStatistics.preciseCorrectCount++;
 				} else {
-					resolutionCounters.preciseIncorrect++;
+					classificationStatistics.preciseIncorrectCount++;
 				}
 				break;
 			}
 		} //for
 		
-		resolutionCounters.defaultCorrect = (defaultClassificationModel != null) ? resolutionCounters.defaultClassifierCorrect : resolutionCounters.defaultClassCorrect;
-		resolutionCounters.defaultIncorrect = (defaultClassificationModel != null) ? resolutionCounters.defaultClassifierIncorrect : resolutionCounters.defaultClassIncorrect;
+		classificationStatistics.totalNumberOfCoveringRules = totalCoveringRulesCount;
+		classificationStatistics.totalNumberOfClassifiedObjects = testDataSize;
 		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-		double accuracyWhenClassifiedByRules = 100 * ( (double)(resolutionCounters.preciseCorrect + resolutionCounters.modeCorrect) /
-				(double)((long)testDataSize - (resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect)) ); //divide by the number of objects not-classified to the default class
-		
-//		double accuracyWhenClassifiedByDefault = 100 * ((double)resolutionCounters.defaultCorrect / (resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect));
+		double accuracyWhenClassifiedByRules = 100 * ( (double)(classificationStatistics.preciseCorrectCount + classificationStatistics.resolvingConflictCorrectCount) /
+				(double)((long)testDataSize - classificationStatistics.getDefaultModelCount()) ); //divide by the number of objects not-classified to the default class
 		
 		double originalDecisionsQualityOfApproximation = -1.0;
-		long originalDecisionsConsistentObjectsCount = -1L;
-		
 		double assignedDefaultClassDecisionsQualityOfApproximation = -1.0;
-		long assignedDefaultClassDecisionsConsistentObjectsCount = -1L;
-		
 		double assignedDecisionsQualityOfApproximation = -1.0;
-		long assignedDecisionsConsistentObjectsCount = -1L;
 		
 		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
-			originalDecisionsQualityOfApproximation = getQualityOfApproximation(testInformationTable, 0.0);
-			originalDecisionsConsistentObjectsCount = Math.round(originalDecisionsQualityOfApproximation * testDataSize); //go back to integer number
+			classificationStatistics.originalDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, 0.0);
+			originalDecisionsQualityOfApproximation = (double)classificationStatistics.originalDecisionsConsistentObjectsCount / testDataSize;
 			
 			//synchronizes defaultClassAssignedDecisions
 			SimpleDecision[] blendedDecisions = blendDecisions(defaultClassAssignedDecisions, assignedDecisions);
-			assignedDefaultClassDecisionsQualityOfApproximation = getQualityOfApproximationForDecisions(testInformationTable, blendedDecisions, 0.0);
-			assignedDefaultClassDecisionsConsistentObjectsCount = Math.round(assignedDefaultClassDecisionsQualityOfApproximation * testDataSize); //go back to integer number
+			classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, blendedDecisions, 0.0);
+			assignedDefaultClassDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount / testDataSize;
 			
-			assignedDecisionsQualityOfApproximation = getQualityOfApproximationForDecisions(testInformationTable, assignedDecisions, 0.0);
-			assignedDecisionsConsistentObjectsCount = Math.round(assignedDecisionsQualityOfApproximation * testDataSize); //go back to integer number
+			classificationStatistics.assignedDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, assignedDecisions, 0.0);
+			assignedDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDecisionsConsistentObjectsCount / testDataSize;
 		}
 		
 		this.validationSummary = new ValidationSummary(
-				100 * ((double)(resolutionCounters.preciseCorrect + resolutionCounters.preciseIncorrect) / testDataSize),
-				100 * ((double)resolutionCounters.preciseCorrect / testDataSize),
-				100 * ((double)(resolutionCounters.modeCorrect + resolutionCounters.modeIncorrect) / testDataSize),
-				100 * ((double)resolutionCounters.modeCorrect / testDataSize),
+				100 * ((double)(classificationStatistics.preciseCorrectCount + classificationStatistics.preciseIncorrectCount) / testDataSize),
+				100 * ((double)classificationStatistics.preciseCorrectCount / testDataSize),
+				100 * ((double)(classificationStatistics.resolvingConflictCorrectCount + classificationStatistics.resolvingConflictIncorrectCount) / testDataSize),
+				100 * ((double)classificationStatistics.resolvingConflictCorrectCount / testDataSize),
 				defaultClassificationModel != null,
-				100 * ((double)(resolutionCounters.defaultClassCorrect + resolutionCounters.defaultClassIncorrect) / testDataSize),
-				100 * ((double)(resolutionCounters.defaultClassCorrect) / testDataSize),
-				100 * ((double)(resolutionCounters.defaultClassifierCorrect + resolutionCounters.defaultClassifierIncorrect) / testDataSize),
-				100 * ((double)(resolutionCounters.defaultClassifierCorrect) / testDataSize),
+				100 * ((double)(classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount) / testDataSize),
+				100 * ((double)(classificationStatistics.defaultClassCorrectCount) / testDataSize),
+				100 * ((double)(classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount) / testDataSize),
+				100 * ((double)(classificationStatistics.defaultClassifierCorrectCount) / testDataSize),
 				ordinalMisclassificationMatrix.getAccuracy(),
 				accuracyWhenClassifiedByRules,
-				100 * ( (double)resolutionCounters.preciseCorrect /
-						(resolutionCounters.preciseCorrect + resolutionCounters.preciseIncorrect)), //accuracy when classified by precise rules
-				100 * ( (double)resolutionCounters.modeCorrect /
-						(resolutionCounters.modeCorrect + resolutionCounters.modeIncorrect)),  //accuracy when classified by mode
-				(resolutionCounters.defaultClassCorrect + resolutionCounters.defaultClassIncorrect) > 0 ?
-						100 * ((double)resolutionCounters.defaultClassCorrect / (resolutionCounters.defaultClassCorrect + resolutionCounters.defaultClassIncorrect)) : 0.0,
-				(resolutionCounters.defaultClassifierCorrect + resolutionCounters.defaultClassifierIncorrect) > 0 ?
-						100 * ((double)resolutionCounters.defaultClassifierCorrect / (resolutionCounters.defaultClassifierCorrect + resolutionCounters.defaultClassifierIncorrect)) : 0.0,
+				100 * ( (double)classificationStatistics.preciseCorrectCount /
+						(classificationStatistics.preciseCorrectCount + classificationStatistics.preciseIncorrectCount)), //accuracy when classified by precise rules
+				100 * ( (double)classificationStatistics.resolvingConflictCorrectCount /
+						(classificationStatistics.resolvingConflictCorrectCount + classificationStatistics.resolvingConflictIncorrectCount)),  //accuracy when classified by mode
+				(classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount) > 0 ?
+						100 * ((double)classificationStatistics.defaultClassCorrectCount / (classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount)) : 0.0,
+				(classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount) > 0 ?
+						100 * ((double)classificationStatistics.defaultClassifierCorrectCount / (classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount)) : 0.0,
 				(double)totalCoveringRulesCount / testDataSize,
 				originalDecisionsQualityOfApproximation, assignedDefaultClassDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
 
 		
 		return new ModelValidationResult(ordinalMisclassificationMatrix,
-				resolutionCounters.preciseCorrect + resolutionCounters.modeCorrect,
-				(long)testDataSize - (resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect),
-				resolutionCounters.defaultCorrect,
-				resolutionCounters.defaultCorrect + resolutionCounters.defaultIncorrect,
-				getModelDescription(),
-				totalCoveringRulesCount,
-				testDataSize); //possible abstaining taken into account!
+				classificationStatistics,
+//				classificationStatistics.preciseCorrectCount + classificationStatistics.resolvingConflictCorrectCount,
+//				(long)testDataSize - (classificationStatistics.getDefaultModelCorrectCount() + classificationStatistics.getDefaultModelIncorrectCount()),
+//				classificationStatistics.getDefaultModelCorrectCount(),
+//				classificationStatistics.getDefaultModelCorrectCount() + classificationStatistics.getDefaultModelIncorrectCount(),
+				getModelDescription());
+//				totalCoveringRulesCount,
+//				testDataSize); //possible abstaining taken into account!
 	}
 	
 	public ValidationSummary getValidationSummary() { //gets summary of last validate method invocation
