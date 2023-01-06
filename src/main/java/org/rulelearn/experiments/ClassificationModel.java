@@ -61,12 +61,12 @@ public interface ClassificationModel {
 		return getNumberOfConsistentObjects(informationTableWithAssignedDecisions, consistencyThreshold);
 	}
 	
-	public abstract class ValidationSummary {
-		public abstract String toString();
-	}
+//	public abstract class ValidationSummary {
+//		public abstract String toString();
+//	}
 	
 	public abstract class ModelDescriptionBuilder {
-		abstract ModelDescription build(ModelDescription... modelDescriptions); //builds new model description from given array of model descriptions
+		abstract ModelDescription build(AggregationMode aggregationMode, ModelDescription... modelDescriptions); //builds new model description from given array of model descriptions
 	}
 	
 	public abstract class ModelDescription {
@@ -76,7 +76,7 @@ public interface ClassificationModel {
 	
 	ModelValidationResult validate(Data testData);
 	SimpleDecision classify(int i, Data data); //gets simple decision of a single object from data
-	ValidationSummary getValidationSummary();
+//	ValidationSummary getValidationSummary();
 	ModelDescription getModelDescription();
 	String getModelLearnerDescription();
 }

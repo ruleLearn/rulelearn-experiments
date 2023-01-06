@@ -8,11 +8,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 
 import org.rulelearn.data.Decision;
-import org.rulelearn.experiments.ClassificationModel.ModelDescription;
+import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
+import org.rulelearn.experiments.ModelValidationResult.ClassifierType;
 
 /**
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
@@ -33,11 +32,11 @@ public class BatchExperimentResults {
 	
 	public static class FullDataResults { //full information table results for a single data set
 		Map<Double, Double> consistencyThreshold2QualityOfApproximation;
-		Map<String, Evaluations> algorithmNameWithParameters2Evaluations; //maps "algorithm-name(parameters)" to 3 accuracies
+		Map<String, FullDataModelValidationResult> algorithmNameWithParameters2Results; //maps "algorithm-name(parameters)" to full data model validation result
 		
-		public FullDataResults(Map<Double, Double> consistencyThreshold2QualityOfApproximation, Map<String, Evaluations> algorithmNameWithParameters2Evaluations) { //linked hash maps should be passed!
+		public FullDataResults(Map<Double, Double> consistencyThreshold2QualityOfApproximation, Map<String, FullDataModelValidationResult> algorithmNameWithParameters2Results) { //linked hash maps should be passed!
 			this.consistencyThreshold2QualityOfApproximation = consistencyThreshold2QualityOfApproximation;
-			this.algorithmNameWithParameters2Evaluations = algorithmNameWithParameters2Evaluations;
+			this.algorithmNameWithParameters2Results = algorithmNameWithParameters2Results;
 		}
 	}
 	
@@ -126,122 +125,130 @@ public class BatchExperimentResults {
 		}
 	}
 	
-	public static class Evaluations {
-		double overallEvaluation;
-		double mainModelEvaluation;
-		double defaultModelEvaluation;
-		double mainModelDecisionsRatio;
+	public static class FullDataModelValidationResult {
+		DataAlgorithmParametersSelector selector;
+		ModelValidationResult modelValidationResult;
 		
-		String info;
-		
-		long modelTrainingTime; //training time of overall model
-		long modelValidationTime; //validation time of overall model
-		
-		public Evaluations(double overallEvaluation, double mainModelEvaluation, double defaultModelEvaluation, double mainModelDecisionsRatio,
-				String info, long modelTrainingTime, long modelValidationTime) {
-			this.overallEvaluation = overallEvaluation;
-			this.mainModelEvaluation = mainModelEvaluation;
-			this.defaultModelEvaluation = defaultModelEvaluation;
-			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
-			
-			this.info = info;
-			
-			this.modelTrainingTime = modelTrainingTime;
-			this.modelValidationTime = modelValidationTime;
+		public FullDataModelValidationResult(DataAlgorithmParametersSelector selector, ModelValidationResult modelValidationResult) {
+			this.selector = selector;
+			this.modelValidationResult = modelValidationResult;
 		}
 
-		public double getOverallEvaluation() {
-			return overallEvaluation;
+		public DataAlgorithmParametersSelector getSelector() {
+			return selector;
 		}
 
-		public double getMainModelEvaluation() {
-			return mainModelEvaluation;
-		}
-
-		public double getDefaultModelEvaluation() {
-			return defaultModelEvaluation;
-		}
-		
-		public double getMainModelDecisionsRatio() {
-			return mainModelDecisionsRatio;
-		}
-		
-		public String getInfo() {
-			return info;
-		}
-
-		public long getModelTrainingTime() {
-			return modelTrainingTime;
-		}
-
-		public long getModelValidationTime() {
-			return modelValidationTime;
-		}
-	}
-	
-	public static class AverageEvaluations {
-		AverageEvaluation overallAverageEvaluation;
-		AverageEvaluation mainModelAverageEvaluation;
-		AverageEvaluation defaultModelAverageEvaluation;
-		double mainModelDecisionsRatio;
-		
-		ModelDescription aggregatedModelDescription; //model description aggregated over all cross-validations, where model description concerning each CV is also an aggregated model description (over all folds)
-		double avgNumberOfCoveringRules;
-		
-		public AverageEvaluations(AverageEvaluation overallAverageEvaluation, AverageEvaluation mainModelAverageEvaluation, AverageEvaluation defaultModelAverageEvaluation,
-				double mainModelDecisionsRatio,
-				ModelDescription aggregatedModelDescription,
-				double avgNumberOfCoveringRules) {
-			this.overallAverageEvaluation = overallAverageEvaluation;
-			this.mainModelAverageEvaluation = mainModelAverageEvaluation;
-			this.defaultModelAverageEvaluation = defaultModelAverageEvaluation;
-			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
-			this.aggregatedModelDescription = aggregatedModelDescription;
-			this.avgNumberOfCoveringRules = avgNumberOfCoveringRules;
-		}
-
-		public AverageEvaluation getOverallAverageEvaluation() {
-			return overallAverageEvaluation;
-		}
-
-		public AverageEvaluation getMainModelAverageEvaluation() {
-			return mainModelAverageEvaluation;
-		}
-
-		public AverageEvaluation getDefaultModelAverageEvaluation() {
-			return defaultModelAverageEvaluation;
-		}
-		
-		public double getMainModelDecisionsRatio() {
-			return mainModelDecisionsRatio;
-		}
-
-		public ModelDescription getAggregatedModelDescription() {
-			return aggregatedModelDescription;
-		}
-
-		public double getAvgNumberOfCoveringRules() {
-			return avgNumberOfCoveringRules;
+		public ModelValidationResult getModelValidationResult() {
+			return modelValidationResult;
 		}
 		
 	}
 	
-	public static class AverageEvaluation {
-		double average;
-		double stdDev; //standard deviation
-		
-		public AverageEvaluation(double average, double stdDev) {
-			this.average = average;
-			this.stdDev = stdDev;
-		}
-		
-		public double getAverage() {
-			return average;
-		}
-		public double getStdDev() {
-			return stdDev;
-		}
-	}
+//	public static class Evaluations {
+//		double overallEvaluation;
+//		double mainModelEvaluation;
+//		double defaultModelEvaluation;
+//		double mainModelDecisionsRatio;
+//		
+//		String info;
+//		
+//		long modelTrainingTime; //training time of overall model
+//		long modelValidationTime; //validation time of overall model
+//		
+//		public Evaluations(double overallEvaluation, double mainModelEvaluation, double defaultModelEvaluation, double mainModelDecisionsRatio,
+//				String info, long modelTrainingTime, long modelValidationTime) {
+//			this.overallEvaluation = overallEvaluation;
+//			this.mainModelEvaluation = mainModelEvaluation;
+//			this.defaultModelEvaluation = defaultModelEvaluation;
+//			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
+//			
+//			this.info = info;
+//			
+//			this.modelTrainingTime = modelTrainingTime;
+//			this.modelValidationTime = modelValidationTime;
+//		}
+//
+//		public double getOverallEvaluation() {
+//			return overallEvaluation;
+//		}
+//
+//		public double getMainModelEvaluation() {
+//			return mainModelEvaluation;
+//		}
+//
+//		public double getDefaultModelEvaluation() {
+//			return defaultModelEvaluation;
+//		}
+//		
+//		public double getMainModelDecisionsRatio() {
+//			return mainModelDecisionsRatio;
+//		}
+//		
+//		public String getInfo() {
+//			return info;
+//		}
+//
+//		public long getModelTrainingTime() {
+//			return modelTrainingTime;
+//		}
+//
+//		public long getModelValidationTime() {
+//			return modelValidationTime;
+//		}
+//	}
+	
+//	public static class AverageEvaluations {
+//		MeanAndStandardDeviation overallAverageEvaluation;
+//		MeanAndStandardDeviation mainModelAverageEvaluation;
+//		MeanAndStandardDeviation defaultModelAverageEvaluation;
+////		double mainModelDecisionsRatio;
+//		ClassificationStatistics aggregatedClassificationStatistics;
+//		ModelDescription aggregatedModelDescription; //model description aggregated over all cross-validations, where model description concerning each CV is also an aggregated model description (over all folds)
+////		double avgNumberOfCoveringRules;
+//		
+//		public AverageEvaluations(MeanAndStandardDeviation overallAverageEvaluation, MeanAndStandardDeviation mainModelAverageEvaluation, MeanAndStandardDeviation defaultModelAverageEvaluation,
+////				double mainModelDecisionsRatio,
+//				ClassificationStatistics aggregatedClassificationStatistics,
+//				ModelDescription aggregatedModelDescription) {
+////				double avgNumberOfCoveringRules) {
+//			this.overallAverageEvaluation = overallAverageEvaluation;
+//			this.mainModelAverageEvaluation = mainModelAverageEvaluation;
+//			this.defaultModelAverageEvaluation = defaultModelAverageEvaluation;
+////			this.mainModelDecisionsRatio = mainModelDecisionsRatio;
+//			this.aggregatedClassificationStatistics = aggregatedClassificationStatistics;
+//			this.aggregatedModelDescription = aggregatedModelDescription;
+////			this.avgNumberOfCoveringRules = avgNumberOfCoveringRules;
+//		}
+//
+//		public MeanAndStandardDeviation getOverallAverageEvaluation() {
+//			return overallAverageEvaluation;
+//		}
+//
+//		public MeanAndStandardDeviation getMainModelAverageEvaluation() {
+//			return mainModelAverageEvaluation;
+//		}
+//
+//		public MeanAndStandardDeviation getDefaultModelAverageEvaluation() {
+//			return defaultModelAverageEvaluation;
+//		}
+//		
+//		public double getMainModelDecisionsRatio() {
+//			return aggregatedClassificationStatistics.getMainModelDecisionsRatio();
+//		}
+//
+//		public ModelDescription getAggregatedModelDescription() {
+//			return aggregatedModelDescription;
+//		}
+//		
+//		public ClassificationStatistics getAggregatedClassificationStatistics() {
+//			return aggregatedClassificationStatistics;
+//		}
+//
+////		public double getAvgNumberOfCoveringRules() {
+////			return aggregatedClassificationStatistics.getAverageNumberOfCoveringRules();
+////		}
+//		
+//	}
 	
 	/**
 	 * A pair of total calculation times, with one total time concerning training of a classifier, and the other total time concerning validation of a classifier.
@@ -324,7 +331,7 @@ public class BatchExperimentResults {
 		StringBuilder sb = new StringBuilder();
 		FullDataResults fullDataResults = dataName2FullDataResults.get(dataName);
 		Map<Double, Double> consistencyThreshold2QualityOfApproximation = fullDataResults.consistencyThreshold2QualityOfApproximation;
-		Map<String, Evaluations> algorithmNameWithParameters2AvgEvaluations = fullDataResults.algorithmNameWithParameters2Evaluations;
+		Map<String, FullDataModelValidationResult> algorithmNameWithParameters2Results = fullDataResults.algorithmNameWithParameters2Results;
 		
 		if (consistencyThreshold2QualityOfApproximation != null) {
 			consistencyThreshold2QualityOfApproximation.forEach((consistencyThreshold, qualityOfApproximation) -> {
@@ -335,18 +342,25 @@ public class BatchExperimentResults {
 		
 		sb.append("--").append(System.lineSeparator());
 		
-		algorithmNameWithParameters2AvgEvaluations.forEach(
-			(algorithmNameWithParameters, evaluations) ->
-				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s):%n  %f # %f # %f. Main model decisions ratio: %f.%n  [Info]: %s.%n  [Times]: training: %d [ms], validation: %d [ms].",
+		algorithmNameWithParameters2Results.forEach(
+			(algorithmNameWithParameters, result) -> {
+			ClassificationStatistics classificationStatistics = result.getModelValidationResult().getClassificationStatistics();
+				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s):%n  %s # %s # %s. Main model decisions ratio: %s.%n  [Info]: %s.%n  [Times]: training: %d [ms], validation: %d [ms].",
 						dataName, algorithmNameWithParameters,
-						evaluations.getOverallEvaluation(),
-						evaluations.getMainModelEvaluation(),
-						evaluations.getDefaultModelEvaluation(),
-						evaluations.getMainModelDecisionsRatio(),
-						evaluations.getInfo(),
-						evaluations.getModelTrainingTime(),
-						evaluations.getModelValidationTime()))
-				.append(System.lineSeparator())
+						BatchExperiment.round(result.getModelValidationResult().getOrdinalMisclassificationMatrix().getAccuracy()),
+						BatchExperiment.round(classificationStatistics.getMainModelAccuracy()),
+						BatchExperiment.round(classificationStatistics.getDefaultModelAccuracy()),
+						BatchExperiment.round(classificationStatistics.getMainModelDecisionsRatio()),
+						classificationStatistics.getClassifierType() == ClassifierType.VCDRSA_RULES_CLASSIFIER ?
+								result.getModelValidationResult().getModelDescription().toString()
+								+ ", "
+								+ String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules())
+								: "--",
+						getFullDataCalculationTimes(result.getSelector()).getTotalTrainingTime(),
+						getFullDataCalculationTimes(result.getSelector()).getTotalValidationTime()
+				))
+				.append(System.lineSeparator());
+			}
 		);
 		
 		return sb.toString();
@@ -368,7 +382,7 @@ public class BatchExperimentResults {
 		
 		if (_foldResults != null) {
 			if (_foldResults.aggregatedModelValidationResult == null) { //there is no aggregated matrix yet
-				_foldResults.aggregatedModelValidationResult = new ModelValidationResult(_foldResults.orderOfDecisions, _foldResults.foldModelValidationResults);
+				_foldResults.aggregatedModelValidationResult = new ModelValidationResult(AggregationMode.SUM, _foldResults.orderOfDecisions, _foldResults.foldModelValidationResults);
 			}
 			return _foldResults.aggregatedModelValidationResult;
 		} else {
@@ -376,80 +390,111 @@ public class BatchExperimentResults {
 		}
 	}
 	
-	public AverageEvaluations getAverageDataAlgorithmParametersEvaluations(DataAlgorithmParametersSelector selector) {
-//		List<ModelValidationResult> modelValidationResults = new ArrayList<>(maxCrossValidationsCount);
+	public ModelValidationResult getAggregatedModelValidationResult(DataAlgorithmParametersSelector selector) {
+		List<ModelValidationResult> modelValidationResults = new ArrayList<>(maxCrossValidationsCount);
+		int numberOfCrossValidations = 0;
+		Decision[] orderOfDecisions = null; //order taken from entire data
+		
+		for (int i = 0; i < maxCrossValidationsCount; i++) {
+			ModelValidationResult aggregatedCVModelValidationResult = getAggregatedCVModelValidationResult(
+					(new CVSelector()).dataSetNumber(selector.dataSetNumber).learningAlgorithmNumber(selector.learningAlgorithmNumber)
+					.parametersNumber(selector.parametersNumber).crossValidationNumber(i));
+			if (i == 0) {
+				orderOfDecisions = aggregatedCVModelValidationResult.getOrderOfDecisions(); //get order from the first model validation result
+			}
+			
+			if (aggregatedCVModelValidationResult != null) {
+				numberOfCrossValidations++;
+				modelValidationResults.add(aggregatedCVModelValidationResult);
+			}
+		} //for
+		
+		if (numberOfCrossValidations > 0) {
+			return new ModelValidationResult(AggregationMode.MEAN_AND_DEVIATION, orderOfDecisions, modelValidationResults.toArray(new ModelValidationResult[0]));
+		} else {
+			return null;
+		}
 
-		BiFunction<Integer, ModelValidationResult, Double> modelIndex2Accuracy = (modelIndex, modelValidationResult) -> {
-			if (modelIndex == 0) {
-				return modelValidationResult.getOverallAccuracy();
-			} else if (modelIndex == 1) {
-				return modelValidationResult.getMainModelAccuracy();
-			} else {
-				return modelValidationResult.getDefaultModelAccuracy();
-			}
-		};
+//		BiFunction<Integer, ModelValidationResult, Double> modelIndex2Accuracy = (modelIndex, modelValidationResult) -> {
+//			if (modelIndex == 0) {
+//				return modelValidationResult.getAccuracy();
+//			} else if (modelIndex == 1) {
+//				return modelValidationResult.getMainModelAccuracy();
+//			} else if (modelIndex == 2) {
+//				return modelValidationResult.getDefaultModelAccuracy();
+//			} else {
+//				throw new InvalidValueException("Wrong model index.");
+//			}
+//		};
 		
-		List<AverageEvaluation> averageEvaluationsList = new ArrayList<AverageEvaluation>(3);
-		long numberOfAllDecisionsAssignedByMainModel = 0L;
-		long numberOfAllDecisionsAssignedByDefaultModel = 0L;
-		
-		List<ModelDescription> modelDescriptionsList = new ArrayList<ClassificationModel.ModelDescription>(maxCrossValidationsCount);
-		long totalNumberOfCoveringRules = 0L;
-		long totalNumberOfClassifiedObjects = 0L;
-		
-		for (int modelIndex = 0; modelIndex < 3; modelIndex++) { //0: general model, 1: main model; 2: default model
-			double sumCVAccuracies = 0.0;
-			List<Double> cvAccuracies = new ArrayList<Double>();
-			int numberOfCrossValidations = 0;
-			
-			for (int i = 0; i < maxCrossValidationsCount; i++) {
-				
-				ModelValidationResult aggregatedCVModelValidationResult = getAggregatedCVModelValidationResult(
-						(new CVSelector()).dataSetNumber(selector.dataSetNumber).learningAlgorithmNumber(selector.learningAlgorithmNumber)
-						.parametersNumber(selector.parametersNumber).crossValidationNumber(i));
-				
-				if (aggregatedCVModelValidationResult != null) {
-					numberOfCrossValidations++;
-	//				modelValidationResults.add(aggregatedCVModelValidationResult); //use this list of results, if more information is needed
-					sumCVAccuracies += modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult);
-					cvAccuracies.add(modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult));
-					
-					if (modelIndex == 0) {
-						numberOfAllDecisionsAssignedByMainModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByMainModel();
-						numberOfAllDecisionsAssignedByDefaultModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByDefaultModel();
-						
-						modelDescriptionsList.add(aggregatedCVModelValidationResult.getModelDescription());
-						
-						totalNumberOfCoveringRules += aggregatedCVModelValidationResult.getTotalNumberOfCoveringRules();
-						totalNumberOfClassifiedObjects += aggregatedCVModelValidationResult.getTotalNumberOfClassifiedObjects();
-					}
-				} else {
-					break; //there are no more cross-validations stored
-				}
-			}
-			
-			double average = 0.0;
-			double stdDev = 0.0;
-			
-			if (numberOfCrossValidations >= 1) {
-				average = sumCVAccuracies / numberOfCrossValidations;
-				final double streamAverage = average;
-				if (numberOfCrossValidations > 1) {
-					stdDev = Math.sqrt(((double)1 / (numberOfCrossValidations - 1)) * cvAccuracies.stream().map(a -> Math.pow(a - streamAverage, 2)).collect(Collectors.summingDouble(n -> n))); //divide by (N-1)
-				}
-			}
-			
-			averageEvaluationsList.add(new AverageEvaluation(average, stdDev));
-		} //for(modelIndex)
-		
-		ModelDescription[] modelDescriptions = modelDescriptionsList.toArray(new ModelDescription[0]);
-		
-		return new AverageEvaluations(averageEvaluationsList.get(0), averageEvaluationsList.get(1), averageEvaluationsList.get(2),
-				(double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel),
-				modelDescriptions[0].getModelDescriptionBuilder().build(modelDescriptions),
-				(double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects);
+//		List<MeanAndStandardDeviation> averageEvaluationsList = new ArrayList<MeanAndStandardDeviation>(3);
+////		long numberOfAllDecisionsAssignedByMainModel = 0L;
+////		long numberOfAllDecisionsAssignedByDefaultModel = 0L;
+//		
+//		List<ClassificationStatistics> classificationStatisticsList = new ArrayList<ClassificationStatistics>(maxCrossValidationsCount);
+//		List<ModelDescription> modelDescriptionsList = new ArrayList<ClassificationModel.ModelDescription>(maxCrossValidationsCount);
+//		
+////		long totalNumberOfCoveringRules = 0L;
+////		long totalNumberOfClassifiedObjects = 0L;
+//		
+//		for (int modelIndex = 0; modelIndex < 3; modelIndex++) { //0: general model, 1: main model; 2: default model
+//			double sumCVAccuracies = 0.0;
+//			List<Double> cvAccuracies = new ArrayList<Double>();
+//			numberOfCrossValidations = 0;
+//			
+//			for (int i = 0; i < maxCrossValidationsCount; i++) {
+//				
+//				ModelValidationResult aggregatedCVModelValidationResult = getAggregatedCVModelValidationResult(
+//						(new CVSelector()).dataSetNumber(selector.dataSetNumber).learningAlgorithmNumber(selector.learningAlgorithmNumber)
+//						.parametersNumber(selector.parametersNumber).crossValidationNumber(i));
+//				
+//				if (aggregatedCVModelValidationResult != null) {
+//					numberOfCrossValidations++;
+//	//				modelValidationResults.add(aggregatedCVModelValidationResult); //use this list of results, if more information is needed
+//					sumCVAccuracies += modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult);
+//					cvAccuracies.add(modelIndex2Accuracy.apply(modelIndex, aggregatedCVModelValidationResult));
+//					
+//					if (modelIndex == 0) {
+////						numberOfAllDecisionsAssignedByMainModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByMainModel();
+////						numberOfAllDecisionsAssignedByDefaultModel += aggregatedCVModelValidationResult.getNumberOfAllDecisionsAssignedByDefaultModel();
+//						
+//						classificationStatisticsList.add(aggregatedCVModelValidationResult.getClassificationStatistics());
+//						modelDescriptionsList.add(aggregatedCVModelValidationResult.getModelDescription());
+//						
+////						totalNumberOfCoveringRules += aggregatedCVModelValidationResult.getTotalNumberOfCoveringRules();
+////						totalNumberOfClassifiedObjects += aggregatedCVModelValidationResult.getTotalNumberOfClassifiedObjects();
+//					}
+//				} else {
+//					break; //there are no more cross-validations stored
+//				}
+//			} //for
+//			
+//			double average = 0.0;
+//			double stdDev = 0.0;
+//			
+//			if (numberOfCrossValidations >= 1) {
+//				average = sumCVAccuracies / numberOfCrossValidations;
+//				if (numberOfCrossValidations > 1) {
+//					final double streamAverage = average;
+//					stdDev = Math.sqrt(((double)1 / (numberOfCrossValidations - 1)) * cvAccuracies.stream().map(a -> Math.pow(a - streamAverage, 2)).collect(Collectors.summingDouble(n -> n))); //divide by (N-1)
+//				}
+//			}
+//			
+//			averageEvaluationsList.add(new MeanAndStandardDeviation(average, stdDev));
+//		} //for(modelIndex)
+//		
+//		ModelDescription[] modelDescriptions = modelDescriptionsList.toArray(new ModelDescription[0]);
+//		ClassificationStatistics aggregatedClassificationStatistics = new ClassificationStatistics(
+//				AggregationMode.MEAN_AND_DEVIATION, classificationStatisticsList.toArray(new ClassificationStatistics[0]));
+//		
+//		return new AverageEvaluations(averageEvaluationsList.get(0), averageEvaluationsList.get(1), averageEvaluationsList.get(2),
+////				(double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel),
+//				aggregatedClassificationStatistics,
+//				modelDescriptions[0].getModelDescriptionBuilder().build(AggregationMode.MEAN_AND_DEVIATION, modelDescriptions));
+////				(double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects);
 	}
 	
+	//used to get reference of CalculationTimes instance to increase time
 	public CalculationTimes getFullDataCalculationTimes(DataAlgorithmParametersSelector selector) {
 		return fullDataCalculationTimes[selector.dataSetNumber][selector.learningAlgorithmNumber][selector.parametersNumber];
 	}

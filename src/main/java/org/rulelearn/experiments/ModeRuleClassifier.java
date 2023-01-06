@@ -10,12 +10,12 @@ import org.rulelearn.classification.SimpleOptimizingCountingRuleClassifier;
 import org.rulelearn.classification.SimpleOptimizingRuleClassifier;
 import org.rulelearn.classification.SimpleOptimizingCountingRuleClassifier.ResolutionStrategy;
 import org.rulelearn.core.InvalidValueException;
-import org.rulelearn.core.Precondition;
 import org.rulelearn.data.Decision;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.SimpleDecision;
 import org.rulelearn.experiments.ModelValidationResult.DefaultClassificationType;
 import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
+import org.rulelearn.experiments.ModelValidationResult.ClassifierType;
 import org.rulelearn.rules.RuleSetWithComputableCharacteristics;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
@@ -31,121 +31,124 @@ public class ModeRuleClassifier implements ClassificationModel {
 	
 	static final String avgNumberOfRulesIndicator = "avg. number of cov. rules";
 	
-	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
-		double preciseClassificationPercentage; //w.r.t. the size of validation set
-		double correctPreciseClassificationPercentage; //w.r.t. the size of validation set
-		
-		double modeClassificationPercentage; //w.r.t. the size of validation set
-		double correctModeClassificationPercentage; //w.r.t. the size of validation set
-		
-		boolean defaultClassifierUsed;
-		
-		double defaultClassClassificationPercentage; //w.r.t. the size of validation set
-		double correctDefaultClassClassificationPercentage; //w.r.t. the size of validation set
-		
-		double defaultClassifierClassificationPercentage; //w.r.t. the size of validation set
-		double correctDefaultClassifierClassificationPercentage; //w.r.t. the size of validation set
-		
-		double accuracy;
-		double accuracyWhenClassifiedByRules;
-		
-		double accuracyWhenClassifiedByRulesPrecise;
-		double accuracyWhenClassifiedByRulesMode;
-		
-		double accuracyWhenClassifiedByDefaultClass;
-		double accuracyWhenClassifiedByDefaultClassifier;
-		
-		double avgNumberOfCoveringRules;
-		//TODO: define more statistics (like avg. confidence?)
-		
-		double originalDecisionsQualityOfApproximation; //not used if -1.0
-		double assignedDefaultClassDecisionsQualityOfApproximation; //not used if -1.0
-		double assignedDecisionsQualityOfApproximation; //not used if -1.0
-		
-		public ValidationSummary(double preciseClassificationPercentage, double correctPreciseClassificationPercentage,
-				double modeClassificationPercentage, double correctModeClassificationPercentage,
-				boolean defaultClassifierUsed,
-				double defaultClassClassificationPercentage, double correctDefaultClassClassificationPercentage,
-				double defaultClassifierClassificationPercentage, double correctDefaultClassifierClassificationPercentage,
-				double accuracy, double accuracyWhenClassifiedByRules, double accuracyWhenClassifiedByRulesPrecise, double accuracyWhenClassifiedByRulesMode,
-				double accuracyWhenClassifiedByDefaultClass, double accuracyWhenClassifiedByDefaultClassifier,
-				double avgNumberOfCoveringRules,
-				double originalDecisionsQualityOfApproximation, double assignedDefaultClassDecisionsQualityOfApproximation, double assignedDecisionsQualityOfApproximation) {
-			this.preciseClassificationPercentage = preciseClassificationPercentage;
-			this.correctPreciseClassificationPercentage = correctPreciseClassificationPercentage;
-			this.modeClassificationPercentage = modeClassificationPercentage;
-			this.correctModeClassificationPercentage = correctModeClassificationPercentage;
-			this.defaultClassifierUsed = defaultClassifierUsed;
-			this.defaultClassClassificationPercentage = defaultClassClassificationPercentage;
-			this.correctDefaultClassClassificationPercentage = correctDefaultClassClassificationPercentage;
-			this.defaultClassifierClassificationPercentage = defaultClassifierClassificationPercentage;
-			this.correctDefaultClassifierClassificationPercentage = correctDefaultClassifierClassificationPercentage;
-			this.accuracy = accuracy;
-			this.accuracyWhenClassifiedByRules = accuracyWhenClassifiedByRules;
-			this.accuracyWhenClassifiedByRulesPrecise = accuracyWhenClassifiedByRulesPrecise;
-			this.accuracyWhenClassifiedByRulesMode = accuracyWhenClassifiedByRulesMode;
-			this.accuracyWhenClassifiedByDefaultClass = accuracyWhenClassifiedByDefaultClass;
-			this.accuracyWhenClassifiedByDefaultClassifier = accuracyWhenClassifiedByDefaultClassifier;
-			this.avgNumberOfCoveringRules = avgNumberOfCoveringRules;
-			this.originalDecisionsQualityOfApproximation = originalDecisionsQualityOfApproximation;
-			this.assignedDefaultClassDecisionsQualityOfApproximation = assignedDefaultClassDecisionsQualityOfApproximation;
-			this.assignedDecisionsQualityOfApproximation = assignedDecisionsQualityOfApproximation;
-		}
-		
-		@Override
-		public String toString() {
-			StringBuilder sb = new StringBuilder(120);
-			
-			sb.append("[Summary]: ");
-			sb.append(String.format(Locale.US, "precise: %.2f%% (%.2f%% hit)", preciseClassificationPercentage, correctPreciseClassificationPercentage));
-			sb.append(String.format(Locale.US, ", mode: %.2f%% (%.2f%% hit)", modeClassificationPercentage, correctModeClassificationPercentage));
-			sb.append(String.format(Locale.US, ", default class: %.2f%% (%.2f%% hit)", defaultClassClassificationPercentage, correctDefaultClassClassificationPercentage));
-			sb.append(String.format(Locale.US, ", default classifier: %.2f%% (%.2f%% hit)", defaultClassifierClassificationPercentage, correctDefaultClassifierClassificationPercentage));
-			sb.append(String.format(Locale.US, "; by rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
-			sb.append(accuracyWhenClassifiedByRules > accuracy ? " [UP]" : " [!UP]");
-			sb.append(String.format(Locale.US, " (precise: %.2f%% r.hit", accuracyWhenClassifiedByRulesPrecise)); //accuracy among objects covered by 1+ rule(s) of the same type (at least or at most)
-			sb.append(String.format(Locale.US, ", mode: %.2f%% r.hit),", accuracyWhenClassifiedByRulesMode)); //accuracy among objects covered by 1+ rule(s) of different types (at least and at most)
-			sb.append(String.format(Locale.US, "%n[Summary]: "));
-			sb.append(String.format(Locale.US, "by default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
-			sb.append(String.format(Locale.US, ", by default classifier: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
-			sb.append(String.format(Locale.US, "; "+avgNumberOfRulesIndicator+": %.2f", avgNumberOfCoveringRules));
-			if (originalDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, "; original quality: %.4f", originalDecisionsQualityOfApproximation));
-			}
-			if (assignedDefaultClassDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, "; assigned default class quality: %.4f", assignedDefaultClassDecisionsQualityOfApproximation));
-			}
-			if (assignedDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
-			}
-			sb.append(".");
-			//TODO: show more statistics (like avg. confidence?)
-			
-			return sb.toString();
-		}
-	}
+//	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
+//		double preciseClassificationPercentage; //w.r.t. the size of validation set
+//		double correctPreciseClassificationPercentage; //w.r.t. the size of validation set
+//		
+//		double modeClassificationPercentage; //w.r.t. the size of validation set
+//		double correctModeClassificationPercentage; //w.r.t. the size of validation set
+//		
+//		boolean defaultClassifierUsed;
+//		
+//		double defaultClassClassificationPercentage; //w.r.t. the size of validation set
+//		double correctDefaultClassClassificationPercentage; //w.r.t. the size of validation set
+//		
+//		double defaultClassifierClassificationPercentage; //w.r.t. the size of validation set
+//		double correctDefaultClassifierClassificationPercentage; //w.r.t. the size of validation set
+//		
+//		double accuracy;
+//		double accuracyWhenClassifiedByRules;
+//		
+//		double accuracyWhenClassifiedByRulesPrecise;
+//		double accuracyWhenClassifiedByRulesMode;
+//		
+//		double accuracyWhenClassifiedByDefaultClass;
+//		double accuracyWhenClassifiedByDefaultClassifier;
+//		
+//		double avgNumberOfCoveringRules;
+//		//TODO: define more statistics (like avg. confidence?)
+//		
+//		double originalDecisionsQualityOfApproximation; //not used if -1.0
+//		double assignedDefaultClassDecisionsQualityOfApproximation; //not used if -1.0
+//		double assignedDecisionsQualityOfApproximation; //not used if -1.0
+//		
+//		public ValidationSummary(double preciseClassificationPercentage, double correctPreciseClassificationPercentage,
+//				double modeClassificationPercentage, double correctModeClassificationPercentage,
+//				boolean defaultClassifierUsed,
+//				double defaultClassClassificationPercentage, double correctDefaultClassClassificationPercentage,
+//				double defaultClassifierClassificationPercentage, double correctDefaultClassifierClassificationPercentage,
+//				double accuracy, double accuracyWhenClassifiedByRules, double accuracyWhenClassifiedByRulesPrecise, double accuracyWhenClassifiedByRulesMode,
+//				double accuracyWhenClassifiedByDefaultClass, double accuracyWhenClassifiedByDefaultClassifier,
+//				double avgNumberOfCoveringRules,
+//				double originalDecisionsQualityOfApproximation, double assignedDefaultClassDecisionsQualityOfApproximation, double assignedDecisionsQualityOfApproximation) {
+//			this.preciseClassificationPercentage = preciseClassificationPercentage;
+//			this.correctPreciseClassificationPercentage = correctPreciseClassificationPercentage;
+//			this.modeClassificationPercentage = modeClassificationPercentage;
+//			this.correctModeClassificationPercentage = correctModeClassificationPercentage;
+//			this.defaultClassifierUsed = defaultClassifierUsed;
+//			this.defaultClassClassificationPercentage = defaultClassClassificationPercentage;
+//			this.correctDefaultClassClassificationPercentage = correctDefaultClassClassificationPercentage;
+//			this.defaultClassifierClassificationPercentage = defaultClassifierClassificationPercentage;
+//			this.correctDefaultClassifierClassificationPercentage = correctDefaultClassifierClassificationPercentage;
+//			this.accuracy = accuracy;
+//			this.accuracyWhenClassifiedByRules = accuracyWhenClassifiedByRules;
+//			this.accuracyWhenClassifiedByRulesPrecise = accuracyWhenClassifiedByRulesPrecise;
+//			this.accuracyWhenClassifiedByRulesMode = accuracyWhenClassifiedByRulesMode;
+//			this.accuracyWhenClassifiedByDefaultClass = accuracyWhenClassifiedByDefaultClass;
+//			this.accuracyWhenClassifiedByDefaultClassifier = accuracyWhenClassifiedByDefaultClassifier;
+//			this.avgNumberOfCoveringRules = avgNumberOfCoveringRules;
+//			this.originalDecisionsQualityOfApproximation = originalDecisionsQualityOfApproximation;
+//			this.assignedDefaultClassDecisionsQualityOfApproximation = assignedDefaultClassDecisionsQualityOfApproximation;
+//			this.assignedDecisionsQualityOfApproximation = assignedDecisionsQualityOfApproximation;
+//		}
+//		
+//		@Override
+//		public String toString() {
+//			StringBuilder sb = new StringBuilder(256);
+//			
+//			sb.append("[Summary]: ");
+//			sb.append(String.format(Locale.US, "precise: %.2f%% (%.2f%% hit)", preciseClassificationPercentage, correctPreciseClassificationPercentage));
+//			sb.append(String.format(Locale.US, ", mode: %.2f%% (%.2f%% hit)", modeClassificationPercentage, correctModeClassificationPercentage));
+//			sb.append(String.format(Locale.US, ", default class: %.2f%% (%.2f%% hit)", defaultClassClassificationPercentage, correctDefaultClassClassificationPercentage));
+//			sb.append(String.format(Locale.US, ", default classifier: %.2f%% (%.2f%% hit)", defaultClassifierClassificationPercentage, correctDefaultClassifierClassificationPercentage));
+//			sb.append(String.format(Locale.US, "; by rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
+//			sb.append(accuracyWhenClassifiedByRules > accuracy ? " [UP]" : " [!UP]");
+//			sb.append(String.format(Locale.US, " (precise: %.2f%% r.hit", accuracyWhenClassifiedByRulesPrecise)); //accuracy among objects covered by 1+ rule(s) of the same type (at least or at most)
+//			sb.append(String.format(Locale.US, ", mode: %.2f%% r.hit),", accuracyWhenClassifiedByRulesMode)); //accuracy among objects covered by 1+ rule(s) of different types (at least and at most)
+//			sb.append(String.format(Locale.US, "%n[Summary]: "));
+//			sb.append(String.format(Locale.US, "by default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
+//			sb.append(String.format(Locale.US, ", by default classifier: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
+//			sb.append(String.format(Locale.US, "; "+avgNumberOfRulesIndicator+": %.2f", avgNumberOfCoveringRules));
+//			if (originalDecisionsQualityOfApproximation >= 0.0) {
+//				sb.append(String.format(Locale.US, "; original quality: %.4f", originalDecisionsQualityOfApproximation));
+//			}
+//			if (assignedDefaultClassDecisionsQualityOfApproximation >= 0.0) {
+//				sb.append(String.format(Locale.US, "; assigned default class quality: %.4f", assignedDefaultClassDecisionsQualityOfApproximation));
+//			}
+//			if (assignedDecisionsQualityOfApproximation >= 0.0) {
+//				sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
+//			}
+//			sb.append(".");
+//			//TODO: show more statistics (like avg. confidence?)
+//			
+//			return sb.toString();
+//		}
+//	}
 	
 	public static class ModelDescriptionBuilder extends ClassificationModel.ModelDescriptionBuilder {
 		/**
 		 * @throws ClassCastException if given array is not an instance of {@link ModelDescription[]}.
 		 */
 		@Override
-		ModelDescription build(ClassificationModel.ModelDescription... genericModelDescriptions) {
+		ModelDescription build(AggregationMode aggregationMode, ClassificationModel.ModelDescription... genericModelDescriptions) {
 			ModelDescription[] modelDescriptions = new ModelDescription[genericModelDescriptions.length];
 			int index = 0;
 			for (ClassificationModel.ModelDescription genericModelDescription : genericModelDescriptions) {
 				modelDescriptions[index++] = (ModelDescription)genericModelDescription;
 			}
-			return new ModelDescription(modelDescriptions);
+			return new ModelDescription(aggregationMode, modelDescriptions);
 		}
 	}
 	
 	public static class ModelDescription extends ClassificationModel.ModelDescription {
 		long totalRulesCount = 0L; //sumRulesCount
 		long sumRuleLength = 0L; //sum of lengths of rules
-		long sumRuleSupport = 0L;  //sum of supports of rules
+		long sumRuleSupport = 0L; //sum of supports of rules
 		
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
+		AggregationMode aggregationMode = AggregationMode.NONE;
+		
+		//TODO: add more fields to address situation when aggregationMode == AggregationMode.MEAN_AND_DEVIATION
 		
 		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport) {
 			this.totalRulesCount = totalRulesCount;
@@ -153,27 +156,41 @@ public class ModeRuleClassifier implements ClassificationModel {
 			this.sumRuleSupport = sumRuleSupport;
 			
 			aggregationCount = 1;
+			aggregationMode = AggregationMode.NONE;
 		}
 		
-		public ModelDescription(ModelDescription... modelDescriptions) {
+		public ModelDescription(AggregationMode aggregationMode, ModelDescription... modelDescriptions) {
+			if (aggregationMode == null || aggregationMode == AggregationMode.NONE) {
+				throw new InvalidValueException("Incorrect aggregation mode.");
+			}
+			this.aggregationMode = aggregationMode;
+			
+			//calculate sums
 			for (ModelDescription modelDescription : modelDescriptions) {
 				totalRulesCount += modelDescription.totalRulesCount;
 				sumRuleLength += modelDescription.sumRuleLength;
 				sumRuleSupport += modelDescription.sumRuleSupport;
 				aggregationCount += modelDescription.aggregationCount;
 			}
+			
+			if (aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
+				//TODO: calculate means and standard deviations
+			}
 		}		
 		
 		@Override
-		public String toString() {
+		public String toString() { //TODO: if aggregationMode == AggregationMode.MEAN_AND_DEVIATION, then print also standard deviations calculated in constructor
 			StringBuilder sb = new StringBuilder(100);
+			
 			if (aggregationCount == 1) {
 				sb.append("Number of rules: ").append(totalRulesCount);
 			} else {
 				sb.append("Avg. number of rules: ").append((double)totalRulesCount / aggregationCount);
 			}
+			
 			sb.append(String.format(Locale.US, ", average length: %.2f", (double)sumRuleLength / totalRulesCount));
 			sb.append(String.format(Locale.US, ", average support: %.2f", (double)sumRuleSupport / totalRulesCount));
+			
 			return sb.toString();
 		}
 
@@ -189,7 +206,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 	SimpleOptimizingCountingRuleClassifier simpleOptimizingCountingRuleClassifier;
 	ClassificationModel defaultClassificationModel = null; //classification model (classifier) used when no rule matches classified object (if the model is != null)
 	
-	ValidationSummary validationSummary = null;
+//	ValidationSummary validationSummary = null;
 	String modelLearnerDescription;
 	ModelDescription modelDescription = null;
 	
@@ -250,7 +267,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 		ResolutionStrategy resolutionStrategy;
 		boolean strategySucceeded;
 		ClassificationStatistics classificationStatistics = new ClassificationStatistics(
-				defaultClassificationModel != null ? DefaultClassificationType.USING_DEFAULT_CLASSIFIER : DefaultClassificationType.USING_DEFAULT_CLASS);
+				defaultClassificationModel != null ? DefaultClassificationType.USING_DEFAULT_CLASSIFIER : DefaultClassificationType.USING_DEFAULT_CLASS,
+				ClassifierType.VCDRSA_RULES_CLASSIFIER);
 		long totalCoveringRulesCount = 0;
 	
 		for (int testObjectIndex = 0; testObjectIndex < testDataSize; testObjectIndex++) {
@@ -309,50 +327,51 @@ public class ModeRuleClassifier implements ClassificationModel {
 		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-		double accuracyWhenClassifiedByRules = 100 * ( (double)(classificationStatistics.preciseCorrectCount + classificationStatistics.resolvingConflictCorrectCount) /
-				(double)((long)testDataSize - classificationStatistics.getDefaultModelCount()) ); //divide by the number of objects not-classified to the default class
-		
-		double originalDecisionsQualityOfApproximation = -1.0;
-		double assignedDefaultClassDecisionsQualityOfApproximation = -1.0;
-		double assignedDecisionsQualityOfApproximation = -1.0;
+//		double accuracyWhenClassifiedByRules = 100 * ( (double)(classificationStatistics.preciseCorrectCount + classificationStatistics.resolvingConflictCorrectCount) /
+//				(double)((long)testDataSize - classificationStatistics.getDefaultModelCount()) ); //divide by the number of objects not-classified to the default class
+//		
+//		double originalDecisionsQualityOfApproximation = -1.0;
+//		double assignedDefaultClassDecisionsQualityOfApproximation = -1.0;
+//		double assignedDecisionsQualityOfApproximation = -1.0;
 		
 		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
 			classificationStatistics.originalDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, 0.0);
-			originalDecisionsQualityOfApproximation = (double)classificationStatistics.originalDecisionsConsistentObjectsCount / testDataSize;
+//			originalDecisionsQualityOfApproximation = (double)classificationStatistics.originalDecisionsConsistentObjectsCount / testDataSize;
 			
 			//synchronizes defaultClassAssignedDecisions
 			SimpleDecision[] blendedDecisions = blendDecisions(defaultClassAssignedDecisions, assignedDecisions);
 			classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, blendedDecisions, 0.0);
-			assignedDefaultClassDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount / testDataSize;
+//			assignedDefaultClassDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount / testDataSize;
 			
 			classificationStatistics.assignedDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, assignedDecisions, 0.0);
-			assignedDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDecisionsConsistentObjectsCount / testDataSize;
+//			assignedDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDecisionsConsistentObjectsCount / testDataSize;
 		}
 		
-		this.validationSummary = new ValidationSummary(
-				100 * ((double)(classificationStatistics.preciseCorrectCount + classificationStatistics.preciseIncorrectCount) / testDataSize),
-				100 * ((double)classificationStatistics.preciseCorrectCount / testDataSize),
-				100 * ((double)(classificationStatistics.resolvingConflictCorrectCount + classificationStatistics.resolvingConflictIncorrectCount) / testDataSize),
-				100 * ((double)classificationStatistics.resolvingConflictCorrectCount / testDataSize),
-				defaultClassificationModel != null,
-				100 * ((double)(classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount) / testDataSize),
-				100 * ((double)(classificationStatistics.defaultClassCorrectCount) / testDataSize),
-				100 * ((double)(classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount) / testDataSize),
-				100 * ((double)(classificationStatistics.defaultClassifierCorrectCount) / testDataSize),
-				ordinalMisclassificationMatrix.getAccuracy(),
-				accuracyWhenClassifiedByRules,
-				100 * ( (double)classificationStatistics.preciseCorrectCount /
-						(classificationStatistics.preciseCorrectCount + classificationStatistics.preciseIncorrectCount)), //accuracy when classified by precise rules
-				100 * ( (double)classificationStatistics.resolvingConflictCorrectCount /
-						(classificationStatistics.resolvingConflictCorrectCount + classificationStatistics.resolvingConflictIncorrectCount)),  //accuracy when classified by mode
-				(classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount) > 0 ?
-						100 * ((double)classificationStatistics.defaultClassCorrectCount / (classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount)) : 0.0,
-				(classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount) > 0 ?
-						100 * ((double)classificationStatistics.defaultClassifierCorrectCount / (classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount)) : 0.0,
-				(double)totalCoveringRulesCount / testDataSize,
-				originalDecisionsQualityOfApproximation, assignedDefaultClassDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
+//		this.validationSummary = new ValidationSummary(
+//				100 * ((double)(classificationStatistics.preciseCorrectCount + classificationStatistics.preciseIncorrectCount) / testDataSize),
+//				100 * ((double)classificationStatistics.preciseCorrectCount / testDataSize),
+//				100 * ((double)(classificationStatistics.resolvingConflictCorrectCount + classificationStatistics.resolvingConflictIncorrectCount) / testDataSize),
+//				100 * ((double)classificationStatistics.resolvingConflictCorrectCount / testDataSize),
+//				defaultClassificationModel != null,
+//				100 * ((double)(classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount) / testDataSize),
+//				100 * ((double)classificationStatistics.defaultClassCorrectCount / testDataSize),
+//				100 * ((double)(classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount) / testDataSize),
+//				100 * ((double)(classificationStatistics.defaultClassifierCorrectCount) / testDataSize),
+//				ordinalMisclassificationMatrix.getAccuracy(),
+//				accuracyWhenClassifiedByRules,
+//				100 * ( (double)classificationStatistics.preciseCorrectCount /
+//						(classificationStatistics.preciseCorrectCount + classificationStatistics.preciseIncorrectCount)), //accuracy when classified by precise rules
+//				100 * ( (double)classificationStatistics.resolvingConflictCorrectCount /
+//						(classificationStatistics.resolvingConflictCorrectCount + classificationStatistics.resolvingConflictIncorrectCount)),  //accuracy when classified by mode
+//				(classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount) > 0 ?
+//						100 * ((double)classificationStatistics.defaultClassCorrectCount / (classificationStatistics.defaultClassCorrectCount + classificationStatistics.defaultClassIncorrectCount)) : 0.0,
+//				(classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount) > 0 ?
+//						100 * ((double)classificationStatistics.defaultClassifierCorrectCount / (classificationStatistics.defaultClassifierCorrectCount + classificationStatistics.defaultClassifierIncorrectCount)) : 0.0,
+//				(double)totalCoveringRulesCount / testDataSize,
+//				originalDecisionsQualityOfApproximation,
+//				assignedDefaultClassDecisionsQualityOfApproximation,
+//				assignedDecisionsQualityOfApproximation);
 
-		
 		return new ModelValidationResult(ordinalMisclassificationMatrix,
 				classificationStatistics,
 //				classificationStatistics.preciseCorrectCount + classificationStatistics.resolvingConflictCorrectCount,
@@ -364,9 +383,9 @@ public class ModeRuleClassifier implements ClassificationModel {
 //				testDataSize); //possible abstaining taken into account!
 	}
 	
-	public ValidationSummary getValidationSummary() { //gets summary of last validate method invocation
-		return validationSummary;
-	}
+//	public ValidationSummary getValidationSummary() { //gets summary of last validate method invocation
+//		return validationSummary;
+//	}
 
 	@Override
 	public ModelDescription getModelDescription() {

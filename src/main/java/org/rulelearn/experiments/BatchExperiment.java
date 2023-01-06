@@ -17,13 +17,14 @@ import org.rulelearn.approximations.UnionsWithSingleLimitingDecision;
 import org.rulelearn.approximations.VCDominanceBasedRoughSetCalculator;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
-import org.rulelearn.experiments.BatchExperimentResults.AverageEvaluation;
-import org.rulelearn.experiments.BatchExperimentResults.AverageEvaluations;
 import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
 import org.rulelearn.experiments.BatchExperimentResults.CalculationTimes;
 import org.rulelearn.experiments.BatchExperimentResults.DataAlgorithmParametersSelector;
+import org.rulelearn.experiments.BatchExperimentResults.FullDataModelValidationResult;
 import org.rulelearn.experiments.BatchExperimentResults.FullDataResults;
-import org.rulelearn.experiments.ClassificationModel.ValidationSummary;
+import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
+import org.rulelearn.experiments.ModelValidationResult.ClassifierType;
+import org.rulelearn.experiments.ModelValidationResult.MeansAndStandardDeviations;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
 import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
 
@@ -57,6 +58,8 @@ public class BatchExperiment {
 	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfAssignedDecisions = true;
 	static final boolean printWEKATrainedClassifiers = false;
+	static final String decimalFormat = "%.5f"; //tells number of decimal places
+	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -75,6 +78,10 @@ public class BatchExperiment {
 		this.trainDataPreprocessor = trainDataPreprocessor;
 		this.learningAlgorithms = learningAlgorithms;
 		this.parametersContainer = parametersContainer;
+	}
+	
+	static String prepareText(String text, String prefix) {
+		return text.replaceAll("%p", prefix).replaceAll("%n", System.lineSeparator());
 	}
 	
 	static String resolveText(String text, Object... params) {
@@ -186,7 +193,7 @@ public class BatchExperiment {
 		
 		outN(); //!
 		
-		BatchExperimentResults batchExperimentResults = (new BatchExperimentResults.Builder())
+		BatchExperimentResults results = (new BatchExperimentResults.Builder())
 				.dataSetsCount(dataProviders.size()).learningAlgorithmsCount(learningAlgorithms.size()).maxParametersCount(maxParametersCount)
 				.maxCrossValidationsCount(maxCrossValidationsCount).build();
 		
@@ -216,7 +223,7 @@ public class BatchExperiment {
 					double epsilonDRSAConsistencyThreshold = 0.0;
 					double qualityOfDRSAApproximation;
 					double qualityOfVCDRSAApproximation;
-					Map<String, BatchExperimentResults.Evaluations> algorithmNameWithParameters2Evaluations = new LinkedHashMap<String, BatchExperimentResults.Evaluations>();
+					Map<String, FullDataModelValidationResult> algorithmNameWithParameters2Evaluations = new LinkedHashMap<String, FullDataModelValidationResult>();
 					Map<Double, Double> consistencyThreshold2QualityOfApproximation = new LinkedHashMap<Double, Double>();
 					
 					outN("--");
@@ -272,41 +279,25 @@ public class BatchExperiment {
 	
 							/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
 							/**/	.dataSetNumber(dataSetNumber).learningAlgorithmNumber(algorithmNumber).parametersNumber(parameterNumber);
-							/**/CalculationTimes fullDataCalculationTimes = batchExperimentResults.getFullDataCalculationTimes(selector);
+							/**/CalculationTimes fullDataCalculationTimes = results.getFullDataCalculationTimes(selector);
 							/**/fullDataCalculationTimes.increaseTotalTrainingTime(fullDataTrainingTime);
 							/**/fullDataCalculationTimes.increaseTotalValidationTime(fullDataValidationTime);
 							
-							ValidationSummary validationSummary = model.getValidationSummary();
+							algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")", new FullDataModelValidationResult(selector, modelValidationResult));
 							
-							String infoSuffix;
-							if (validationSummary instanceof ModeRuleClassifier.ValidationSummary) {
-								infoSuffix = String.format(Locale.US, "%s: %.2f",
-										ModeRuleClassifier.avgNumberOfRulesIndicator, ((ModeRuleClassifier.ValidationSummary)validationSummary).avgNumberOfCoveringRules);
-							} else {
-								infoSuffix = "--";
-							}
+							ClassificationStatistics classificationStatistics = modelValidationResult.getClassificationStatistics();
 							
-							algorithmNameWithParameters2Evaluations.put(algorithm.getName()+"("+parameters+")",
-									new BatchExperimentResults.Evaluations(
-											modelValidationResult.getOverallAccuracy(),
-											modelValidationResult.getMainModelAccuracy(),
-											modelValidationResult.getDefaultModelAccuracy(),
-											modelValidationResult.getMainModelDecisionsRatio(),
-											(model instanceof ModeRuleClassifier ? model.getModelDescription()+", " : "") + infoSuffix,
-											fullDataTrainingTime,
-											fullDataValidationTime
-									));
 							outN("Train data accuracy for '%1(%2)': "+System.lineSeparator()+
 									"%3 # %4 # %5. Main model decisions ratio: %6."+System.lineSeparator()+
 									"%7"+System.lineSeparator()+
 									"%% [Times]: training: %8 [ms], validation: %9 [ms].",
 									algorithm.getName(),
 									parameters,
-									modelValidationResult.getOverallAccuracy(),
-									modelValidationResult.getMainModelAccuracy(),
-									modelValidationResult.getDefaultModelAccuracy(),
-									modelValidationResult.getMainModelDecisionsRatio(),
-									Arrays.asList(validationSummary.toString().split(System.lineSeparator())).stream()
+									round(modelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
+									round(classificationStatistics.getMainModelAccuracy()),
+									round(classificationStatistics.getDefaultModelAccuracy()),
+									round(classificationStatistics.getMainModelDecisionsRatio()),
+									Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 									.map(line -> (new StringBuilder("%% ")).append(line).toString())
 									.collect(Collectors.joining(System.lineSeparator())), //print validation summary in several lines
 									fullDataTrainingTime,
@@ -324,12 +315,12 @@ public class BatchExperiment {
 					
 					//save quality of approximation and results of all parameterized algorithms for full data
 					FullDataResults fullDataResults = new FullDataResults(consistencyThreshold2QualityOfApproximation, algorithmNameWithParameters2Evaluations);
-					batchExperimentResults.storeFullDataResults(dataProvider.getDataName(), fullDataResults);
+					results.storeFullDataResults(dataProvider.getDataName(), fullDataResults);
 					
 					VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
 					
 					outN("@@@@@ [BEGIN] Full train data reports:");
-					out(batchExperimentResults.reportFullDataResults(dataProvider.getDataName()));
+					out(results.reportFullDataResults(dataProvider.getDataName()));
 					outN("@@@@@ [END]");
 				}
 				//<<<<<
@@ -353,14 +344,20 @@ public class BatchExperiment {
 							for (int j = 0; j < parametersList.size(); j++) {
 								initializingCVSelector = (new BatchExperimentResults.CVSelector())
 										.dataSetNumber(dataSetNumber).learningAlgorithmNumber(i).parametersNumber(j).crossValidationNumber(crossValidationNumber);
-								batchExperimentResults.initializeFoldResults(initializingCVSelector, data.getInformationTable().getOrderedUniqueFullyDeterminedDecisions(), crossValidation.getNumberOfFolds());
+								results.initializeFoldResults(initializingCVSelector, data.getInformationTable().getOrderedUniqueFullyDeterminedDecisions(), crossValidation.getNumberOfFolds());
 							}
 						}
 						
 						crossValidationFolds = crossValidation.getStratifiedFolds(data);
 						
+//						Object[][][][] foldResults = new Object[crossValidationFolds.size()][learningAlgorithms.size()][maxParametersCount][7];
+						
 						//run each fold in parallel!
 						crossValidationFolds.parallelStream().forEach(fold -> {
+							String linePrefix = "      "+foldNumber2Spaces(fold.getIndex());
+							String summaryLinePrefix = linePrefix + "%% ";
+							String messageTemplate = prepareText("%pEnd of fold %1, algorithm %2(%3).%n%p%% [Accuracy]: %4 # %5 # %6.%n%7%n%p%% [Duration]: %8 [ms].", linePrefix); //%p will be replaced by prefix, %n by new line
+							
 							//long t3;
 							//t3 = b("    Starting calculations for fold "+fold.getIndex()+".");
 							//t3 = b(null);
@@ -397,27 +394,48 @@ public class BatchExperiment {
 									
 									/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
 									/**/	.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
-									/**/CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
+									/**/CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 									/**/totalFoldCalculationTimes.increaseTotalTrainingTime(foldTrainingTime);
 									/**/totalFoldCalculationTimes.increaseTotalValidationTime(foldValidationTime);
 									
-									String validationSummary = model.getValidationSummary().toString();
+									String classificationStatisticsAsText = modelValidationResult.getClassificationStatistics().toString();
 									model = null; //facilitate GC
 									
 									BatchExperimentResults.CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
 											.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(streamCrossValidationNumber);
-									batchExperimentResults.storeFoldModelValidationResult(cvSelector, fold.getIndex(), modelValidationResult);
+									results.storeFoldModelValidationResult(cvSelector, fold.getIndex(), modelValidationResult);
 									
-									e(t5, resolveText("      %1End of fold %2, algorithm %3(%4)."+System.lineSeparator()+
-													  "      %5%% [Accuracy]: %6 # %7 # %8."+System.lineSeparator()+
-													  "%9",
-											foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters,
-											foldNumber2Spaces(fold.getIndex()),
-											modelValidationResult.getOverallAccuracy(), modelValidationResult.getMainModelAccuracy(), modelValidationResult.getDefaultModelAccuracy(),
-											Arrays.asList(validationSummary.split(System.lineSeparator())).stream()
-											.map(line -> (new StringBuilder("      ")).append(foldNumber2Spaces(fold.getIndex())).append("%% ").append(line).toString())
-											.collect(Collectors.joining(System.lineSeparator())) //print validation summary in several lines
-									));
+//									e(t5, resolveText("      %1End of fold %2, algorithm %3(%4)."+System.lineSeparator()+
+//													  "      %5%% [Accuracy]: %6 # %7 # %8."+System.lineSeparator()+
+//													  "%9",
+//											foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName(), parameters,
+//											foldNumber2Spaces(fold.getIndex()),
+//											round(modelValidationResult.getOverallAccuracy()), round(modelValidationResult.getMainModelAccuracy()), round(modelValidationResult.getDefaultModelAccuracy()),
+//											Arrays.asList(classificationStatisticsAsText.split(System.lineSeparator())).stream()
+//											.map(line -> (new StringBuilder("      ")).append(foldNumber2Spaces(fold.getIndex())).append("%% ").append(line).toString())
+//											.collect(Collectors.joining(System.lineSeparator())) //print validation summary in several lines
+//									));
+									
+									long duration = System.currentTimeMillis() - t5;
+									outN(resolveText(messageTemplate, //"End of fold" message
+											fold.getIndex(), algorithm.getName(), parameters,
+											round(modelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
+											round(modelValidationResult.getClassificationStatistics().getMainModelAccuracy()),
+											round(modelValidationResult.getClassificationStatistics().getDefaultModelAccuracy()),
+											Arrays.asList(classificationStatisticsAsText.split(System.lineSeparator())).stream()
+											.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
+											.collect(Collectors.joining(System.lineSeparator())), //print validation summary in several lines
+											duration));
+									
+//									String template;
+//									int foldIndex; //%1
+//									LearningAlgorithm algorithm; //%2
+//									LearningAlgorithmDataParameters parameters; //%3
+//									double overallAccuracy; //%4
+//									double mainModelAccuracy; //%5
+//									double defaultModelAccuracy; //%6
+//									ClassificationStatistics classificationStatistics; //%7
+//									long duration; //%8
 								}
 								
 								//e(t4, resolveText("      %1Finishing calculations for fold %2, algorithm %3.", foldNumber2Spaces(fold.getIndex()), fold.getIndex(), algorithm.getName()));
@@ -443,15 +461,17 @@ public class BatchExperiment {
 								parametersNumber++;
 								CVSelector cvSelector = (new BatchExperimentResults.CVSelector())
 										.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber).crossValidationNumber(crossValidationNumber);
+								ModelValidationResult aggregatedCVModelValidationResult = results.getAggregatedCVModelValidationResult(cvSelector);
+								ClassificationStatistics classificationStatistics = aggregatedCVModelValidationResult.getClassificationStatistics();
 								
 								outN("  Avg. accuracy over folds for algorithm '%1(%2)': "+System.lineSeparator()+
 										"    %3 # %4 # %5. Avg. main model decisions ratio: %6.",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parameters,
-										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getOverallAccuracy(),
-										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getMainModelAccuracy(),
-										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getDefaultModelAccuracy(),
-										batchExperimentResults.getAggregatedCVModelValidationResult(cvSelector).getMainModelDecisionsRatio());
+										round(aggregatedCVModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
+										round(classificationStatistics.getMainModelAccuracy()),
+										round(classificationStatistics.getDefaultModelAccuracy()),
+										round(classificationStatistics.getMainModelDecisionsRatio()) );
 							}
 						}
 						outN("  ----------");
@@ -477,32 +497,40 @@ public class BatchExperiment {
 							parametersNumber++;
 							DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
 									.dataSetNumber(dataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);
-							AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
+							ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
+							MeansAndStandardDeviations meansAndStandardDeviations = aggregatedModelValidationResult.getClassificationStatistics().getMeansAndStandardDeviations();
+							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+							
 							outN("Avg. accuracy over CVs for algorithm '%1(%2)': "+System.lineSeparator()+
 									"%3 (stdDev: %4) # %5 (stdDev: %6) # %7 (stdDev: %8). Avg. main model decisions ratio: %9. "+System.lineSeparator()+
-									"%10%11",
+									"%10%11"+System.lineSeparator()+
+									"%% [Avg. fold calculation times]: training: %12 [ms], validation: %13 [ms]",
 									learningAlgorithms.get(learningAlgorithmNumber).getName(),
 									parameters,
-									averageEvaluations.getOverallAverageEvaluation().getAverage(),
-									averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-									averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-									averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-									averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-									averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-									averageEvaluations.getMainModelDecisionsRatio(),
-									averageEvaluations.getAggregatedModelDescription(),
-									averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
-											String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
+									round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getStdDev()),
+									round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+									aggregatedModelValidationResult.getModelDescription(),
+									aggregatedModelValidationResult.getClassificationStatistics().getClassifierType() == ClassifierType.VCDRSA_RULES_CLASSIFIER ?
+											String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator,
+													aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules())
+											: "",
+									totalFoldCalculationTimes.getAverageTrainingTime(),
+									totalFoldCalculationTimes.getAverageValidationTime()
 								);
-							CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-							outN("%% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 	
-							AverageEvaluation averageEvaluation = useMainModelAccuracy ? averageEvaluations.getMainModelAverageEvaluation() : averageEvaluations.getOverallAverageEvaluation();
-							if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
-								bestAccuracy = averageEvaluation.getAverage();
+							MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
+									meansAndStandardDeviations.getMainModelAverageAccuracy() :
+									meansAndStandardDeviations.getOverallAverageAccuracy();
+							if (averageAccuracy.getMean() > bestAccuracy) { //better accuracy found
+								bestAccuracy = averageAccuracy.getMean();
 								bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
 								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
-							} else if (averageEvaluation.getAverage() == bestAccuracy) {
+							} else if (averageAccuracy.getMean() == bestAccuracy) {
 								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
 							}
 						} //for
@@ -510,27 +538,32 @@ public class BatchExperiment {
 						//print the best parameters + accuracy for the current algorithm
 						if (parametersList.size() > 1) {
 							for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-								AverageEvaluations averageEvaluations = batchExperimentResults.getAverageDataAlgorithmParametersEvaluations(selector);
+								ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
+								MeansAndStandardDeviations meansAndStandardDeviations = aggregatedModelValidationResult.getClassificationStatistics().getMeansAndStandardDeviations();
+								CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+								
 								outN("  Best avg. %1 accuracy over cross-validations for algorithm '%2(%3)': "+System.lineSeparator()+
 									 "  %4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10. "+System.lineSeparator()+
-									 "  %11%12",
+									 "  %11%12"+System.lineSeparator()+
+									 "  %% [Avg. fold calculation times]: training: %13 [ms], validation: %14 [ms]",
 										useMainModelAccuracy ? "main model" : "overall",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parametersList.get(selector.parametersNumber),
-										averageEvaluations.getOverallAverageEvaluation().getAverage(),
-										averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-										averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-										averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-										averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-										averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-										averageEvaluations.getMainModelDecisionsRatio(),
-										averageEvaluations.getAggregatedModelDescription(),
-										averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
-												String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+										round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+										round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+										round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
+										round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
+										round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
+										round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getStdDev()),
+										round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+										aggregatedModelValidationResult.getModelDescription(),
+										aggregatedModelValidationResult.getClassificationStatistics().getClassifierType() == ClassifierType.VCDRSA_RULES_CLASSIFIER ?
+												String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator,
+														aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules())
+												: "",
+										totalFoldCalculationTimes.getAverageTrainingTime(),
+										totalFoldCalculationTimes.getAverageValidationTime()
 									);
-								
-								CalculationTimes totalFoldCalculationTimes = batchExperimentResults.getTotalFoldCalculationTimes(selector);
-								outN("  %% [Avg. fold calculation times]: training: %1 [ms], validation: %2 [ms]", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 							} //for
 						} else {
 							outN("--");
@@ -546,7 +579,7 @@ public class BatchExperiment {
 			VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
 		} //for dataProvider
 		
-		return batchExperimentResults;
+		return results;
 	}
 	
 	public static void main(String[] args) {
@@ -628,86 +661,86 @@ public class BatchExperiment {
 				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
 				k));
 		/*-----*/
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataNameChurn4000v8_0_05_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataNameChurn4000v8_0_05_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataNameChurn4000v8_0_10_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataNameChurn4000v8_0_10_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataNameChurn4000v8_0_15_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataNameChurn4000v8_0_15_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataNameChurn4000v8_0_20_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataNameChurn4000v8_0_20_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataNameChurn4000v8_0_25_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataNameChurn4000v8_0_25_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+//				dataNameChurn4000v8_0_05_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+//				dataNameChurn4000v8_0_05_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+//				dataNameChurn4000v8_0_10_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+//				dataNameChurn4000v8_0_10_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+//				dataNameChurn4000v8_0_15_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+//				dataNameChurn4000v8_0_15_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+//				dataNameChurn4000v8_0_20_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+//				dataNameChurn4000v8_0_20_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+//				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+//				dataNameChurn4000v8_0_25_mv2,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
+//		dataProviders.add(new BasicDataProvider(
+//				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+//				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+//				dataNameChurn4000v8_0_25_mv15,
+//				//SKIP_DATA,
+//				//new long[]{0L, 5488762120989881L, 4329629961476882L},
+//				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+//				k));
 		
 		//TODO: comment algorithms that should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
@@ -906,32 +939,38 @@ public class BatchExperiment {
 						parametersNumber++;
 						DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
 								.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
-						AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
+						ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
+						MeansAndStandardDeviations meansAndStandardDeviations = aggregatedModelValidationResult.getClassificationStatistics().getMeansAndStandardDeviations();
+						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+						
 						outN("Avg. accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
 								"%4 (stdDev: %5) # %6 (stdDev: %7) # %8 (stdDev: %9). Avg. main model decisions ratio: %10. "+System.lineSeparator()+
-								"%11%12",
+								"%11%12"+System.lineSeparator()+
+								"%% [Avg. fold calculation times]: training: %13, validation: %14",
 								dataSetName, algorithmName, parameters,
-								averageEvaluations.getOverallAverageEvaluation().getAverage(),
-								averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-								averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-								averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-								averageEvaluations.getMainModelDecisionsRatio(),
-								averageEvaluations.getAggregatedModelDescription(),
-								averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
-										String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+								round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+								round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+								round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
+								round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
+								round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
+								round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getStdDev()),
+								round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+								aggregatedModelValidationResult.getModelDescription(),
+								aggregatedModelValidationResult.getClassificationStatistics().getClassifierType() == ClassifierType.VCDRSA_RULES_CLASSIFIER?
+										String.format(Locale.US, ", %s: %.2f.",
+												ModeRuleClassifier.avgNumberOfRulesIndicator, aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules()) : "",
+								totalFoldCalculationTimes.getAverageTrainingTime(),
+								totalFoldCalculationTimes.getAverageValidationTime()
 							);
-						
-						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-						outN("%% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 	
-						AverageEvaluation averageEvaluation = useMainModelAccuracy ? averageEvaluations.getMainModelAverageEvaluation() : averageEvaluations.getOverallAverageEvaluation();
-						if (averageEvaluation.getAverage() > bestAccuracy) { //better accuracy found
-							bestAccuracy = averageEvaluation.getAverage();
+						MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
+								meansAndStandardDeviations.getMainModelAverageAccuracy() :
+								meansAndStandardDeviations.getOverallAverageAccuracy();
+						if (averageAccuracy.getMean() > bestAccuracy) { //better accuracy found
+							bestAccuracy = averageAccuracy.getMean();
 							bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
 							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
-						} else if (averageEvaluation.getAverage() == bestAccuracy) {
+						} else if (averageAccuracy.getMean() == bestAccuracy) {
 							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
 						}
 					} //for
@@ -939,26 +978,30 @@ public class BatchExperiment {
 					//print the best parameters + accuracy for the current algorithm
 					if (parametersList.size() > 1) {
 						for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
-							AverageEvaluations averageEvaluations = results.getAverageDataAlgorithmParametersEvaluations(selector);
+							ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
+							MeansAndStandardDeviations meansAndStandardDeviations = aggregatedModelValidationResult.getClassificationStatistics().getMeansAndStandardDeviations();
+							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+							
 							outN("  Best avg. %1 accuracy for ('%2', %3(%4)): "+System.lineSeparator()+
 								 "  %5 (stdDev: %6) # %7 (stdDev: %8) # %9 (stdDev: %10). Avg. main model decisions ratio: %11. "+System.lineSeparator()+
-								 "  %12%13",
+								 "  %12%13"+System.lineSeparator()+
+								 "  %% [Avg. fold calculation times]: training: %14, validation: %15",
 									useMainModelAccuracy ? "main model" : "overall",
 									dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
-									averageEvaluations.getOverallAverageEvaluation().getAverage(),
-									averageEvaluations.getOverallAverageEvaluation().getStdDev(),
-									averageEvaluations.getMainModelAverageEvaluation().getAverage(),
-									averageEvaluations.getMainModelAverageEvaluation().getStdDev(),
-									averageEvaluations.getDefaultModelAverageEvaluation().getAverage(),
-									averageEvaluations.getDefaultModelAverageEvaluation().getStdDev(),
-									averageEvaluations.getMainModelDecisionsRatio(),
-									averageEvaluations.getAggregatedModelDescription(),
-									averageEvaluations.getAvgNumberOfCoveringRules() > 0.0 ?
-											String.format(Locale.US, ", %s: %.2f.", ModeRuleClassifier.avgNumberOfRulesIndicator, averageEvaluations.getAvgNumberOfCoveringRules()) : ""
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
+									round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getStdDev()),
+									round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+									aggregatedModelValidationResult.getModelDescription(),
+									aggregatedModelValidationResult.getClassificationStatistics().getClassifierType() == ClassifierType.VCDRSA_RULES_CLASSIFIER ?
+											String.format(Locale.US, ", %s: %.2f.",
+													ModeRuleClassifier.avgNumberOfRulesIndicator, aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules()) : "",
+									totalFoldCalculationTimes.getAverageTrainingTime(),
+									totalFoldCalculationTimes.getAverageValidationTime()
 								);
-							
-							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-							outN("  %% [Avg. fold calculation times]: training: %1, validation: %2", totalFoldCalculationTimes.getAverageTrainingTime(), totalFoldCalculationTimes.getAverageValidationTime());
 						} //for
 					} else {
 						outN("--");
@@ -1130,6 +1173,28 @@ public class BatchExperiment {
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		);
+		
+	}
+	
+	/**
+	 * Rounds a positive number and returns it as a string.
+	 * 
+	 * @param number number to round and convert to text
+	 * @return rounded number as text
+	 * 
+	 * @see {@link #decimalFormat} and {@link #percentDecimalFormat}
+	 */
+	public static String round(double number) {
+		if (number > 1.0) {
+			return String.format(Locale.US, percentDecimalFormat, number);
+		} else if (number == 1.0) {
+			return "1.0";
+		} else if (number == 0.0) {
+			return "0.0";
+		} else {
+			return String.format(Locale.US, decimalFormat, number);
+		}
+		
 	}
 	
 }

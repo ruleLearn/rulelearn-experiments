@@ -4,15 +4,14 @@
 package org.rulelearn.experiments;
 
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.rulelearn.core.InvalidValueException;
 import org.rulelearn.data.Decision;
 import org.rulelearn.data.EvaluationAttribute;
 import org.rulelearn.data.SimpleDecision;
-import org.rulelearn.experiments.ModeRuleClassifier.ValidationSummary;
 import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
+import org.rulelearn.experiments.ModelValidationResult.ClassifierType;
 import org.rulelearn.experiments.ModelValidationResult.DefaultClassificationType;
 import org.rulelearn.types.EnumerationField;
 import org.rulelearn.types.EnumerationFieldFactory;
@@ -32,45 +31,46 @@ import weka.core.Instances;
  */
 public class WEKAClassifer implements ClassificationModel {
 	
-	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
-		double originalDecisionsQualityOfApproximation; //not used if -1.0
-		double assignedDecisionsQualityOfApproximation; //not used if -1.0
-		
-		public ValidationSummary(double originalDecisionsQualityOfApproximation,
-				double assignedDecisionsQualityOfApproximation) {
-			this.originalDecisionsQualityOfApproximation = originalDecisionsQualityOfApproximation;
-			this.assignedDecisionsQualityOfApproximation = assignedDecisionsQualityOfApproximation;
-		}
-
-		@Override
-		public String toString() {
-			StringBuilder sb = new StringBuilder(120);
-			
-			boolean appended = false;
-			sb.append("[Summary]: ");
-			if (originalDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, "original quality: %.4f", originalDecisionsQualityOfApproximation));
-				appended = true;
-			}
-			if (assignedDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
-				appended = true;
-			}
-			if (!appended) {
-				sb.append("--");
-			}
-			sb.append(".");
-			
-			return sb.toString();
-		}
-	}
+//	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
+//		double originalDecisionsQualityOfApproximation; //not used if -1.0
+//		double assignedDecisionsQualityOfApproximation; //not used if -1.0
+//		
+//		public ValidationSummary(double originalDecisionsQualityOfApproximation,
+//				double assignedDecisionsQualityOfApproximation) {
+//			this.originalDecisionsQualityOfApproximation = originalDecisionsQualityOfApproximation;
+//			this.assignedDecisionsQualityOfApproximation = assignedDecisionsQualityOfApproximation;
+//		}
+//
+//		@Override
+//		public String toString() {
+//			StringBuilder sb = new StringBuilder(120);
+//			
+//			boolean appended = false;
+//			sb.append("[Summary]: ");
+//			if (originalDecisionsQualityOfApproximation >= 0.0) {
+//				sb.append(String.format(Locale.US, "original quality: %.4f", originalDecisionsQualityOfApproximation));
+//				appended = true;
+//			}
+//			if (assignedDecisionsQualityOfApproximation >= 0.0) {
+//				sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
+//				appended = true;
+//			}
+//			if (!appended) {
+//				sb.append("--");
+//			}
+//			sb.append(".");
+//			
+//			return sb.toString();
+//		}
+//	}
 	
 	public static class ModelDescriptionBuilder extends ClassificationModel.ModelDescriptionBuilder {
+		
 		/**
 		 * @throws ClassCastException if given array is not an instance of {@link ModelDescription[]}.
 		 */
 		@Override
-		ModelDescription build(ClassificationModel.ModelDescription... genericModelDescriptions) {
+		ModelDescription build(AggregationMode aggregationMode, ClassificationModel.ModelDescription... genericModelDescriptions) { //aggregationMode is ignored
 			ModelDescription[] modelDescriptions = new ModelDescription[genericModelDescriptions.length];
 			int index = 0;
 			for (ClassificationModel.ModelDescription genericModelDescription : genericModelDescriptions) {
@@ -128,7 +128,7 @@ public class WEKAClassifer implements ClassificationModel {
 	
 	AbstractClassifier trainedClassifier; //trained classifier
 	
-	ValidationSummary validationSummary = null;
+//	ValidationSummary validationSummary = null;
 	String modelLearnerDescription;
 	ModelDescription modelDescription = null;
 
@@ -150,16 +150,16 @@ public class WEKAClassifer implements ClassificationModel {
 		Instances instances = testData.getInstances(); //InformationTable2Instances.convert(testData.getInformationTable(), testData.getName());
 		double value;
 		
-		ClassificationStatistics classificationStatistics = new ClassificationStatistics(DefaultClassificationType.NONE);
+		ClassificationStatistics classificationStatistics = new ClassificationStatistics(DefaultClassificationType.NONE, ClassifierType.WEKA_CLASSIFIER);
 		
 		for (int i = 0; i < testDataSize; i++) {
 			try {
 				value = trainedClassifier.classifyInstance(instances.instance(i));
 				assignedDecisions[i] = wekaClassificationResult2SimpleDecision(value, decisionAttribute, decisionAttributeIndex);
 				if (assignedDecisions[i].equals(originalDecisions[i])) {
-					classificationStatistics.preciseCorrectCount++;
+					classificationStatistics.increaseMainModelCorrectCount(1);
 				} else {
-					classificationStatistics.preciseIncorrectCount++;
+					classificationStatistics.increaseMainModelIncorrectCount(1);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -171,18 +171,18 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-		double originalDecisionsQualityOfApproximation = -1.0;
-		double assignedDecisionsQualityOfApproximation = -1.0;
+//		double originalDecisionsQualityOfApproximation = -1.0;
+//		double assignedDecisionsQualityOfApproximation = -1.0;
 		
 		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
 			classificationStatistics.originalDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), 0.0);
-			originalDecisionsQualityOfApproximation = (double)classificationStatistics.originalDecisionsConsistentObjectsCount / testDataSize;
+//			originalDecisionsQualityOfApproximation = (double)classificationStatistics.originalDecisionsConsistentObjectsCount / testDataSize;
 			
 			classificationStatistics.assignedDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
-			assignedDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDecisionsConsistentObjectsCount / testDataSize;
+//			assignedDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDecisionsConsistentObjectsCount / testDataSize;
 		}
 		
-		this.validationSummary = new ValidationSummary(originalDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
+//		this.validationSummary = new ValidationSummary(originalDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
 		
 		return new ModelValidationResult(ordinalMisclassificationMatrix,
 				classificationStatistics,
@@ -205,9 +205,9 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 	}
 	
-	public ValidationSummary getValidationSummary() {
-		return validationSummary;
-	}
+//	public ValidationSummary getValidationSummary() {
+//		return validationSummary;
+//	}
 
 	@Override
 	public ModelDescription getModelDescription() {

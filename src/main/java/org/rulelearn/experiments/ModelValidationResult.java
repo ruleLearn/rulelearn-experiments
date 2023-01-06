@@ -3,7 +3,11 @@
  */
 package org.rulelearn.experiments;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 import org.rulelearn.core.InvalidSizeException;
@@ -11,7 +15,6 @@ import org.rulelearn.core.InvalidValueException;
 import org.rulelearn.core.Precondition;
 import org.rulelearn.data.Decision;
 import org.rulelearn.experiments.ClassificationModel.ModelDescription;
-import org.rulelearn.experiments.ModelValidationResult.DefaultClassificationType;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 /**
@@ -24,7 +27,37 @@ public class ModelValidationResult {
 	public enum DefaultClassificationType {
 		USING_DEFAULT_CLASS,
 		USING_DEFAULT_CLASSIFIER,
-		NONE; //concern WEKA classifiers
+		NONE; //concerns WEKA classifiers
+	}
+	
+	public enum ClassifierType {
+		VCDRSA_RULES_CLASSIFIER,
+		WEKA_CLASSIFIER
+	}
+	
+	public static class MeansAndStandardDeviations {
+		MeanAndStandardDeviation overallAverageAccuracy;
+		MeanAndStandardDeviation mainModelAverageAccuracy;
+		MeanAndStandardDeviation defaultModelAverageAccuracy;
+		
+		public MeansAndStandardDeviations(MeanAndStandardDeviation overallAverageAccuracy, MeanAndStandardDeviation mainModelAverageAccuracy, MeanAndStandardDeviation defaultModelAverageAccuracy) {
+			this.overallAverageAccuracy = overallAverageAccuracy;
+			this.mainModelAverageAccuracy = mainModelAverageAccuracy;
+			this.defaultModelAverageAccuracy = defaultModelAverageAccuracy;
+		}
+
+		public MeanAndStandardDeviation getOverallAverageAccuracy() {
+			return overallAverageAccuracy;
+		}
+
+		public MeanAndStandardDeviation getMainModelAverageAccuracy() {
+			return mainModelAverageAccuracy;
+		}
+
+		public MeanAndStandardDeviation getDefaultModelAverageAccuracy() {
+			return defaultModelAverageAccuracy;
+		}
+		
 	}
 	
 	public static class ClassificationStatistics {
@@ -42,39 +75,55 @@ public class ModelValidationResult {
 		long defaultClassifierCorrectCount = 0L; //concerns classification using (VC-)DRSA rules when no rule covers object and default classifier is used
 		long defaultClassifierIncorrectCount = 0L; //concerns classification using (VC-)DRSA rules when no rule covers object and default classifier is used
 		
-		DefaultClassificationType defaultClassificationType;
-		
 		//in case of single validation (on a validation set) this is a sum of the numbers of covering rules over all classified objects;
 		//e.g., if there are two objects, first covered by 3 rules, and second covered by 4 rules, then total number of covering rules is 7;
 		//in case of aggregated model validation result, this is the sum of total number of covering rules over all validated models
 		long totalNumberOfCoveringRules = 0L; //concerns classification using (VC-)DRSA rules; for WEKA classifiers remains zero
 		long totalNumberOfClassifiedObjects = 0L;
 		
-		long originalDecisionsConsistentObjectsCount = -1L; //not used if -1.0
-		long assignedDefaultClassDecisionsConsistentObjectsCount = -1L; //concerns classification using (VC-)DRSA rules (number of consistent objects if default model employs default decision class); not used if -1.0
-		long assignedDecisionsConsistentObjectsCount = -1L; //not used if -1.0
+		long originalDecisionsConsistentObjectsCount = -1L; //not used if < 0
+		long assignedDefaultClassDecisionsConsistentObjectsCount = -1L; //concerns classification using (VC-)DRSA rules (number of consistent objects if default model employs default decision class); not used if < 0
+		long assignedDecisionsConsistentObjectsCount = -1L; //not used if < 0
+
+		DefaultClassificationType defaultClassificationType;
+		ClassifierType classifierType;
+		
+		AggregationMode aggregationMode = AggregationMode.NONE;
+		MeansAndStandardDeviations meansAndStdDevs = null; //get calculated when aggregationMode == AggregationMode.MEAN_AND_DEVIATION 
 		
 		/**
 		 * Constructs these classification statistics.
 		 * 
 		 * @param defaultClassificationType type of default classification (whether performed using default class or using default classifier)
+		 * @param classifierType type of classifier
 		 */
-		public ClassificationStatistics(DefaultClassificationType defaultClassificationType) {
+		public ClassificationStatistics(DefaultClassificationType defaultClassificationType, ClassifierType classifierType) {
 			this.defaultClassificationType = Precondition.notNull(defaultClassificationType, "Default classification type is null.");
+			this.classifierType = Precondition.notNull(classifierType, "Classifier type is null.");
 		}
 		
 		/**
 		 * Constructs these classification statistics by summing all respective counters from given classification statistics.
 		 * {@link #getDefaultClassificationType Default classification type} is taken from the first classification statistics.
 		 * 
+		 * @param aggregationMode aggregation mode used when aggregating given classification statistics;
+		 *        if equals {@link AggregationMode#MEAN_AND_DEVIATION}, then apart from normal calculations (sums),
+		 *        also means and standard deviations are additionally calculated
 		 * @param classificationStatisticsSet array with classification statistics
 		 * @throws InvalidSizeException if given array is empty
 		 */
-		public ClassificationStatistics(ClassificationStatistics... classificationStatisticsSet) {
+		public ClassificationStatistics(AggregationMode aggregationMode, ClassificationStatistics... classificationStatisticsSet) {
 			Precondition.nonEmpty(classificationStatisticsSet, "Set of classification statistics is empty.");
 			
-			this.defaultClassificationType = classificationStatisticsSet[0].defaultClassificationType;
+			if (aggregationMode == null || aggregationMode == AggregationMode.NONE) {
+				throw new InvalidValueException("Incorrect aggregation mode.");
+			}
 			
+			this.defaultClassificationType = classificationStatisticsSet[0].defaultClassificationType;
+			this.classifierType = classificationStatisticsSet[0].classifierType;
+			this.aggregationMode = aggregationMode;
+			
+			//calculate sums
 			for (ClassificationStatistics classificationStatistics : classificationStatisticsSet) {
 				preciseCorrectCount += classificationStatistics.preciseCorrectCount;
 				preciseIncorrectCount += classificationStatistics.preciseIncorrectCount;
@@ -99,14 +148,73 @@ public class ModelValidationResult {
 					assignedDecisionsConsistentObjectsCount += classificationStatistics.assignedDecisionsConsistentObjectsCount;
 				}
 			}
+			
+			//additionally calculate means and standard deviations
+			if (aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
+				BiFunction<Integer, ClassificationStatistics, Double> modelIndex2Accuracy = (modelIndex, classificationStatistics) -> {
+					if (modelIndex == 0) {
+						return classificationStatistics.getOverallAccuracy();
+					} else if (modelIndex == 1) {
+						return classificationStatistics.getMainModelAccuracy();
+					} else if (modelIndex == 2) {
+						return classificationStatistics.getDefaultModelAccuracy(); //TODO: get both default models
+					} else {
+						throw new InvalidValueException("Wrong model index.");
+					}
+				};
+				
+				List<MeanAndStandardDeviation> meansAndStdDevList = new ArrayList<MeanAndStandardDeviation>(3);
+				int n = classificationStatisticsSet.length;
+				
+				for (int modelIndex = 0; modelIndex < 3; modelIndex++) { //0: overall model, 1: main model; 2: default model
+					double sumAccuracies = 0.0;
+					List<Double> accuracies = new ArrayList<Double>();
+					
+					for (int i = 0; i < n; i++) {
+						sumAccuracies += modelIndex2Accuracy.apply(modelIndex, classificationStatisticsSet[i]);
+						accuracies.add(modelIndex2Accuracy.apply(modelIndex, classificationStatisticsSet[i]));
+					}
+					
+					double average = 0.0;
+					double stdDev = 0.0;
+					
+					if (n >= 1) {
+						average = sumAccuracies / n;
+						if (n > 1) {
+							final double streamAverage = average;
+							stdDev = Math.sqrt(((double)1 / (n - 1)) * accuracies.stream().map(a -> Math.pow(a - streamAverage, 2)).collect(Collectors.summingDouble(x -> x))); //divide by (n-1)!
+						}
+					}
+					
+					meansAndStdDevList.add(new MeanAndStandardDeviation(average, stdDev)); //TODO: store average evaluations in these statistics
+				} //for
+				
+				meansAndStdDevs = new MeansAndStandardDeviations(meansAndStdDevList.get(0), meansAndStdDevList.get(1), meansAndStdDevList.get(2)); // TODO: extend
+			}
 		}
 		
 		public long getMainModelCorrectCount() {
 			return preciseCorrectCount + resolvingConflictCorrectCount;
 		}
 		
+		public void increaseMainModelCorrectCount(int count) {
+			if (classifierType == ClassifierType.WEKA_CLASSIFIER) {
+				preciseCorrectCount += count;
+			} else {
+				throw new UnsupportedOperationException("Increasing main model correct count is only meant for a WEKA classifier.");
+			}
+		}
+		
 		public long getMainModelIncorrectCount() {
 			return preciseIncorrectCount + resolvingConflictIncorrectCount;
+		}
+		
+		public void increaseMainModelIncorrectCount(int count) {
+			if (classifierType == ClassifierType.WEKA_CLASSIFIER) {
+				preciseIncorrectCount += count;
+			} else {
+				throw new UnsupportedOperationException("Increasing main model incorrect count is only meant for a WEKA classifier.");
+			}
 		}
 		
 		public long getMainModelCount() {
@@ -221,9 +329,24 @@ public class ModelValidationResult {
 			return resolvingConflictCorrectCount + resolvingConflictIncorrectCount;
 		}
 		
+		public double getOverallAccuracy() { //gets overall accuracy
+			long allClassifiedObjectsCount = getCorrectCount() + getIncorrectCount();
+			return allClassifiedObjectsCount > 0L ? (double)getCorrectCount() / allClassifiedObjectsCount : 0.0;
+		}
+		
 		public double getMainModelAccuracy() { //gets accuracy concerning the part of validation data for which main model was applied to classify objects
 			long mainModelCount = getMainModelCount();
 			return mainModelCount > 0 ? (double)getMainModelCorrectCount() / mainModelCount : 0.0;
+		}
+		
+		public double getPreciseAccuracy() {
+			long preciseCount = getPreciseCount();
+			return preciseCount > 0 ? (double)getPreciseCorrectCount() / preciseCount : 0.0;
+		}
+		
+		public double getResolvingConflictAccuracy() {
+			long resolvingConflictCount = getResolvingConflictCount();
+			return resolvingConflictCount > 0 ? (double)getResolvingConflictCorrectCount() / resolvingConflictCount : 0.0;
 		}
 		
 		public double getDefaultModelAccuracy() { //gets accuracy concerning the part of validation data for which default model was applied to classify objects
@@ -242,11 +365,7 @@ public class ModelValidationResult {
 		}
 		
 		public double getMainModelDecisionsRatio() { //gets percent of situations when main model suggested decision
-			return (double)getMainModelCount() / (getMainModelCount() + getDefaultModelCount());
-		}
-		
-		public DefaultClassificationType getDefaultClassificationType () {
-			return defaultClassificationType;
+			return totalNumberOfClassifiedObjects > 0L ? (double)getMainModelCount() / totalNumberOfClassifiedObjects : 0.0;
 		}
 		
 		public long getTotalNumberOfCoveringRules() {
@@ -273,25 +392,127 @@ public class ModelValidationResult {
 			return assignedDecisionsConsistentObjectsCount;
 		}
 		
-		public double getAverageOriginalDecisionsConsistentObjectsCount() {
-			return totalNumberOfClassifiedObjects > 0L ? (double)originalDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects : 0.0;
+		public double getAverageOriginalDecisionsConsistentObjectsCount() { //gets average quality of classification for original decisions
+			if (originalDecisionsConsistentObjectsCount >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? ((double)originalDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects) : 0.0;
+			} else {
+				return -1.0; //not being calculated
+			}
 		}
 		
-		public double getAverageAssignedDefaultClassDecisionsConsistentObjectsCount() {
-			return totalNumberOfClassifiedObjects > 0L ? (double)assignedDefaultClassDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects : 0.0;
+		public double getAverageAssignedDefaultClassDecisionsConsistentObjectsCount() { //gets average quality of classification for assigned decisions, using default class when no rule matches object
+			if (assignedDefaultClassDecisionsConsistentObjectsCount >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDefaultClassDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects : 0.0;
+			} else {
+				return -1.0; //not being calculated
+			}
 		}
 		
-		public double getAverageAssignedDecisionsConsistentObjectsCount() {
-			return totalNumberOfClassifiedObjects > 0L ? (double)assignedDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects : 0.0; 
+		public double getAverageAssignedDecisionsConsistentObjectsCount() { //gets average quality of classification for assigned decisions (using default model)
+			if (assignedDecisionsConsistentObjectsCount >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects : 0.0;
+			} else {
+				return -1.0; //not being calculated
+			}
+		}
+		
+		public DefaultClassificationType getDefaultClassificationType () {
+			return defaultClassificationType;
+		}
+		
+		public ClassifierType getClassifierType() {
+			return classifierType;
+		}
+		
+		public AggregationMode getAggregationMode() {
+			return aggregationMode;
+		}
+
+		public MeansAndStandardDeviations getMeansAndStandardDeviations() { //can be null, depending on aggregationMode
+			return meansAndStdDevs;
+		}
+
+		public String toString() {
+			if (classifierType == ClassifierType.VCDRSA_RULES_CLASSIFIER) {
+				StringBuilder sb = new StringBuilder(256);
+				
+				double preciseClassificationPercentage = 100 * ( (double)getPreciseCount() / totalNumberOfClassifiedObjects );
+				double correctPreciseClassificationPercentage = 100 * ( (double)preciseCorrectCount / totalNumberOfClassifiedObjects );
+				double modeClassificationPercentage = 100 * ( (double)getResolvingConflictCount() / totalNumberOfClassifiedObjects );
+				double correctModeClassificationPercentage = 100 * ( (double)resolvingConflictCorrectCount / totalNumberOfClassifiedObjects );
+				double defaultClassClassificationPercentage = 100 * ( (double)getDefaultClassCount()/ totalNumberOfClassifiedObjects );
+				double correctDefaultClassClassificationPercentage = 100 * ( (double)defaultClassCorrectCount / totalNumberOfClassifiedObjects );
+				double defaultClassifierClassificationPercentage = 100 * ( (double)getDefaultClassifierCount() / totalNumberOfClassifiedObjects );
+				double correctDefaultClassifierClassificationPercentage = 100 * ( (double)defaultClassifierCorrectCount / totalNumberOfClassifiedObjects );
+				double accuracy = 100 * ( (double)getCorrectCount() / totalNumberOfClassifiedObjects ); //ordinalMisclassificationMatrix.getAccuracy();
+				double accuracyWhenClassifiedByRules = 100 * getMainModelAccuracy(); //divide by the number of objects not-classified to the default class
+				double accuracyWhenClassifiedByRulesPrecise = 100 * getPreciseAccuracy(); //accuracy when classified by precise rules
+				double accuracyWhenClassifiedByRulesResolvingConflict = 100 * getResolvingConflictAccuracy();  //accuracy when classified after resolving conflict
+				double accuracyWhenClassifiedByDefaultClass = 100 * getDefaultClassAccuracy();
+				double accuracyWhenClassifiedByDefaultClassifier = 100 * getDefaultClassifierAccuracy();
+				double avgNumberOfCoveringRules = getAverageNumberOfCoveringRules();
+				double originalDecisionsQualityOfApproximation = getAverageOriginalDecisionsConsistentObjectsCount();
+				double assignedDefaultClassDecisionsQualityOfApproximation = getAverageAssignedDefaultClassDecisionsConsistentObjectsCount();
+				double assignedDecisionsQualityOfApproximation = getAverageAssignedDecisionsConsistentObjectsCount();
+				
+				sb.append("[Summary]: ");
+				sb.append(String.format(Locale.US, "precise: %.2f%% (%.2f%% hit)", preciseClassificationPercentage, correctPreciseClassificationPercentage));
+				sb.append(String.format(Locale.US, ", mode: %.2f%% (%.2f%% hit)", modeClassificationPercentage, correctModeClassificationPercentage));
+				sb.append(String.format(Locale.US, ", default class: %.2f%% (%.2f%% hit)", defaultClassClassificationPercentage, correctDefaultClassClassificationPercentage));
+				sb.append(String.format(Locale.US, ", default classifier: %.2f%% (%.2f%% hit)", defaultClassifierClassificationPercentage, correctDefaultClassifierClassificationPercentage));
+				sb.append(String.format(Locale.US, "; by rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
+				sb.append(accuracyWhenClassifiedByRules > accuracy ? " [UP]" : " [!UP]");
+				sb.append(String.format(Locale.US, " (precise: %.2f%% r.hit", accuracyWhenClassifiedByRulesPrecise)); //accuracy among objects covered by 1+ rule(s) of the same type (at least or at most)
+				sb.append(String.format(Locale.US, ", mode: %.2f%% r.hit),", accuracyWhenClassifiedByRulesResolvingConflict)); //accuracy among objects covered by 1+ rule(s) of different types (at least and at most)
+				sb.append(String.format(Locale.US, "%n[Summary]: "));
+				sb.append(String.format(Locale.US, "by default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
+				sb.append(String.format(Locale.US, ", by default classifier: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
+				sb.append(String.format(Locale.US, "; "+ModeRuleClassifier.avgNumberOfRulesIndicator+": %.2f", avgNumberOfCoveringRules));
+				if (originalDecisionsQualityOfApproximation >= 0.0) {
+					sb.append(String.format(Locale.US, "; original quality: %.4f", originalDecisionsQualityOfApproximation));
+				}
+				if (assignedDefaultClassDecisionsQualityOfApproximation >= 0.0) {
+					sb.append(String.format(Locale.US, "; assigned default class quality: %.4f", assignedDefaultClassDecisionsQualityOfApproximation));
+				}
+				if (assignedDecisionsQualityOfApproximation >= 0.0) {
+					sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
+				}
+				sb.append(".");
+				
+				return sb.toString();
+			} else { //WEKA_CLASSIFIER
+				StringBuilder sb = new StringBuilder(128);
+				
+				double originalDecisionsQualityOfApproximation = getAverageOriginalDecisionsConsistentObjectsCount();
+				double assignedDecisionsQualityOfApproximation = getAverageAssignedDecisionsConsistentObjectsCount();
+				
+				boolean appended = false;
+				sb.append("[Summary]: ");
+				if (originalDecisionsQualityOfApproximation >= 0.0) {
+					sb.append(String.format(Locale.US, "original quality: %.4f", originalDecisionsQualityOfApproximation));
+					appended = true;
+				}
+				if (assignedDecisionsQualityOfApproximation >= 0.0) {
+					sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
+					appended = true;
+				}
+				if (!appended) {
+					sb.append("--");
+				}
+				sb.append(".");
+				
+				return sb.toString();
+			}
 		}
 		
 	}
 	
 	OrdinalMisclassificationMatrix ordinalMisclassificationMatrix;
-	
 	ClassificationStatistics classificationStatistics;
-	
 	ModelDescription modelDescription;
+	
+	AggregationMode aggregationMode = AggregationMode.NONE;
+	Decision[] orderOfDecisions = null;
 	
 //	//total numbers of decisions
 //	long numberOfCorrectDecisionsAssignedByMainModel = 0L; //concerns the part of validation data for which main model was applied to classify objects (e.g., covering decision rule(s))
@@ -325,14 +546,19 @@ public class ModelValidationResult {
 //		this.totalNumberOfClassifiedObjects = totalNumberOfClassifiedObjects;
 	}
 	
-	public ModelValidationResult(Decision[] orderOfDecisions, ModelValidationResult... modelValidationResults) {
-		ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions,
+	public ModelValidationResult(AggregationMode aggregationMode, Decision[] orderOfDecisions, ModelValidationResult... modelValidationResults) {
+		if (aggregationMode == null || aggregationMode == AggregationMode.NONE) {
+			throw new InvalidValueException("Incorrect aggregation mode.");
+		}
+		
+		ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(aggregationMode == AggregationMode.SUM, orderOfDecisions,
 				Arrays.asList(modelValidationResults).stream().map(m -> m.getOrdinalMisclassificationMatrix()).collect(Collectors.toList()).toArray(new OrdinalMisclassificationMatrix[0]));
-		
-		classificationStatistics = new ClassificationStatistics(Arrays.asList(modelValidationResults).stream().map(m -> m.getClassificationStatistics()).collect(Collectors.toList()).toArray(new ClassificationStatistics[0]));
-		
+		classificationStatistics = new ClassificationStatistics(aggregationMode, Arrays.asList(modelValidationResults).stream().map(m -> m.getClassificationStatistics()).collect(Collectors.toList()).toArray(new ClassificationStatistics[0]));
 		ModelDescription[] modelDescriptions = Arrays.asList(modelValidationResults).stream().map(m -> m.getModelDescription()).collect(Collectors.toList()).toArray(new ModelDescription[0]);
-		modelDescription = modelDescriptions[0].getModelDescriptionBuilder().build(modelDescriptions);
+		modelDescription = modelDescriptions[0].getModelDescriptionBuilder().build(aggregationMode, modelDescriptions);
+		
+		this.aggregationMode = aggregationMode;
+		this.orderOfDecisions = orderOfDecisions;
 		
 //		//just do summation, like in MisclassificationMatrix
 //		for (ModelValidationResult modelValidationResult : modelValidationResults) {
@@ -354,56 +580,59 @@ public class ModelValidationResult {
 		return classificationStatistics;
 	}
 	
-	public double getOverallAccuracy() {
-		return ordinalMisclassificationMatrix.getAccuracy();
+	public ModelDescription getModelDescription() {
+		return modelDescription;
 	}
 	
-	public double getMainModelAccuracy() { //gets accuracy concerning the part of validation data for which main model was applied to classify objects
-		return classificationStatistics.getMainModelAccuracy();
-//		return numberOfAllDecisionsAssignedByMainModel > 0 ? (double)numberOfCorrectDecisionsAssignedByMainModel / numberOfAllDecisionsAssignedByMainModel : 0.0;
+	public AggregationMode getAggregationMode() {
+		return aggregationMode;
 	}
+
+	public Decision[] getOrderOfDecisions() {
+		return orderOfDecisions;
+	}
+
+//	public double getAccuracy() {
+//		return ordinalMisclassificationMatrix.getAccuracy();
+//	}
+//	
+//	public double getMainModelAccuracy() { //gets accuracy concerning the part of validation data for which main model was applied to classify objects
+//		return classificationStatistics.getMainModelAccuracy();
+////		return numberOfAllDecisionsAssignedByMainModel > 0 ? (double)numberOfCorrectDecisionsAssignedByMainModel / numberOfAllDecisionsAssignedByMainModel : 0.0;
+//	}
+//	
+//	public double getDefaultModelAccuracy() { //gets accuracy concerning the part of validation data for which default model was applied to classify objects
+//		return classificationStatistics.getDefaultModelAccuracy();
+////		return numberOfAllDecisionsAssignedByDefaultModel > 0 ? (double)numberOfCorrectDecisionsAssignedByDefaultModel / numberOfAllDecisionsAssignedByDefaultModel : 0.0;
+//	}
 	
-	public double getDefaultModelAccuracy() { //gets accuracy concerning the part of validation data for which default model was applied to classify objects
-		return classificationStatistics.getDefaultModelAccuracy();
-//		return numberOfAllDecisionsAssignedByDefaultModel > 0 ? (double)numberOfCorrectDecisionsAssignedByDefaultModel / numberOfAllDecisionsAssignedByDefaultModel : 0.0;
-	}
-	
-	public double getMainModelDecisionsRatio() { //percent of situations when main model suggested decision
-		return classificationStatistics.getMainModelDecisionsRatio();
-//		return (double)numberOfAllDecisionsAssignedByMainModel / (numberOfAllDecisionsAssignedByMainModel + numberOfAllDecisionsAssignedByDefaultModel);
-	}
+//	public double getMainModelDecisionsRatio() { //percent of situations when main model suggested decision
+//		return classificationStatistics.getMainModelDecisionsRatio();
+//	}
 
 //	public long getNumberOfCorrectDecisionsAssignedByMainModel() {
 //		return numberOfCorrectDecisionsAssignedByMainModel;
 //	}
 
-	public long getNumberOfAllDecisionsAssignedByMainModel() {
-		return classificationStatistics.getMainModelCount();
-//		return numberOfAllDecisionsAssignedByMainModel;
-	}
+//	public long getNumberOfAllDecisionsAssignedByMainModel() {
+//		return classificationStatistics.getMainModelCount();
+//	}
 
 //	public long getNumberOfCorrectDecisionsAssignedByDefaultModel() {
 //		return numberOfCorrectDecisionsAssignedByDefaultModel;
 //	}
 
-	public long getNumberOfAllDecisionsAssignedByDefaultModel() {
-		return classificationStatistics.getDefaultModelCount();
-//		return numberOfAllDecisionsAssignedByDefaultModel;
-	}
+//	public long getNumberOfAllDecisionsAssignedByDefaultModel() {
+//		return classificationStatistics.getDefaultModelCount();
+//	}
 	
-	public ModelDescription getModelDescription() {
-		return modelDescription;
-	}
-	
-	public long getTotalNumberOfCoveringRules() {
-		return classificationStatistics.getTotalNumberOfCoveringRules();
-//		return totalNumberOfCoveringRules;
-	}
-
-	public long getTotalNumberOfClassifiedObjects() {
-		return classificationStatistics.getTotalNumberOfClassifiedObjects();
-//		return totalNumberOfClassifiedObjects;
-	}
+//	public long getTotalNumberOfCoveringRules() {
+//		return classificationStatistics.getTotalNumberOfCoveringRules();
+//	}
+//
+//	public long getTotalNumberOfClassifiedObjects() {
+//		return classificationStatistics.getTotalNumberOfClassifiedObjects();
+//	}
 
 //	public double getAvgNumberOfCoveringRules() {
 //		return (double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects;
