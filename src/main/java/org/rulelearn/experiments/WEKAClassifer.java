@@ -31,39 +31,6 @@ import weka.core.Instances;
  */
 public class WEKAClassifer implements ClassificationModel {
 	
-//	public static class ValidationSummary extends ClassificationModel.ValidationSummary {
-//		double originalDecisionsQualityOfApproximation; //not used if -1.0
-//		double assignedDecisionsQualityOfApproximation; //not used if -1.0
-//		
-//		public ValidationSummary(double originalDecisionsQualityOfApproximation,
-//				double assignedDecisionsQualityOfApproximation) {
-//			this.originalDecisionsQualityOfApproximation = originalDecisionsQualityOfApproximation;
-//			this.assignedDecisionsQualityOfApproximation = assignedDecisionsQualityOfApproximation;
-//		}
-//
-//		@Override
-//		public String toString() {
-//			StringBuilder sb = new StringBuilder(120);
-//			
-//			boolean appended = false;
-//			sb.append("[Summary]: ");
-//			if (originalDecisionsQualityOfApproximation >= 0.0) {
-//				sb.append(String.format(Locale.US, "original quality: %.4f", originalDecisionsQualityOfApproximation));
-//				appended = true;
-//			}
-//			if (assignedDecisionsQualityOfApproximation >= 0.0) {
-//				sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
-//				appended = true;
-//			}
-//			if (!appended) {
-//				sb.append("--");
-//			}
-//			sb.append(".");
-//			
-//			return sb.toString();
-//		}
-//	}
-	
 	public static class ModelDescriptionBuilder extends ClassificationModel.ModelDescriptionBuilder {
 		
 		/**
@@ -127,8 +94,6 @@ public class WEKAClassifer implements ClassificationModel {
 	}
 	
 	AbstractClassifier trainedClassifier; //trained classifier
-	
-//	ValidationSummary validationSummary = null;
 	String modelLearnerDescription;
 	ModelDescription modelDescription = null;
 
@@ -171,25 +136,12 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-//		double originalDecisionsQualityOfApproximation = -1.0;
-//		double assignedDecisionsQualityOfApproximation = -1.0;
-		
 		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
 			classificationStatistics.originalDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), 0.0);
-//			originalDecisionsQualityOfApproximation = (double)classificationStatistics.originalDecisionsConsistentObjectsCount / testDataSize;
-			
 			classificationStatistics.assignedDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
-//			assignedDecisionsQualityOfApproximation = (double)classificationStatistics.assignedDecisionsConsistentObjectsCount / testDataSize;
 		}
 		
-//		this.validationSummary = new ValidationSummary(originalDecisionsQualityOfApproximation, assignedDecisionsQualityOfApproximation);
-		
-		return new ModelValidationResult(ordinalMisclassificationMatrix,
-				classificationStatistics,
-//				(long)ordinalMisclassificationMatrix.getNumberOfCorrectAssignments(), (long)instances.numInstances(),
-//				0L, 0L, //all decisions assigned by main model (no abstaining of main model!), so default model is not used
-				getModelDescription());
-//				0L, testDataSize); //no rules
+		return new ModelValidationResult(ordinalMisclassificationMatrix, classificationStatistics, getModelDescription());
 	}
 	
 	private SimpleDecision wekaClassificationResult2SimpleDecision(double wekaClassificationResult, EvaluationAttribute decisionAttribute, int decisionAttributeIndex) {
@@ -205,10 +157,6 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 	}
 	
-//	public ValidationSummary getValidationSummary() {
-//		return validationSummary;
-//	}
-
 	@Override
 	public ModelDescription getModelDescription() {
 		if (modelDescription == null) {

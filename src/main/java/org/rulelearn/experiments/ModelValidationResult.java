@@ -514,36 +514,13 @@ public class ModelValidationResult {
 	AggregationMode aggregationMode = AggregationMode.NONE;
 	Decision[] orderOfDecisions = null;
 	
-//	//total numbers of decisions
-//	long numberOfCorrectDecisionsAssignedByMainModel = 0L; //concerns the part of validation data for which main model was applied to classify objects (e.g., covering decision rule(s))
-//	long numberOfAllDecisionsAssignedByMainModel = 0L;
-//	long numberOfCorrectDecisionsAssignedByDefaultModel = 0L; //concerns the part of validation data for which default model was applied to classify objects (e.g., assigning default decision class)
-//	long numberOfAllDecisionsAssignedByDefaultModel = 0L; //can be 0 if default model is not used (which is the case when the main model classifies all objects itself)
-
-//	//in case of single validation (on a validation set) this is a sum of the numbers of covering rules over all classified objects;
-//	//e.g., if there are two objects, first covered by 3 rules, and second covered by 4 rules, then total number of covering rules is 7;
-//	//in case of aggregated model validation result, this is the sum of total number of covering rules over all validated models
-//	long totalNumberOfCoveringRules = 0L;
-//	long totalNumberOfClassifiedObjects = 0L;
-	
 	public ModelValidationResult(OrdinalMisclassificationMatrix ordinalMisclassificationMatrix,
 			ClassificationStatistics classificationStatistics,
-//			long numberOfCorrectDecisionsAssignedByMainModel, long numberOfAllDecisionsAssignedByMainModel,
-//			long numberOfCorrectDecisionsAssignedByDefaultModel, long numberOfAllDecisionsAssignedByDefaultModel,
 			ModelDescription modelDescription) {
-//			long totalNumberOfCoveringRules, long totalNumberOfClassifiedObjects) {
 		
 		this.ordinalMisclassificationMatrix = ordinalMisclassificationMatrix;
 		this.classificationStatistics = classificationStatistics;
 		this.modelDescription = modelDescription;
-		
-//		this.numberOfCorrectDecisionsAssignedByMainModel = numberOfCorrectDecisionsAssignedByMainModel;
-//		this.numberOfAllDecisionsAssignedByMainModel = numberOfAllDecisionsAssignedByMainModel;
-//		this.numberOfCorrectDecisionsAssignedByDefaultModel = numberOfCorrectDecisionsAssignedByDefaultModel;
-//		this.numberOfAllDecisionsAssignedByDefaultModel = numberOfAllDecisionsAssignedByDefaultModel;
-//		
-//		this.totalNumberOfCoveringRules = totalNumberOfCoveringRules; //should be zero for classifiers not using rules
-//		this.totalNumberOfClassifiedObjects = totalNumberOfClassifiedObjects;
 	}
 	
 	public ModelValidationResult(AggregationMode aggregationMode, Decision[] orderOfDecisions, ModelValidationResult... modelValidationResults) {
@@ -559,17 +536,6 @@ public class ModelValidationResult {
 		
 		this.aggregationMode = aggregationMode;
 		this.orderOfDecisions = orderOfDecisions;
-		
-//		//just do summation, like in MisclassificationMatrix
-//		for (ModelValidationResult modelValidationResult : modelValidationResults) {
-//			numberOfCorrectDecisionsAssignedByMainModel += modelValidationResult.numberOfCorrectDecisionsAssignedByMainModel;
-//			numberOfAllDecisionsAssignedByMainModel += modelValidationResult.numberOfAllDecisionsAssignedByMainModel;
-//			numberOfCorrectDecisionsAssignedByDefaultModel += modelValidationResult.numberOfCorrectDecisionsAssignedByDefaultModel;
-//			numberOfAllDecisionsAssignedByDefaultModel += modelValidationResult.numberOfAllDecisionsAssignedByDefaultModel;
-//			
-//			totalNumberOfCoveringRules += modelValidationResult.totalNumberOfCoveringRules;
-//			totalNumberOfClassifiedObjects += modelValidationResult.totalNumberOfClassifiedObjects;
-//		}
 	}
 
 	public OrdinalMisclassificationMatrix getOrdinalMisclassificationMatrix() {
@@ -591,51 +557,5 @@ public class ModelValidationResult {
 	public Decision[] getOrderOfDecisions() {
 		return orderOfDecisions;
 	}
-
-//	public double getAccuracy() {
-//		return ordinalMisclassificationMatrix.getAccuracy();
-//	}
-//	
-//	public double getMainModelAccuracy() { //gets accuracy concerning the part of validation data for which main model was applied to classify objects
-//		return classificationStatistics.getMainModelAccuracy();
-////		return numberOfAllDecisionsAssignedByMainModel > 0 ? (double)numberOfCorrectDecisionsAssignedByMainModel / numberOfAllDecisionsAssignedByMainModel : 0.0;
-//	}
-//	
-//	public double getDefaultModelAccuracy() { //gets accuracy concerning the part of validation data for which default model was applied to classify objects
-//		return classificationStatistics.getDefaultModelAccuracy();
-////		return numberOfAllDecisionsAssignedByDefaultModel > 0 ? (double)numberOfCorrectDecisionsAssignedByDefaultModel / numberOfAllDecisionsAssignedByDefaultModel : 0.0;
-//	}
-	
-//	public double getMainModelDecisionsRatio() { //percent of situations when main model suggested decision
-//		return classificationStatistics.getMainModelDecisionsRatio();
-//	}
-
-//	public long getNumberOfCorrectDecisionsAssignedByMainModel() {
-//		return numberOfCorrectDecisionsAssignedByMainModel;
-//	}
-
-//	public long getNumberOfAllDecisionsAssignedByMainModel() {
-//		return classificationStatistics.getMainModelCount();
-//	}
-
-//	public long getNumberOfCorrectDecisionsAssignedByDefaultModel() {
-//		return numberOfCorrectDecisionsAssignedByDefaultModel;
-//	}
-
-//	public long getNumberOfAllDecisionsAssignedByDefaultModel() {
-//		return classificationStatistics.getDefaultModelCount();
-//	}
-	
-//	public long getTotalNumberOfCoveringRules() {
-//		return classificationStatistics.getTotalNumberOfCoveringRules();
-//	}
-//
-//	public long getTotalNumberOfClassifiedObjects() {
-//		return classificationStatistics.getTotalNumberOfClassifiedObjects();
-//	}
-
-//	public double getAvgNumberOfCoveringRules() {
-//		return (double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects;
-//	}
 
 }
