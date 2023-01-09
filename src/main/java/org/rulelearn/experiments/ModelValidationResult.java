@@ -15,6 +15,7 @@ import org.rulelearn.core.InvalidValueException;
 import org.rulelearn.core.Precondition;
 import org.rulelearn.data.Decision;
 import org.rulelearn.experiments.ClassificationModel.ModelDescription;
+import org.rulelearn.experiments.ClassificationModel.ModelLearningStatistics;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 /**
@@ -39,11 +40,17 @@ public class ModelValidationResult {
 		MeanAndStandardDeviation overallAverageAccuracy;
 		MeanAndStandardDeviation mainModelAverageAccuracy;
 		MeanAndStandardDeviation defaultModelAverageAccuracy;
+		MeanAndStandardDeviation defaultClassAverageAccuracy;
+		MeanAndStandardDeviation defaultClassifierAverageAccuracy;
 		
-		public MeansAndStandardDeviations(MeanAndStandardDeviation overallAverageAccuracy, MeanAndStandardDeviation mainModelAverageAccuracy, MeanAndStandardDeviation defaultModelAverageAccuracy) {
+		public MeansAndStandardDeviations(MeanAndStandardDeviation overallAverageAccuracy,
+				MeanAndStandardDeviation mainModelAverageAccuracy, MeanAndStandardDeviation defaultModelAverageAccuracy,
+				MeanAndStandardDeviation defaultClassAverageAccuracy, MeanAndStandardDeviation defaultClassifierAverageAccuracy) {
 			this.overallAverageAccuracy = overallAverageAccuracy;
 			this.mainModelAverageAccuracy = mainModelAverageAccuracy;
 			this.defaultModelAverageAccuracy = defaultModelAverageAccuracy;
+			this.defaultClassAverageAccuracy = defaultClassAverageAccuracy;
+			this.defaultClassifierAverageAccuracy = defaultClassifierAverageAccuracy;
 		}
 
 		public MeanAndStandardDeviation getOverallAverageAccuracy() {
@@ -57,7 +64,15 @@ public class ModelValidationResult {
 		public MeanAndStandardDeviation getDefaultModelAverageAccuracy() {
 			return defaultModelAverageAccuracy;
 		}
-		
+
+		public MeanAndStandardDeviation getDefaultClassAverageAccuracy() {
+			return defaultClassAverageAccuracy;
+		}
+
+		public MeanAndStandardDeviation getDefaultClassifierAverageAccuracy() {
+			return defaultClassifierAverageAccuracy;
+		}
+
 	}
 	
 	public static class ClassificationStatistics {
@@ -81,9 +96,9 @@ public class ModelValidationResult {
 		long totalNumberOfCoveringRules = 0L; //concerns classification using (VC-)DRSA rules; for WEKA classifiers remains zero
 		long totalNumberOfClassifiedObjects = 0L;
 		
-		long originalDecisionsConsistentObjectsCount = -1L; //not used if < 0
-		long assignedDefaultClassDecisionsConsistentObjectsCount = -1L; //concerns classification using (VC-)DRSA rules (number of consistent objects if default model employs default decision class); not used if < 0
-		long assignedDecisionsConsistentObjectsCount = -1L; //not used if < 0
+		long originalDecisionsConsistentTestObjectsTotalCount = -1L; //not used if < 0
+		long assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = -1L; //concerns classification using (VC-)DRSA rules (total number of consistent objects if default model employs default decision class); not used if < 0
+		long assignedDecisionsConsistentTestObjectsTotalCount = -1L; //not used if < 0
 
 		DefaultClassificationType defaultClassificationType;
 		ClassifierType classifierType;
@@ -123,6 +138,13 @@ public class ModelValidationResult {
 			this.classifierType = classificationStatisticsSet[0].classifierType;
 			this.aggregationMode = aggregationMode;
 			
+			long originalDecisionsConsistentTestObjectsTotalCountSum = 0L;
+			boolean originalDecisionsConsistentTestObjectsTotalCountIsUsed = false;
+			long assignedDefaultClassDecisionsConsistentTestObjectsTotalCountSum = 0L;
+			boolean assignedDefaultClassDecisionsConsistentTestObjectsTotalCountIsUsed = false;
+			long assignedDecisionsConsistentTestObjectsTotalCountSum = 0L;
+			boolean assignedDecisionsConsistentTestObjectsTotalCountIsUsed = false;
+
 			//calculate sums
 			for (ClassificationStatistics classificationStatistics : classificationStatisticsSet) {
 				preciseCorrectCount += classificationStatistics.preciseCorrectCount;
@@ -138,41 +160,60 @@ public class ModelValidationResult {
 				totalNumberOfCoveringRules += classificationStatistics.totalNumberOfCoveringRules;
 				totalNumberOfClassifiedObjects += classificationStatistics.totalNumberOfClassifiedObjects;
 				
-				if (classificationStatistics.originalDecisionsConsistentObjectsCount >= 0) {
-					originalDecisionsConsistentObjectsCount += classificationStatistics.originalDecisionsConsistentObjectsCount;
+				if (classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount >= 0) {
+					originalDecisionsConsistentTestObjectsTotalCountSum += classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount;
+					originalDecisionsConsistentTestObjectsTotalCountIsUsed = true;
 				}
-				if (classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount >= 0) {
-					assignedDefaultClassDecisionsConsistentObjectsCount += classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount;
+				if (classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount >= 0) {
+					assignedDefaultClassDecisionsConsistentTestObjectsTotalCountSum += classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount;
+					assignedDefaultClassDecisionsConsistentTestObjectsTotalCountIsUsed = true;
 				}
-				if (classificationStatistics.assignedDecisionsConsistentObjectsCount >= 0) {
-					assignedDecisionsConsistentObjectsCount += classificationStatistics.assignedDecisionsConsistentObjectsCount;
+				if (classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount >= 0) {
+					assignedDecisionsConsistentTestObjectsTotalCountSum += classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount;
+					assignedDecisionsConsistentTestObjectsTotalCountIsUsed = true;
 				}
+			}
+			
+			if (originalDecisionsConsistentTestObjectsTotalCountIsUsed) {
+				originalDecisionsConsistentTestObjectsTotalCount = originalDecisionsConsistentTestObjectsTotalCountSum;
+			}
+			if (assignedDefaultClassDecisionsConsistentTestObjectsTotalCountIsUsed) {
+				assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = assignedDefaultClassDecisionsConsistentTestObjectsTotalCountSum;
+			}
+			if (assignedDecisionsConsistentTestObjectsTotalCountIsUsed) {
+				assignedDecisionsConsistentTestObjectsTotalCount = assignedDecisionsConsistentTestObjectsTotalCountSum;
 			}
 			
 			//additionally calculate means and standard deviations
 			if (aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
-				BiFunction<Integer, ClassificationStatistics, Double> modelIndex2Accuracy = (modelIndex, classificationStatistics) -> {
-					if (modelIndex == 0) {
+				int averagedStatisticsCount = 5;
+				
+				BiFunction<Integer, ClassificationStatistics, Double> modelIndex2Accuracy = (statisticIndex, classificationStatistics) -> {
+					if (statisticIndex == 0) {
 						return classificationStatistics.getOverallAccuracy();
-					} else if (modelIndex == 1) {
+					} else if (statisticIndex == 1) {
 						return classificationStatistics.getMainModelAccuracy();
-					} else if (modelIndex == 2) {
+					} else if (statisticIndex == 2) {
 						return classificationStatistics.getDefaultModelAccuracy(); //TODO: get both default models
+					} else if (statisticIndex == 3) {
+						return classificationStatistics.getDefaultClassAccuracy(); //TODO: get both default models
+					} else if (statisticIndex == 4) {
+						return classificationStatistics.getDefaultClassifierAccuracy(); //TODO: get both default models
 					} else {
-						throw new InvalidValueException("Wrong model index.");
+						throw new InvalidValueException("Wrong statistic index.");
 					}
 				};
 				
 				List<MeanAndStandardDeviation> meansAndStdDevList = new ArrayList<MeanAndStandardDeviation>(3);
 				int n = classificationStatisticsSet.length;
 				
-				for (int modelIndex = 0; modelIndex < 3; modelIndex++) { //0: overall model, 1: main model; 2: default model
+				for (int statisticIndex = 0; statisticIndex < averagedStatisticsCount; statisticIndex++) {
 					double sumAccuracies = 0.0;
 					List<Double> accuracies = new ArrayList<Double>();
 					
 					for (int i = 0; i < n; i++) {
-						sumAccuracies += modelIndex2Accuracy.apply(modelIndex, classificationStatisticsSet[i]);
-						accuracies.add(modelIndex2Accuracy.apply(modelIndex, classificationStatisticsSet[i]));
+						sumAccuracies += modelIndex2Accuracy.apply(statisticIndex, classificationStatisticsSet[i]);
+						accuracies.add(modelIndex2Accuracy.apply(statisticIndex, classificationStatisticsSet[i]));
 					}
 					
 					double average = 0.0;
@@ -189,7 +230,7 @@ public class ModelValidationResult {
 					meansAndStdDevList.add(new MeanAndStandardDeviation(average, stdDev)); //TODO: store average evaluations in these statistics
 				} //for
 				
-				meansAndStdDevs = new MeansAndStandardDeviations(meansAndStdDevList.get(0), meansAndStdDevList.get(1), meansAndStdDevList.get(2)); // TODO: extend
+				meansAndStdDevs = new MeansAndStandardDeviations(meansAndStdDevList.get(0), meansAndStdDevList.get(1), meansAndStdDevList.get(2), meansAndStdDevList.get(3), meansAndStdDevList.get(4)); // TODO: extend
 			}
 		}
 		
@@ -380,37 +421,37 @@ public class ModelValidationResult {
 			return totalNumberOfClassifiedObjects > 0L ? (double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects : 0.0;
 		}
 		
-		public long getOriginalDecisionsConsistentObjectsCount() {
-			return originalDecisionsConsistentObjectsCount;
+		public long getOriginalDecisionsConsistentTestObjectsTotalCount() {
+			return originalDecisionsConsistentTestObjectsTotalCount;
 		}
 
-		public long getAssignedDefaultClassDecisionsConsistentObjectsCount() {
-			return assignedDefaultClassDecisionsConsistentObjectsCount;
+		public long getAssignedDefaultClassDecisionsConsistentTestObjectsTotalCount() {
+			return assignedDefaultClassDecisionsConsistentTestObjectsTotalCount;
 		}
 
-		public long getAssignedDecisionsConsistentObjectsCount() {
-			return assignedDecisionsConsistentObjectsCount;
+		public long getAssignedDecisionsConsistentTestObjectsTotalCount() {
+			return assignedDecisionsConsistentTestObjectsTotalCount;
 		}
 		
-		public double getAverageOriginalDecisionsConsistentObjectsCount() { //gets average quality of classification for original decisions
-			if (originalDecisionsConsistentObjectsCount >= 0L) {
-				return totalNumberOfClassifiedObjects > 0L ? ((double)originalDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects) : 0.0;
+		public double getAverageOriginalDecisionsConsistentTestObjectsTotalCount() { //gets average quality of classification over test data for original decisions
+			if (originalDecisionsConsistentTestObjectsTotalCount >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? ((double)originalDecisionsConsistentTestObjectsTotalCount / totalNumberOfClassifiedObjects) : 0.0;
 			} else {
 				return -1.0; //not being calculated
 			}
 		}
 		
-		public double getAverageAssignedDefaultClassDecisionsConsistentObjectsCount() { //gets average quality of classification for assigned decisions, using default class when no rule matches object
-			if (assignedDefaultClassDecisionsConsistentObjectsCount >= 0L) {
-				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDefaultClassDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects : 0.0;
+		public double getAverageAssignedDefaultClassDecisionsConsistentTestObjectsTotalCount() { //gets average quality of classification over test data for assigned decisions, using default class when no rule matches object
+			if (assignedDefaultClassDecisionsConsistentTestObjectsTotalCount >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDefaultClassDecisionsConsistentTestObjectsTotalCount / totalNumberOfClassifiedObjects : 0.0;
 			} else {
 				return -1.0; //not being calculated
 			}
 		}
 		
-		public double getAverageAssignedDecisionsConsistentObjectsCount() { //gets average quality of classification for assigned decisions (using default model)
-			if (assignedDecisionsConsistentObjectsCount >= 0L) {
-				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDecisionsConsistentObjectsCount / totalNumberOfClassifiedObjects : 0.0;
+		public double getAverageAssignedDecisionsConsistentTestObjectsTotalCount() { //gets average quality of classification over test data for assigned decisions, using default model when no rule matches object
+			if (assignedDecisionsConsistentTestObjectsTotalCount >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDecisionsConsistentTestObjectsTotalCount / totalNumberOfClassifiedObjects : 0.0;
 			} else {
 				return -1.0; //not being calculated
 			}
@@ -451,64 +492,82 @@ public class ModelValidationResult {
 				double accuracyWhenClassifiedByDefaultClass = 100 * getDefaultClassAccuracy();
 				double accuracyWhenClassifiedByDefaultClassifier = 100 * getDefaultClassifierAccuracy();
 				double avgNumberOfCoveringRules = getAverageNumberOfCoveringRules();
-				double originalDecisionsQualityOfApproximation = getAverageOriginalDecisionsConsistentObjectsCount();
-				double assignedDefaultClassDecisionsQualityOfApproximation = getAverageAssignedDefaultClassDecisionsConsistentObjectsCount();
-				double assignedDecisionsQualityOfApproximation = getAverageAssignedDecisionsConsistentObjectsCount();
 				
-				sb.append("[Summary]: ");
+				sb.append("[Testing]: ");
 				sb.append(String.format(Locale.US, "precise: %.2f%% (%.2f%% hit)", preciseClassificationPercentage, correctPreciseClassificationPercentage));
 				sb.append(String.format(Locale.US, ", mode: %.2f%% (%.2f%% hit)", modeClassificationPercentage, correctModeClassificationPercentage));
 				sb.append(String.format(Locale.US, ", default class: %.2f%% (%.2f%% hit)", defaultClassClassificationPercentage, correctDefaultClassClassificationPercentage));
-				sb.append(String.format(Locale.US, ", default classifier: %.2f%% (%.2f%% hit)", defaultClassifierClassificationPercentage, correctDefaultClassifierClassificationPercentage));
-				sb.append(String.format(Locale.US, "; by rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
+				sb.append(String.format(Locale.US, ", default classifier: %.2f%% (%.2f%% hit);", defaultClassifierClassificationPercentage, correctDefaultClassifierClassificationPercentage));
+				sb.append(String.format(Locale.US, "%n[Testing]: "));
+				sb.append(String.format(Locale.US, "by rules: %.2f%% r.hit", accuracyWhenClassifiedByRules)); //accuracy among objects covered by 1+ rule
 				sb.append(accuracyWhenClassifiedByRules > accuracy ? " [UP]" : " [!UP]");
 				sb.append(String.format(Locale.US, " (precise: %.2f%% r.hit", accuracyWhenClassifiedByRulesPrecise)); //accuracy among objects covered by 1+ rule(s) of the same type (at least or at most)
-				sb.append(String.format(Locale.US, ", mode: %.2f%% r.hit),", accuracyWhenClassifiedByRulesResolvingConflict)); //accuracy among objects covered by 1+ rule(s) of different types (at least and at most)
-				sb.append(String.format(Locale.US, "%n[Summary]: "));
-				sb.append(String.format(Locale.US, "by default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
-				sb.append(String.format(Locale.US, ", by default classifier: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
-				sb.append(String.format(Locale.US, "; "+ModeRuleClassifier.avgNumberOfRulesIndicator+": %.2f", avgNumberOfCoveringRules));
-				if (originalDecisionsQualityOfApproximation >= 0.0) {
-					sb.append(String.format(Locale.US, "; original quality: %.4f", originalDecisionsQualityOfApproximation));
+				sb.append(String.format(Locale.US, ", mode: %.2f%% r.hit)", accuracyWhenClassifiedByRulesResolvingConflict)); //accuracy among objects covered by 1+ rule(s) of different types (at least and at most)
+				sb.append(String.format(Locale.US, ", by default class: %.2f%% r.hit", accuracyWhenClassifiedByDefaultClass)); //accuracy among objects not covered by any rule
+				sb.append(String.format(Locale.US, ", by default classifier: %.2f%% r.hit;", accuracyWhenClassifiedByDefaultClassifier)); //accuracy among objects not covered by any rule
+				sb.append(String.format(Locale.US, "%n[Testing]: "));
+				sb.append(String.format(Locale.US, ModeRuleClassifier.avgNumberOfCoveringRulesIndicator+": %.2f;", avgNumberOfCoveringRules));
+				sb.append(String.format(Locale.US, "%n[Testing]: "));
+				
+				String qualitiesOfApproximation = getQualitiesOfApproximation();
+				if (!qualitiesOfApproximation.equals("")) {
+					//sb.append("; ");
+					sb.append(getQualitiesOfApproximation());
+				} else {
+					//do nothing
 				}
-				if (assignedDefaultClassDecisionsQualityOfApproximation >= 0.0) {
-					sb.append(String.format(Locale.US, "; assigned default class quality: %.4f", assignedDefaultClassDecisionsQualityOfApproximation));
-				}
-				if (assignedDecisionsQualityOfApproximation >= 0.0) {
-					sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
-				}
+				
 				sb.append(".");
 				
 				return sb.toString();
 			} else { //WEKA_CLASSIFIER
 				StringBuilder sb = new StringBuilder(128);
+				String qualitiesOfApproximation = getQualitiesOfApproximation();
 				
-				double originalDecisionsQualityOfApproximation = getAverageOriginalDecisionsConsistentObjectsCount();
-				double assignedDecisionsQualityOfApproximation = getAverageAssignedDecisionsConsistentObjectsCount();
+				sb.append("[Testing]: ");
 				
-				boolean appended = false;
-				sb.append("[Summary]: ");
-				if (originalDecisionsQualityOfApproximation >= 0.0) {
-					sb.append(String.format(Locale.US, "original quality: %.4f", originalDecisionsQualityOfApproximation));
-					appended = true;
-				}
-				if (assignedDecisionsQualityOfApproximation >= 0.0) {
-					sb.append(String.format(Locale.US, ", assigned quality: %.4f", assignedDecisionsQualityOfApproximation));
-					appended = true;
-				}
-				if (!appended) {
+				
+				if (!qualitiesOfApproximation.equals("")) {
+					sb.append(qualitiesOfApproximation);
+				} else {
 					sb.append("--");
 				}
+				
 				sb.append(".");
 				
 				return sb.toString();
 			}
 		}
 		
+		public String getQualitiesOfApproximation() {
+			double originalDecisionsQualityOfApproximation = getAverageOriginalDecisionsConsistentTestObjectsTotalCount();
+			double assignedDefaultClassDecisionsQualityOfApproximation = getAverageAssignedDefaultClassDecisionsConsistentTestObjectsTotalCount();
+			double assignedDecisionsQualityOfApproximation = getAverageAssignedDecisionsConsistentTestObjectsTotalCount();
+			
+			StringBuilder sb = new StringBuilder(128);
+			sb.append("");
+			
+			if (originalDecisionsQualityOfApproximation >= 0.0) {
+				sb.append(String.format(Locale.US, "%soriginal quality: %s", aggregationMode != AggregationMode.NONE ? "avg. " : "",
+						BatchExperiment.round(originalDecisionsQualityOfApproximation)));
+			}
+			if (assignedDefaultClassDecisionsQualityOfApproximation >= 0.0) {
+				sb.append(String.format(Locale.US, "; %sassigned default class quality: %s", aggregationMode != AggregationMode.NONE ? "avg. " : "",
+						BatchExperiment.round(assignedDefaultClassDecisionsQualityOfApproximation)));
+			}
+			if (assignedDecisionsQualityOfApproximation >= 0.0) {
+				sb.append(String.format(Locale.US, ", %sassigned quality: %s", aggregationMode != AggregationMode.NONE ? "avg. " : "",
+						BatchExperiment.round(assignedDecisionsQualityOfApproximation)));
+			}
+			
+			return sb.toString();
+		}
+		
 	}
 	
 	OrdinalMisclassificationMatrix ordinalMisclassificationMatrix;
 	ClassificationStatistics classificationStatistics;
+	ModelLearningStatistics modelLearningStatistics;
 	ModelDescription modelDescription;
 	
 	AggregationMode aggregationMode = AggregationMode.NONE;
@@ -516,10 +575,12 @@ public class ModelValidationResult {
 	
 	public ModelValidationResult(OrdinalMisclassificationMatrix ordinalMisclassificationMatrix,
 			ClassificationStatistics classificationStatistics,
+			ModelLearningStatistics modelLearningStatistics,
 			ModelDescription modelDescription) {
 		
 		this.ordinalMisclassificationMatrix = ordinalMisclassificationMatrix;
 		this.classificationStatistics = classificationStatistics;
+		this.modelLearningStatistics = modelLearningStatistics;
 		this.modelDescription = modelDescription;
 	}
 	
@@ -531,6 +592,7 @@ public class ModelValidationResult {
 		ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(aggregationMode == AggregationMode.SUM, orderOfDecisions,
 				Arrays.asList(modelValidationResults).stream().map(m -> m.getOrdinalMisclassificationMatrix()).collect(Collectors.toList()).toArray(new OrdinalMisclassificationMatrix[0]));
 		classificationStatistics = new ClassificationStatistics(aggregationMode, Arrays.asList(modelValidationResults).stream().map(m -> m.getClassificationStatistics()).collect(Collectors.toList()).toArray(new ClassificationStatistics[0]));
+		modelLearningStatistics = new ModelLearningStatistics(aggregationMode, Arrays.asList(modelValidationResults).stream().map(m -> m.getModelLearningStatistics()).collect(Collectors.toList()).toArray(new ModelLearningStatistics[0]));
 		ModelDescription[] modelDescriptions = Arrays.asList(modelValidationResults).stream().map(m -> m.getModelDescription()).collect(Collectors.toList()).toArray(new ModelDescription[0]);
 		modelDescription = modelDescriptions[0].getModelDescriptionBuilder().build(aggregationMode, modelDescriptions);
 		
@@ -544,6 +606,10 @@ public class ModelValidationResult {
 	
 	public ClassificationStatistics getClassificationStatistics() {
 		return classificationStatistics;
+	}
+	
+	public ModelLearningStatistics getModelLearningStatistics() {
+		return modelLearningStatistics;
 	}
 	
 	public ModelDescription getModelDescription() {

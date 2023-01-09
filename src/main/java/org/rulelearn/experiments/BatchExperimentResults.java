@@ -4,14 +4,15 @@
 package org.rulelearn.experiments;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.rulelearn.data.Decision;
 import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
-import org.rulelearn.experiments.ModelValidationResult.ClassifierType;
 
 /**
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
@@ -221,8 +222,8 @@ public class BatchExperimentResults {
 		dataName2FullDataResults.put(dataName, fullDataResults);
 	}
 	
-	public String reportFullDataResults(String dataName) {
-		StringBuilder sb = new StringBuilder();
+	public String reportFullDataResults(String dataName) { //OUTPUT
+		StringBuilder sb = new StringBuilder(256);
 		FullDataResults fullDataResults = dataName2FullDataResults.get(dataName);
 		Map<Double, Double> consistencyThreshold2QualityOfApproximation = fullDataResults.consistencyThreshold2QualityOfApproximation;
 		Map<String, FullDataModelValidationResult> algorithmNameWithParameters2Results = fullDataResults.algorithmNameWithParameters2Results;
@@ -238,18 +239,55 @@ public class BatchExperimentResults {
 		
 		algorithmNameWithParameters2Results.forEach(
 			(algorithmNameWithParameters, result) -> {
-			ClassificationStatistics classificationStatistics = result.getModelValidationResult().getClassificationStatistics();
-				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s):%n  %s # %s # %s. Main model decisions ratio: %s.%n  [Info]: %s.%n  [Times]: training: %d [ms], validation: %d [ms].",
+				ClassificationStatistics classificationStatistics = result.getModelValidationResult().getClassificationStatistics();
+				
+//				//+++++
+//				StringBuilder infoBuilder = new StringBuilder(128);
+//				String info;
+//				String qualitiesOfApproximation = classificationStatistics.getQualitiesOfApproximation();
+//				
+//				switch (classificationStatistics.getClassifierType()) {
+//				case VCDRSA_RULES_CLASSIFIER:
+//					infoBuilder.append(result.getModelValidationResult().getModelDescription().toString())
+//					.append("; ").append(String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfCoveringRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules()));
+//					
+//					if (!qualitiesOfApproximation.equals("")) {
+//						infoBuilder.append("; ").append(qualitiesOfApproximation);
+//					}
+//					
+//					info = infoBuilder.toString();
+//					break;
+//				case WEKA_CLASSIFIER:
+//					if (!qualitiesOfApproximation.equals("")) {
+//						info = qualitiesOfApproximation;
+//					} else {
+//						info = "--";
+//					}
+//					break;
+//				default:
+//					throw new InvalidValueException("Incorrect classifier type.");
+//				}
+//				//+++++
+				
+				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s):%n"
+						+ "  %s (%s) # %s # %s (%s|%s). Main model decisions ratio: %s.%n"
+						+ "  [Learning]: %s.%n"
+						+ "%s%n"
+						+ "  [Model]: %s.%n"
+						+ "  [Times]: training: %d [ms], validation: %d [ms].",
 						dataName, algorithmNameWithParameters,
 						BatchExperiment.round(result.getModelValidationResult().getOrdinalMisclassificationMatrix().getAccuracy()),
+						BatchExperiment.round(classificationStatistics.getOverallAccuracy()),
 						BatchExperiment.round(classificationStatistics.getMainModelAccuracy()),
 						BatchExperiment.round(classificationStatistics.getDefaultModelAccuracy()),
+						BatchExperiment.round(classificationStatistics.getDefaultClassAccuracy()),
+						BatchExperiment.round(classificationStatistics.getDefaultClassifierAccuracy()),
 						BatchExperiment.round(classificationStatistics.getMainModelDecisionsRatio()),
-						classificationStatistics.getClassifierType() == ClassifierType.VCDRSA_RULES_CLASSIFIER ?
-								result.getModelValidationResult().getModelDescription().toString()
-								+ ", "
-								+ String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules())
-								: "--",
+						result.getModelValidationResult().getModelLearningStatistics().toString(),
+						Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
+						.map(line -> (new StringBuilder("  ")).append(line).toString())
+						.collect(Collectors.joining(System.lineSeparator())), //print validation summary in several lines
+						result.getModelValidationResult().getModelDescription().toShortString(), //print one line model description
 						getFullDataCalculationTimes(result.getSelector()).getTotalTrainingTime(),
 						getFullDataCalculationTimes(result.getSelector()).getTotalValidationTime()
 				))

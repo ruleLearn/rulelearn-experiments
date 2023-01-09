@@ -5,6 +5,8 @@ package org.rulelearn.experiments;
 
 import java.util.function.Supplier;
 
+import org.rulelearn.experiments.ClassificationModel.ModelLearningStatistics;
+
 import weka.classifiers.AbstractClassifier;
 import weka.core.Instances;
 
@@ -38,9 +40,20 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 			return null; //TODO: handle exception?
 		}
 		
+		//calculate ModelLearningStatistics
+		long start = System.currentTimeMillis();
+		int numberOfLearningObjects = data.getInformationTable().getNumberOfObjects();
+		int numberOfConsistentLearningObjects = ClassificationModel.getNumberOfConsistentObjects(data.getInformationTable(), 0.0);
+		double consistencyThreshold = -1.0;
+		int numberOfConsistentLearningObjectsForConsistencyThreshold = -1;
 		String modelLearnerDescription = (new StringBuilder(getName())).append("(").append(parameters).append(")").toString();
+		long statisticsCountingTime = System.currentTimeMillis() - start;
 		
-		return new WEKAClassifer(wekaClassifier, modelLearnerDescription);
+		ModelLearningStatistics modelLearningStatistics = new ModelLearningStatistics(
+				numberOfLearningObjects, numberOfConsistentLearningObjects, consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold,
+				modelLearnerDescription, statisticsCountingTime);
+		
+		return new WEKAClassifer(wekaClassifier, modelLearningStatistics);
 	}
 
 	@Override

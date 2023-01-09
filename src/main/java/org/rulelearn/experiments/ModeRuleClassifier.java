@@ -29,7 +29,7 @@ import it.unimi.dsi.fastutil.ints.IntList;
  */
 public class ModeRuleClassifier implements ClassificationModel {
 	
-	static final String avgNumberOfRulesIndicator = "avg. number of cov. rules";
+	static final String avgNumberOfCoveringRulesIndicator = "avg. number of cov. rules";
 	
 	public static class ModelDescriptionBuilder extends ClassificationModel.ModelDescriptionBuilder {
 		/**
@@ -50,16 +50,18 @@ public class ModeRuleClassifier implements ClassificationModel {
 		long totalRulesCount = 0L; //sumRulesCount
 		long sumRuleLength = 0L; //sum of lengths of rules
 		long sumRuleSupport = 0L; //sum of supports of rules
+		double sumRuleConfidence = 0.0; //sum of confidences of rules
 		
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
 		AggregationMode aggregationMode = AggregationMode.NONE;
 		
 		//TODO: add more fields to address situation when aggregationMode == AggregationMode.MEAN_AND_DEVIATION
 		
-		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport) {
+		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence) {
 			this.totalRulesCount = totalRulesCount;
 			this.sumRuleLength = sumRuleLength;
 			this.sumRuleSupport = sumRuleSupport;
+			this.sumRuleConfidence = sumRuleConfidence;
 			
 			aggregationCount = 1;
 			aggregationMode = AggregationMode.NONE;
@@ -69,20 +71,23 @@ public class ModeRuleClassifier implements ClassificationModel {
 			if (aggregationMode == null || aggregationMode == AggregationMode.NONE) {
 				throw new InvalidValueException("Incorrect aggregation mode.");
 			}
-			this.aggregationMode = aggregationMode;
 			
 			//calculate sums
 			for (ModelDescription modelDescription : modelDescriptions) {
 				totalRulesCount += modelDescription.totalRulesCount;
 				sumRuleLength += modelDescription.sumRuleLength;
 				sumRuleSupport += modelDescription.sumRuleSupport;
+				sumRuleConfidence += modelDescription.sumRuleConfidence;
+				
 				aggregationCount += modelDescription.aggregationCount;
 			}
 			
-			if (aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
+			this.aggregationMode = aggregationMode;
+			
+			if (this.aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
 				//TODO: calculate means and standard deviations
 			}
-		}		
+		}
 		
 		@Override
 		public String toString() { //TODO: if aggregationMode == AggregationMode.MEAN_AND_DEVIATION, then print also standard deviations calculated in constructor
@@ -96,8 +101,14 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			sb.append(String.format(Locale.US, ", average length: %.2f", (double)sumRuleLength / totalRulesCount));
 			sb.append(String.format(Locale.US, ", average support: %.2f", (double)sumRuleSupport / totalRulesCount));
+			sb.append(String.format(Locale.US, ", average confidence: %.2f", (double)sumRuleConfidence / totalRulesCount));
 			
 			return sb.toString();
+		}
+		
+		@Override
+		public String toShortString() {
+			return toString();
 		}
 
 		@Override
@@ -112,23 +123,25 @@ public class ModeRuleClassifier implements ClassificationModel {
 	SimpleOptimizingCountingRuleClassifier simpleOptimizingCountingRuleClassifier;
 	ClassificationModel defaultClassificationModel = null; //classification model (classifier) used when no rule matches classified object (if the model is != null)
 	
-	String modelLearnerDescription;
 	ModelDescription modelDescription = null;
 	
-	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult, String modelLearnerDescription) {
+	ModelLearningStatistics modelLearningStatistics;
+	
+	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult,
+			ModelLearningStatistics modelLearningStatistics) {
 		this.ruleSet = ruleSet;
 		this.defaultClassificationResult = defaultClassificationResult;
 		simpleOptimizingCountingRuleClassifier = new SimpleOptimizingCountingRuleClassifier(ruleSet, defaultClassificationResult);
-		this.modelLearnerDescription = modelLearnerDescription;
+		this.modelLearningStatistics = modelLearningStatistics;
 	}
 	
-	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult,
-			ClassificationModel defaultClassificationModel, String modelLearnerDescription) {
+	public ModeRuleClassifier(RuleSetWithComputableCharacteristics ruleSet, SimpleClassificationResult defaultClassificationResult, ClassificationModel defaultClassificationModel,
+			ModelLearningStatistics modelLearningStatistics) {
 		this.ruleSet = ruleSet;
 		this.defaultClassificationResult = defaultClassificationResult;
 		simpleOptimizingCountingRuleClassifier = new SimpleOptimizingCountingRuleClassifier(ruleSet, defaultClassificationResult);
 		this.defaultClassificationModel = defaultClassificationModel;
-		this.modelLearnerDescription = modelLearnerDescription;
+		this.modelLearningStatistics = modelLearningStatistics;
 	}
 	
 	private SimpleDecision[] blendDecisions(SimpleDecision[] to, SimpleDecision[] from) { //returns blended array - what is not in "to", will be taken from "from"
@@ -227,16 +240,17 @@ public class ModeRuleClassifier implements ClassificationModel {
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
 		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
-			classificationStatistics.originalDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, 0.0);
+			classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testInformationTable, 0.0);
 			
 			//synchronizes defaultClassAssignedDecisions
 			SimpleDecision[] blendedDecisions = blendDecisions(defaultClassAssignedDecisions, assignedDecisions);
-			classificationStatistics.assignedDefaultClassDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, blendedDecisions, 0.0);
+			int numberOfConsistentObjects = ClassificationModel.getNumberOfConsistentObjects(testInformationTable, blendedDecisions, 0.0);
+			classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = numberOfConsistentObjects;
 			
-			classificationStatistics.assignedDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testInformationTable, assignedDecisions, 0.0);
+			classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testInformationTable, assignedDecisions, 0.0);
 		}
 		
-		return new ModelValidationResult(ordinalMisclassificationMatrix, classificationStatistics, getModelDescription());
+		return new ModelValidationResult(ordinalMisclassificationMatrix, classificationStatistics, modelLearningStatistics, getModelDescription());
 	}
 	
 	@Override
@@ -245,12 +259,15 @@ public class ModeRuleClassifier implements ClassificationModel {
 			long size = ruleSet.size();
 			long sumLength = 0L;
 			long sumSupport = 0L;
+			double sumConfidence = 0.0;
+			
 			for (int i = 0; i < size; i++) {
 				sumLength += ruleSet.getRuleCharacteristics(i).getNumberOfConditions();
 				sumSupport += ruleSet.getRuleCharacteristics(i).getSupport();
+				sumConfidence += ruleSet.getRuleCharacteristics(i).getConfidence();
 			}
 			
-			modelDescription = new ModelDescription(size, sumLength, sumSupport);
+			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence);
 		}
 		
 		return modelDescription;
@@ -262,8 +279,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 	}
 
 	@Override
-	public String getModelLearnerDescription() {
-		return modelLearnerDescription;
+	public ModelLearningStatistics getModelLearningStatistics() {
+		return modelLearningStatistics;
 	}
 
 }

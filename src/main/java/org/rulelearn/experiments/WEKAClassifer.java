@@ -85,6 +85,11 @@ public class WEKAClassifer implements ClassificationModel {
 				return "[Options: " + options + "]";
 			}
 		}
+		
+		@Override
+		public String toShortString() {
+			return "[Options: " + options + "]";
+		}
 
 		@Override
 		public ModelDescriptionBuilder getModelDescriptionBuilder() {
@@ -94,12 +99,12 @@ public class WEKAClassifer implements ClassificationModel {
 	}
 	
 	AbstractClassifier trainedClassifier; //trained classifier
-	String modelLearnerDescription;
+	ModelLearningStatistics modelLearningStatistics;
 	ModelDescription modelDescription = null;
 
-	public WEKAClassifer(AbstractClassifier trainedClassifier, String modelLearnerDescription) {
+	public WEKAClassifer(AbstractClassifier trainedClassifier, ModelLearningStatistics modelLearningStatistics) {
 		this.trainedClassifier = trainedClassifier;
-		this.modelLearnerDescription = modelLearnerDescription;
+		this.modelLearningStatistics = modelLearningStatistics;
 	}
 
 	@Override
@@ -137,11 +142,12 @@ public class WEKAClassifer implements ClassificationModel {
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
 		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
-			classificationStatistics.originalDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), 0.0);
-			classificationStatistics.assignedDecisionsConsistentObjectsCount = getNumberOfConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
+			classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testData.getInformationTable(), 0.0);
+			classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = -1L; //not used
+			classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
 		}
 		
-		return new ModelValidationResult(ordinalMisclassificationMatrix, classificationStatistics, getModelDescription());
+		return new ModelValidationResult(ordinalMisclassificationMatrix, classificationStatistics, modelLearningStatistics, getModelDescription());
 	}
 	
 	private SimpleDecision wekaClassificationResult2SimpleDecision(double wekaClassificationResult, EvaluationAttribute decisionAttribute, int decisionAttributeIndex) {
@@ -185,8 +191,8 @@ public class WEKAClassifer implements ClassificationModel {
 	}
 	
 	@Override
-	public String getModelLearnerDescription() {
-		return modelLearnerDescription;
+	public ModelLearningStatistics getModelLearningStatistics() {
+		return modelLearningStatistics;
 	}
 
 }

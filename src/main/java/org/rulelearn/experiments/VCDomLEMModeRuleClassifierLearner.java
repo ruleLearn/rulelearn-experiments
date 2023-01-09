@@ -20,17 +20,14 @@ import org.rulelearn.data.EvaluationAttribute;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.data.SimpleDecision;
+import org.rulelearn.experiments.ClassificationModel.ModelLearningStatistics;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
-import org.rulelearn.rules.AllowedNegativeObjectsType;
 import org.rulelearn.rules.ApproximatedSetProvider;
 import org.rulelearn.rules.ApproximatedSetRuleDecisionsProvider;
 import org.rulelearn.rules.AttributeOrderRuleConditionsPruner;
 import org.rulelearn.rules.CertainRuleInducerComponents;
 import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
 import org.rulelearn.rules.DummyRuleConditionsGeneralizer;
-import org.rulelearn.rules.DummyRuleConditionsPruner;
-import org.rulelearn.rules.DummyRuleConditionsSetPruner;
-import org.rulelearn.rules.DummyRuleMinimalityChecker;
 import org.rulelearn.rules.EvaluationAndCoverageStoppingConditionChecker;
 import org.rulelearn.rules.OptimizingRuleConditionsGeneralizer;
 import org.rulelearn.rules.RuleFilter;
@@ -137,7 +134,18 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions;
 		SimpleClassificationResult defaultClassificationResult = null;
 		
+		//calculate ModelLearningStatistics
+		long start = System.currentTimeMillis();
+		int numberOfLearningObjects = trainData.getInformationTable().getNumberOfObjects();
+		int numberOfConsistentLearningObjects = ClassificationModel.getNumberOfConsistentObjects(trainData.getInformationTable(), 0.0);
+		//consistencyThreshold - defined above
+		int numberOfConsistentLearningObjectsForConsistencyThreshold = ClassificationModel.getNumberOfConsistentObjects(trainData.getInformationTable(), consistencyThreshold);
 		String modelLearnerDescription = (new StringBuilder(getName())).append("(").append(parameters).append(")").toString();
+		long statisticsCountingTime = System.currentTimeMillis() - start;
+		
+		ModelLearningStatistics modelLearningStatistics = new ModelLearningStatistics(
+				numberOfLearningObjects, numberOfConsistentLearningObjects, consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold,
+				modelLearnerDescription, statisticsCountingTime);
 		
 		switch (defaultDecisionClassChoiceMethod) {
 		case MODE:
@@ -156,7 +164,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 				defaultClassificationResult = new SimpleClassificationResult((SimpleDecision)modes.get(0));
 			}
 			
-			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, modelLearnerDescription);
+			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, modelLearningStatistics);
 		case MEDIAN:
 			if (!(trainData.getInformationTable() instanceof InformationTableWithDecisionDistributions)) {
 				trainData.extendInformationTableWithDecisionDistributions(); //save extended data in fold, so next algorithms can use it
@@ -166,7 +174,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 			Decision median = informationTableWithDecisionDistributions.getDecisionDistribution().getMedian(trainData.getInformationTable().getOrderedUniqueFullyDeterminedDecisions());
 			defaultClassificationResult = new SimpleClassificationResult((SimpleDecision)median);
 			
-			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, modelLearnerDescription);
+			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, modelLearningStatistics);
 		case FIXED:
 			defaultClassificationResult = calculateDefaultClassificationResult(trainData, parameters);
 			
@@ -174,7 +182,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 				throw new ValueNotFoundException("Could not find decision with requested label.");
 			}
 			
-			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, modelLearnerDescription);
+			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, modelLearningStatistics);
 		case CLASSIFIER:
 			defaultClassificationResult = calculateDefaultClassificationResult(trainData, parameters); //just to make rule classifier happy ;) - this result will be always overriden by default model
 			
@@ -186,7 +194,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 			ClassificationModel defaultClassificationModel = ruleParameters.getDefaultClassificationResultAlgorithm().learn(trainData,
 					ruleParameters.getDefaultClassificationResultAlgorithmParameters());
 			
-			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, defaultClassificationModel, modelLearnerDescription);
+			return new ModeRuleClassifier(ruleSetWithCharacteristics, defaultClassificationResult, defaultClassificationModel, modelLearningStatistics);
 		default:
 			throw new UnsupportedOperationException("Not supported default decision class choice method.");
 		}

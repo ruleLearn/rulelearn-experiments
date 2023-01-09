@@ -96,7 +96,7 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 				DefaultClassificationResultChoiceMethod.of(parameters.get(defaultClassificationResultChoiceMethodParameterName)) == DefaultClassificationResultChoiceMethod.FIXED ?
 						String.format(Locale.US, "(%s)", parameters.get(defaultClassificationResultLabelParameterName)) : "",
 				DefaultClassificationResultChoiceMethod.of(parameters.get(defaultClassificationResultChoiceMethodParameterName)) == DefaultClassificationResultChoiceMethod.CLASSIFIER ?
-						String.format(Locale.US, "(%s > %s(%s))",
+						String.format(Locale.US, "(%s -> %s(%s))",
 								parameters.get(defaultClassificationResultLabelParameterName),
 								defaultClassificationResultAlgorithm.getName(), defaultClassificationResultAlgorithmParameters) : "");
 	}
