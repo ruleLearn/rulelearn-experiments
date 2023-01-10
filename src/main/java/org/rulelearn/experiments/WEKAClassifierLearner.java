@@ -41,9 +41,19 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 		}
 		
 		//calculate ModelLearningStatistics
+		//+++++
 		long start = System.currentTimeMillis();
 		int numberOfLearningObjects = data.getInformationTable().getNumberOfObjects();
-		int numberOfConsistentLearningObjects = ClassificationModel.getNumberOfConsistentObjects(data.getInformationTable(), 0.0);
+		
+		Integer numberOfConsistentLearningObjectsObj = NumberOfConsistentObjectsCache.getInstance().getNumberOfConsistentObjects(data.getName(), 0.0);
+		int numberOfConsistentLearningObjects;
+		if (numberOfConsistentLearningObjectsObj != null) { //number of objects already in cache
+			numberOfConsistentLearningObjects = numberOfConsistentLearningObjectsObj.intValue();
+		} else { //number of objects not yet in cache
+			numberOfConsistentLearningObjects = ClassificationModel.getNumberOfConsistentObjects(data.getInformationTable(), 0.0);
+			NumberOfConsistentObjectsCache.getInstance().putNumberOfConsistentObjects(data.getName(), 0.0, numberOfConsistentLearningObjects); //store calculated number of objects in cache
+		}
+		
 		double consistencyThreshold = -1.0;
 		int numberOfConsistentLearningObjectsForConsistencyThreshold = -1;
 		String modelLearnerDescription = (new StringBuilder(getName())).append("(").append(parameters).append(")").toString();
@@ -52,6 +62,7 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 		ModelLearningStatistics modelLearningStatistics = new ModelLearningStatistics(
 				numberOfLearningObjects, numberOfConsistentLearningObjects, consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold,
 				modelLearnerDescription, statisticsCountingTime);
+		//+++++
 		
 		return new WEKAClassifer(wekaClassifier, modelLearningStatistics);
 	}

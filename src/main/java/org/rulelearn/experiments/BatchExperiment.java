@@ -55,7 +55,7 @@ public class BatchExperiment {
 	static final boolean doFullDataReclassification = true;
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
 	static final boolean generalizeConditions = true;
-	static final boolean checkConsistencyOfAssignedDecisions = true;
+	static final boolean checkConsistencyOfTestDataDecisions = true;
 	static final boolean printWEKATrainedClassifiers = false;
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
@@ -269,13 +269,14 @@ public class BatchExperiment {
 							ClassificationModel model = algorithm.learn(processedFullData, parameters); //can change result of processedFullData.getInformationTable()
 							//=====
 							/**/long fullDataTrainingTime = System.currentTimeMillis() - trainingStartTime;
+							fullDataTrainingTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
 							
 							/**/long validationStartTime = System.currentTimeMillis();
 							//=====
 							ModelValidationResult modelValidationResult = model.validate(fullData);
 							//=====
 							/**/long fullDataValidationTime = System.currentTimeMillis() - validationStartTime;
-							fullDataValidationTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
+							fullDataValidationTime -= modelValidationResult.getClassificationStatistics().getTotalStatisticsCountingTime();
 	
 							/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
 							/**/	.dataSetNumber(dataSetNumber).learningAlgorithmNumber(algorithmNumber).parametersNumber(parameterNumber);
@@ -395,13 +396,14 @@ public class BatchExperiment {
 									ClassificationModel model = algorithm.learn(processedTrainData, parameters); //can change result of processedTrainData.getInformationTable()
 									//=====
 									/**/long foldTrainingTime = System.currentTimeMillis() - trainingStartTime;
+									foldTrainingTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
 									
 									/**/long validationStartTime = System.currentTimeMillis();
 									//=====
 									ModelValidationResult modelValidationResult = model.validate(fold.getTestData());
 									//=====
 									/**/long foldValidationTime = System.currentTimeMillis() - validationStartTime;
-									foldValidationTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
+									foldValidationTime -= modelValidationResult.getClassificationStatistics().getTotalStatisticsCountingTime();
 									
 									/**/BatchExperimentResults.DataAlgorithmParametersSelector selector = (new BatchExperimentResults.DataAlgorithmParametersSelector())
 									/**/	.dataSetNumber(streamDataSetNumber).learningAlgorithmNumber(learningAlgorithmNumber).parametersNumber(parametersNumber);

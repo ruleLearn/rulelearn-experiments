@@ -13,6 +13,9 @@ import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.data.SimpleDecision;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+
 /**
  * Classification model learned from data.
  * 
@@ -33,13 +36,52 @@ public interface ClassificationModel {
 	 * 
 	 * @param informationTable tested information table
 	 * @param decisions new decisions for subsequent objects from given information table
-	 * @param consistencyThreshold consistency threshold for the calculation of the quality of approximation of classification
+	 * @param consistencyThreshold consistency threshold for the calculation of approximations
 	 * 
 	 * @return the number of consistent objects in the given information table, for given threshold, assuming objects from given information table have given decisions
 	 */
 	static int getNumberOfConsistentObjects(InformationTable informationTable, Decision[] decisions, double consistencyThreshold) {
 		InformationTable informationTableWithAssignedDecisions = new InformationTable(informationTable, decisions, true);
 		return getNumberOfConsistentObjects(informationTableWithAssignedDecisions, consistencyThreshold);
+	}
+	
+	/**
+	 * Gets number of pre- and post-consistent objects in the given information table (i.e., objects that are originally consistent and remain consistent for assigned decisions),
+	 * for given threshold, assuming objects from given information table have given decisions.
+	 * 
+	 * @param informationTable tested information table
+	 * @param decisions new decisions for subsequent objects from given information table
+	 * @param consistencyThreshold consistency threshold for the calculation of approximations
+	 * 
+	 * @return
+	 */
+	static int getNumberOfPreAndPostConsistentObjects(InformationTable informationTable, Decision[] decisions, double consistencyThreshold) {
+		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
+				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
+		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
+		
+		int[] preConsistentObjects = unions.getNumbersOfConsistentObjects();
+		
+		InformationTable informationTableWithAssignedDecisions = new InformationTable(informationTable, decisions, true);
+		informationTableWithDecisionDistributions = new InformationTableWithDecisionDistributions(informationTableWithAssignedDecisions, true);
+		unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
+		
+		int[] postConsistentObjects = unions.getNumbersOfConsistentObjects();
+		
+		IntSet postConsistentObjectsSet = new IntOpenHashSet();
+		for (int i = 0; i < postConsistentObjects.length; i++) {
+			postConsistentObjectsSet.add(postConsistentObjects[i]); //add post consistent objects to the hash set
+		}
+		
+		int result = 0;
+		
+		for (int i = 0; i < preConsistentObjects.length; i++) {
+			if (postConsistentObjectsSet.contains(preConsistentObjects[i])) { //both pre and post-consistent object found
+				result++;
+			}
+		}
+		
+		return result;
 	}
 	
 	public abstract class ModelDescriptionBuilder {
@@ -159,7 +201,7 @@ public interface ClassificationModel {
 			if (aggregationCount == 1) {
 				sb.append("DRSA quality of classification: ").append(roundedValue);
 			} else {
-				sb.append("Avg. DRSA quality of classification: ").append(roundedValue);
+				sb.append("avg. DRSA quality of classification: ").append(roundedValue);
 			}
 
 			double averageNumberOfConsistentLearningObjectsForConsistencyThreshold = getAverageNumberOfConsistentLearningObjectsForConsistencyThreshold();

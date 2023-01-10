@@ -141,10 +141,19 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
-			classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testData.getInformationTable(), 0.0);
-			classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = -1L; //not used
-			classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
+		if (BatchExperiment.checkConsistencyOfTestDataDecisions) {
+			long start = System.currentTimeMillis();
+			
+			classificationStatistics.totalNumberOfPreConsistentTestObjects =
+					ClassificationModel.getNumberOfConsistentObjects(testData.getInformationTable(), 0.0);
+			classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass = -1L; //not used
+			classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel =
+					ClassificationModel.getNumberOfConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
+			classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass = -1L; //not used
+			classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel =
+					ClassificationModel.getNumberOfPreAndPostConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
+			
+			classificationStatistics.totalStatisticsCountingTime = System.currentTimeMillis() - start;
 		}
 		
 		return new ModelValidationResult(ordinalMisclassificationMatrix, classificationStatistics, modelLearningStatistics, getModelDescription());

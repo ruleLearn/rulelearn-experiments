@@ -135,17 +135,37 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		SimpleClassificationResult defaultClassificationResult = null;
 		
 		//calculate ModelLearningStatistics
+		//+++++
 		long start = System.currentTimeMillis();
 		int numberOfLearningObjects = trainData.getInformationTable().getNumberOfObjects();
-		int numberOfConsistentLearningObjects = ClassificationModel.getNumberOfConsistentObjects(trainData.getInformationTable(), 0.0);
+		
+		Integer numberOfConsistentLearningObjectsObj = NumberOfConsistentObjectsCache.getInstance().getNumberOfConsistentObjects(trainData.getName(), 0.0);
+		int numberOfConsistentLearningObjects;
+		if (numberOfConsistentLearningObjectsObj != null) { //number of objects already in cache
+			numberOfConsistentLearningObjects = numberOfConsistentLearningObjectsObj.intValue();
+		} else { //number of objects not yet in cache
+			numberOfConsistentLearningObjects = ClassificationModel.getNumberOfConsistentObjects(trainData.getInformationTable(), 0.0);
+			NumberOfConsistentObjectsCache.getInstance().putNumberOfConsistentObjects(trainData.getName(), 0.0, numberOfConsistentLearningObjects); //store calculated number of objects in cache
+		}
+		
 		//consistencyThreshold - defined above
-		int numberOfConsistentLearningObjectsForConsistencyThreshold = ClassificationModel.getNumberOfConsistentObjects(trainData.getInformationTable(), consistencyThreshold);
+		
+		Integer numberOfConsistentLearningObjectsForConsistencyThresholdObj = NumberOfConsistentObjectsCache.getInstance().getNumberOfConsistentObjects(trainData.getName(), consistencyThreshold);
+		int numberOfConsistentLearningObjectsForConsistencyThreshold;
+		if (numberOfConsistentLearningObjectsForConsistencyThresholdObj != null) { //number of objects already in cache
+			numberOfConsistentLearningObjectsForConsistencyThreshold = numberOfConsistentLearningObjectsForConsistencyThresholdObj.intValue();
+		} else {
+			numberOfConsistentLearningObjectsForConsistencyThreshold = ClassificationModel.getNumberOfConsistentObjects(trainData.getInformationTable(), consistencyThreshold);
+			NumberOfConsistentObjectsCache.getInstance().putNumberOfConsistentObjects(trainData.getName(), consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold); //store calculated number of objects in cache
+		}
+		
 		String modelLearnerDescription = (new StringBuilder(getName())).append("(").append(parameters).append(")").toString();
 		long statisticsCountingTime = System.currentTimeMillis() - start;
 		
 		ModelLearningStatistics modelLearningStatistics = new ModelLearningStatistics(
 				numberOfLearningObjects, numberOfConsistentLearningObjects, consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold,
 				modelLearnerDescription, statisticsCountingTime);
+		//+++++
 		
 		switch (defaultDecisionClassChoiceMethod) {
 		case MODE:

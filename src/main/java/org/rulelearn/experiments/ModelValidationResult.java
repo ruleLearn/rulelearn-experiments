@@ -96,15 +96,24 @@ public class ModelValidationResult {
 		long totalNumberOfCoveringRules = 0L; //concerns classification using (VC-)DRSA rules; for WEKA classifiers remains zero
 		long totalNumberOfClassifiedObjects = 0L;
 		
-		long originalDecisionsConsistentTestObjectsTotalCount = -1L; //not used if < 0
-		long assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = -1L; //concerns classification using (VC-)DRSA rules (total number of consistent objects if default model employs default decision class); not used if < 0
-		long assignedDecisionsConsistentTestObjectsTotalCount = -1L; //not used if < 0
+		long totalNumberOfPreConsistentTestObjects = -1L; //not used if < 0
+		long totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass = -1L; //concerns classification using (VC-)DRSA rules (total number of consistently classified objects if default model employs default decision class); not used if < 0
+		long totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel = -1L; //not used if < 0
+		
+		//concerns classification using (VC-)DRSA rules (total number of consistently classified objects
+		//among all originally consistent test objects if default model employs default decision class)
+		long totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass = -1L; //not used if < 0
+		//concerns classification using (VC-)DRSA rules (total number of consistently classified objects
+		//among all originally consistent test objects, for the actually used default model)
+		long totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel = -1L; //not used if < 0
 
 		DefaultClassificationType defaultClassificationType;
 		ClassifierType classifierType;
 		
 		AggregationMode aggregationMode = AggregationMode.NONE;
-		MeansAndStandardDeviations meansAndStdDevs = null; //get calculated when aggregationMode == AggregationMode.MEAN_AND_DEVIATION 
+		MeansAndStandardDeviations meansAndStdDevs = null; //get calculated when aggregationMode == AggregationMode.MEAN_AND_DEVIATION
+		
+		long totalStatisticsCountingTime = 0L; //to be subtracted from model validation time
 		
 		/**
 		 * Constructs these classification statistics.
@@ -115,6 +124,7 @@ public class ModelValidationResult {
 		public ClassificationStatistics(DefaultClassificationType defaultClassificationType, ClassifierType classifierType) {
 			this.defaultClassificationType = Precondition.notNull(defaultClassificationType, "Default classification type is null.");
 			this.classifierType = Precondition.notNull(classifierType, "Classifier type is null.");
+			//remaining fields are set manually
 		}
 		
 		/**
@@ -138,12 +148,18 @@ public class ModelValidationResult {
 			this.classifierType = classificationStatisticsSet[0].classifierType;
 			this.aggregationMode = aggregationMode;
 			
-			long originalDecisionsConsistentTestObjectsTotalCountSum = 0L;
-			boolean originalDecisionsConsistentTestObjectsTotalCountIsUsed = false;
-			long assignedDefaultClassDecisionsConsistentTestObjectsTotalCountSum = 0L;
-			boolean assignedDefaultClassDecisionsConsistentTestObjectsTotalCountIsUsed = false;
-			long assignedDecisionsConsistentTestObjectsTotalCountSum = 0L;
-			boolean assignedDecisionsConsistentTestObjectsTotalCountIsUsed = false;
+			long totalNumberOfPreConsistentTestObjectsSum = 0L;
+			boolean totalNumberOfPreConsistentTestObjectsIsUsed = false;
+			
+			long totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassSum = 0L;
+			boolean totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassIsUsed = false;
+			long totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum = 0L;
+			boolean totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed = false;
+			
+			long totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassSum = 0L;
+			boolean totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassIsUsed = false;
+			long totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum = 0L;
+			boolean totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed = false;
 
 			//calculate sums
 			for (ClassificationStatistics classificationStatistics : classificationStatisticsSet) {
@@ -160,28 +176,48 @@ public class ModelValidationResult {
 				totalNumberOfCoveringRules += classificationStatistics.totalNumberOfCoveringRules;
 				totalNumberOfClassifiedObjects += classificationStatistics.totalNumberOfClassifiedObjects;
 				
-				if (classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount >= 0) {
-					originalDecisionsConsistentTestObjectsTotalCountSum += classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount;
-					originalDecisionsConsistentTestObjectsTotalCountIsUsed = true;
+				if (classificationStatistics.totalNumberOfPreConsistentTestObjects >= 0) {
+					totalNumberOfPreConsistentTestObjectsSum += classificationStatistics.totalNumberOfPreConsistentTestObjects;
+					totalNumberOfPreConsistentTestObjectsIsUsed = true;
 				}
-				if (classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount >= 0) {
-					assignedDefaultClassDecisionsConsistentTestObjectsTotalCountSum += classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount;
-					assignedDefaultClassDecisionsConsistentTestObjectsTotalCountIsUsed = true;
+				
+				if (classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass >= 0) {
+					totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassSum += classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass;
+					totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassIsUsed = true;
 				}
-				if (classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount >= 0) {
-					assignedDecisionsConsistentTestObjectsTotalCountSum += classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount;
-					assignedDecisionsConsistentTestObjectsTotalCountIsUsed = true;
+				if (classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel >= 0) {
+					totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum += classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel;
+					totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed = true;
 				}
+				
+				if (classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass >= 0) {
+					totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassSum += classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass;
+					totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassIsUsed = true;
+				}
+				if (classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel >= 0) {
+					totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum += classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel;
+					totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed = true;
+				} 
+				
+				totalStatisticsCountingTime += classificationStatistics.totalStatisticsCountingTime;
 			}
 			
-			if (originalDecisionsConsistentTestObjectsTotalCountIsUsed) {
-				originalDecisionsConsistentTestObjectsTotalCount = originalDecisionsConsistentTestObjectsTotalCountSum;
+			if (totalNumberOfPreConsistentTestObjectsIsUsed) {
+				totalNumberOfPreConsistentTestObjects = totalNumberOfPreConsistentTestObjectsSum;
 			}
-			if (assignedDefaultClassDecisionsConsistentTestObjectsTotalCountIsUsed) {
-				assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = assignedDefaultClassDecisionsConsistentTestObjectsTotalCountSum;
+			
+			if (totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassIsUsed) {
+				totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass = totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassSum;
 			}
-			if (assignedDecisionsConsistentTestObjectsTotalCountIsUsed) {
-				assignedDecisionsConsistentTestObjectsTotalCount = assignedDecisionsConsistentTestObjectsTotalCountSum;
+			if (totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed) {
+				totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel = totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum;
+			}
+			
+			if (totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassIsUsed) {
+				totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass = totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassSum;
+			}
+			if (totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed) {
+				totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel = totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum;
 			}
 			
 			//additionally calculate means and standard deviations
@@ -421,37 +457,63 @@ public class ModelValidationResult {
 			return totalNumberOfClassifiedObjects > 0L ? (double)totalNumberOfCoveringRules / totalNumberOfClassifiedObjects : 0.0;
 		}
 		
-		public long getOriginalDecisionsConsistentTestObjectsTotalCount() {
-			return originalDecisionsConsistentTestObjectsTotalCount;
+		public long getTotalNumberOfPreConsistentTestObjects() {
+			return totalNumberOfPreConsistentTestObjects;
 		}
 
-		public long getAssignedDefaultClassDecisionsConsistentTestObjectsTotalCount() {
-			return assignedDefaultClassDecisionsConsistentTestObjectsTotalCount;
+		public long getTotalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass() {
+			return totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass;
 		}
 
-		public long getAssignedDecisionsConsistentTestObjectsTotalCount() {
-			return assignedDecisionsConsistentTestObjectsTotalCount;
+		public long getTotalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel() {
+			return totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel;
 		}
 		
-		public double getAverageOriginalDecisionsConsistentTestObjectsTotalCount() { //gets average quality of classification over test data for original decisions
-			if (originalDecisionsConsistentTestObjectsTotalCount >= 0L) {
-				return totalNumberOfClassifiedObjects > 0L ? ((double)originalDecisionsConsistentTestObjectsTotalCount / totalNumberOfClassifiedObjects) : 0.0;
+		public long getTotalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass() {
+			return totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass;
+		}
+
+		public long getTotalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel() {
+			return totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel;
+		}
+
+		public double getAverageNumberOfPreConsistentTestObjects() { //gets average quality of classification over test data for original decisions
+			if (totalNumberOfPreConsistentTestObjects >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? ((double)totalNumberOfPreConsistentTestObjects / totalNumberOfClassifiedObjects) : 0.0;
 			} else {
 				return -1.0; //not being calculated
 			}
 		}
 		
-		public double getAverageAssignedDefaultClassDecisionsConsistentTestObjectsTotalCount() { //gets average quality of classification over test data for assigned decisions, using default class when no rule matches object
-			if (assignedDefaultClassDecisionsConsistentTestObjectsTotalCount >= 0L) {
-				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDefaultClassDecisionsConsistentTestObjectsTotalCount / totalNumberOfClassifiedObjects : 0.0;
+		public double getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass() { //gets average quality of classification over test data for assigned decisions, using default class when no rule matches object
+			if (totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? (double)totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass / totalNumberOfClassifiedObjects : 0.0;
 			} else {
 				return -1.0; //not being calculated
 			}
 		}
 		
-		public double getAverageAssignedDecisionsConsistentTestObjectsTotalCount() { //gets average quality of classification over test data for assigned decisions, using default model when no rule matches object
-			if (assignedDecisionsConsistentTestObjectsTotalCount >= 0L) {
-				return totalNumberOfClassifiedObjects > 0L ? (double)assignedDecisionsConsistentTestObjectsTotalCount / totalNumberOfClassifiedObjects : 0.0;
+		public double getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel() { //gets average quality of classification over test data for assigned decisions, using default model when no rule matches object
+			if (totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel >= 0L) {
+				return totalNumberOfClassifiedObjects > 0L ? (double)totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel / totalNumberOfClassifiedObjects : 0.0;
+			} else {
+				return -1.0; //not being calculated
+			}
+		}
+		
+		public double getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass() { //gets average quality of classification over originally consistent test objects for assigned decisions, using default class when no rule matches object
+			if (totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass >= 0L) {
+				return totalNumberOfPreConsistentTestObjects > 0L ?
+						(double)totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass / totalNumberOfPreConsistentTestObjects : 0.0;
+			} else {
+				return -1.0; //not being calculated
+			}
+		}
+		
+		public double getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel() { //gets average quality of classification over originally consistent test objects for assigned decisions, using default model when no rule matches object
+			if (totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel >= 0L) {
+				return totalNumberOfPreConsistentTestObjects > 0L ?
+						(double)totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel / totalNumberOfPreConsistentTestObjects : 0.0;
 			} else {
 				return -1.0; //not being calculated
 			}
@@ -468,9 +530,13 @@ public class ModelValidationResult {
 		public AggregationMode getAggregationMode() {
 			return aggregationMode;
 		}
-
+		
 		public MeansAndStandardDeviations getMeansAndStandardDeviations() { //can be null, depending on aggregationMode
 			return meansAndStdDevs;
+		}
+		
+		public long getTotalStatisticsCountingTime() {
+			return totalStatisticsCountingTime;
 		}
 
 		public String toString() {
@@ -540,29 +606,41 @@ public class ModelValidationResult {
 		}
 		
 		public String getQualitiesOfApproximation() {
-			double originalDecisionsQualityOfApproximation = getAverageOriginalDecisionsConsistentTestObjectsTotalCount();
-			double assignedDefaultClassDecisionsQualityOfApproximation = getAverageAssignedDefaultClassDecisionsConsistentTestObjectsTotalCount();
-			double assignedDecisionsQualityOfApproximation = getAverageAssignedDecisionsConsistentTestObjectsTotalCount();
+			double originalDecisionsQualityOfApproximation = getAverageNumberOfPreConsistentTestObjects();
+			double assignedDefaultClassDecisionsQualityOfApproximation = getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass();
+			double assignedDecisionsQualityOfApproximation = getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
+			double assignedPreConsistentDefaultClassDecisionsQualityOfApproximation = getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass();
+			double assignedPreConsistentDecisionsQualityOfApproximation = getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
 			
 			StringBuilder sb = new StringBuilder(128);
 			sb.append("");
 			
-			if (originalDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, "%soriginal quality: %s", aggregationMode != AggregationMode.NONE ? "avg. " : "",
+			if (originalDecisionsQualityOfApproximation >= 0.0) {//pre-consistent
+				sb.append(String.format(Locale.US, "%spre-quality: %s", aggregationMode != AggregationMode.NONE ? "total " : "",
 						BatchExperiment.round(originalDecisionsQualityOfApproximation)));
 			}
+			
 			if (assignedDefaultClassDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, "; %sassigned default class quality: %s", aggregationMode != AggregationMode.NONE ? "avg. " : "",
+				sb.append(String.format(Locale.US, "; %spost-quality(def.class): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
 						BatchExperiment.round(assignedDefaultClassDecisionsQualityOfApproximation)));
 			}
 			if (assignedDecisionsQualityOfApproximation >= 0.0) {
-				sb.append(String.format(Locale.US, ", %sassigned quality: %s", aggregationMode != AggregationMode.NONE ? "avg. " : "",
+				sb.append(String.format(Locale.US, ", %spost-quality(def.model): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
 						BatchExperiment.round(assignedDecisionsQualityOfApproximation)));
+			}
+			
+			if (assignedPreConsistentDefaultClassDecisionsQualityOfApproximation >= 0.0) {
+				sb.append(String.format(Locale.US, "; %spost-quality(pre-consistent,def.class): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
+						BatchExperiment.round(assignedPreConsistentDefaultClassDecisionsQualityOfApproximation)));
+			}
+			if (assignedPreConsistentDecisionsQualityOfApproximation >= 0.0) {
+				sb.append(String.format(Locale.US, ", %spost-quality(pre-consistent,def.model): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
+						BatchExperiment.round(assignedPreConsistentDecisionsQualityOfApproximation)));
 			}
 			
 			return sb.toString();
 		}
-		
+
 	}
 	
 	OrdinalMisclassificationMatrix ordinalMisclassificationMatrix;

@@ -96,7 +96,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 			if (aggregationCount == 1) {
 				sb.append("Number of rules: ").append(totalRulesCount);
 			} else {
-				sb.append("Avg. number of rules: ").append((double)totalRulesCount / aggregationCount);
+				sb.append("avg. number of rules: ").append((double)totalRulesCount / aggregationCount);
 			}
 			
 			sb.append(String.format(Locale.US, ", average length: %.2f", (double)sumRuleLength / totalRulesCount));
@@ -239,15 +239,28 @@ public class ModeRuleClassifier implements ClassificationModel {
 		
 		OrdinalMisclassificationMatrix ordinalMisclassificationMatrix = new OrdinalMisclassificationMatrix(orderOfDecisions, originalDecisions, assignedDecisions);
 		
-		if (BatchExperiment.checkConsistencyOfAssignedDecisions) {
-			classificationStatistics.originalDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testInformationTable, 0.0);
+		if (BatchExperiment.checkConsistencyOfTestDataDecisions) {
+			long start = System.currentTimeMillis();
 			
 			//synchronizes defaultClassAssignedDecisions
 			SimpleDecision[] blendedDecisions = blendDecisions(defaultClassAssignedDecisions, assignedDecisions);
-			int numberOfConsistentObjects = ClassificationModel.getNumberOfConsistentObjects(testInformationTable, blendedDecisions, 0.0);
-			classificationStatistics.assignedDefaultClassDecisionsConsistentTestObjectsTotalCount = numberOfConsistentObjects;
 			
-			classificationStatistics.assignedDecisionsConsistentTestObjectsTotalCount = ClassificationModel.getNumberOfConsistentObjects(testInformationTable, assignedDecisions, 0.0);
+			classificationStatistics.totalNumberOfPreConsistentTestObjects =
+					ClassificationModel.getNumberOfConsistentObjects(testInformationTable, 0.0);
+			
+			classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass =
+					ClassificationModel.getNumberOfConsistentObjects(testInformationTable, blendDecisions(defaultClassAssignedDecisions, assignedDecisions), 0.0);
+			
+			classificationStatistics.totalNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel =
+					ClassificationModel.getNumberOfConsistentObjects(testInformationTable, assignedDecisions, 0.0);
+			
+			classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass =
+					ClassificationModel.getNumberOfPreAndPostConsistentObjects(testInformationTable, blendedDecisions, 0.0);
+			
+			classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel =
+					ClassificationModel.getNumberOfPreAndPostConsistentObjects(testInformationTable, assignedDecisions, 0.0);
+			
+			classificationStatistics.totalStatisticsCountingTime = System.currentTimeMillis() - start;
 		}
 		
 		return new ModelValidationResult(ordinalMisclassificationMatrix, classificationStatistics, modelLearningStatistics, getModelDescription());
