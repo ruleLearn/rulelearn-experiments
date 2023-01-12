@@ -30,6 +30,8 @@ import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.MultilayerPerceptron;
 import weka.classifiers.functions.SMO;
+import weka.classifiers.misc.OSDL;
+import weka.classifiers.rules.JRip;
 //import weka.classifiers.misc.OSDL;
 import weka.classifiers.rules.OLM;
 import weka.classifiers.trees.J48;
@@ -56,9 +58,11 @@ public class BatchExperiment {
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
 	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfTestDataDecisions = true;
-	static final boolean printWEKATrainedClassifiers = false;
+	static final boolean printWEKATrainedClassifiers = true;
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
+	static final boolean OLMData = false; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
+	static final boolean normalData = !OLMData; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -747,108 +751,274 @@ public class BatchExperiment {
 //				//new long[]{0L, 8897335920153900L, 5347765673520470L},
 //				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
 //				k));
-//		/*-----*/
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata.json",
-				"data/json-objects/bank-churn-4000-v8 data.json",
-				dataNameChurn4000v8,
-				//SKIP_DATA,
-				//new long[]{},
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		/*-----*/
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataNameChurn4000v8_0_05_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataNameChurn4000v8_0_05_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataNameChurn4000v8_0_10_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataNameChurn4000v8_0_10_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataNameChurn4000v8_0_15_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataNameChurn4000v8_0_15_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataNameChurn4000v8_0_20_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataNameChurn4000v8_0_20_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataNameChurn4000v8_0_25_mv2,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
-		dataProviders.add(new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataNameChurn4000v8_0_25_mv15,
-				//SKIP_DATA,
-				//new long[]{0L, 5488762120989881L, 4329629961476882L},
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-				k));
+//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata.json",
+					"data/json-objects/bank-churn-4000-v8 data.json",
+					dataNameChurn4000v8,
+					//SKIP_DATA,
+					//new long[]{},
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8 *********
+		if (OLMData) {
+		/**/dataProviders.add(new BasicDataProvider(
+		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata.json",
+		/**/		"data/csv/OLM/bank-churn-4000-v8-processed data.csv",
+		/**/		true, ';',
+		/**/		dataNameChurn4000v8,
+		/**/		//SKIP_DATA,
+		/**/		//new long[]{},
+		/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+		/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+		/**/		k));
+		}
+		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+					"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+					dataNameChurn4000v8_0_05_mv2,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.05 mv2 *********
+		if (OLMData) {
+		/**/dataProviders.add(new BasicDataProvider(
+		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+		/**/		"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
+		/**/		true, ';',
+		/**/		dataNameChurn4000v8_0_05_mv2,
+		/**/		//SKIP_DATA,
+		/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+		/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+		/**/		k));
+		}
+		/*==========================================================================================*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+					"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+					dataNameChurn4000v8_0_05_mv15,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.05 mv15 *********
+		if (OLMData) {
+		/**/dataProviders.add(new BasicDataProvider(
+		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+		/**/		"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
+		/**/		true, ';',
+		/**/		dataNameChurn4000v8_0_05_mv15,
+		/**/		//SKIP_DATA,
+		/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+		/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+		/**/		k));
+		}
+		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+					"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+					dataNameChurn4000v8_0_10_mv2,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.10 mv2 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_10_mv2,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*==========================================================================================*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+					"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+					dataNameChurn4000v8_0_10_mv15,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.10 mv15 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_10_mv15,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+					"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+					dataNameChurn4000v8_0_15_mv2,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.15 mv2 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_15_mv2,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*==========================================================================================*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+					"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+					dataNameChurn4000v8_0_15_mv15,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.15 mv15 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_15_mv15,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+					"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+					dataNameChurn4000v8_0_20_mv2,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.20 mv2 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_20_mv2,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*==========================================================================================*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+					"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+					dataNameChurn4000v8_0_20_mv15,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.20 mv15 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_20_mv15,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+					"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+					dataNameChurn4000v8_0_25_mv2,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.25 mv2 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_25_mv2,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*==========================================================================================*/
+		if (normalData) {
+			dataProviders.add(new BasicDataProvider(
+					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+					"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+					dataNameChurn4000v8_0_25_mv15,
+					//SKIP_DATA,
+					//new long[]{0L, 5488762120989881L, 4329629961476882L},
+					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+					k));
+		}
+		//********* OLM version of bank-churn-4000-v8_0.25 mv15 *********
+		if (OLMData) {
+			/**/dataProviders.add(new BasicDataProvider(
+			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+			/**/		"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
+			/**/		true, ';',
+			/**/		dataNameChurn4000v8_0_25_mv15,
+			/**/		//SKIP_DATA,
+			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
+			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+			/**/		k));
+		}
+		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		
 		//TODO: comment algorithms that should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
-		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
+//		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
-		//learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //does not work because of numerical attributes
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())

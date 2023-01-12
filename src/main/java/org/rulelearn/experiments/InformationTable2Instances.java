@@ -184,9 +184,13 @@ public class InformationTable2Instances {
 		InformationTable informationTable;
 		
 		try {
-			informationTable = InformationTableBuilder.safelyBuildFromJSONFile(
-					"src/main/resources/data/json-metadata/bank-churn-4000-v8_0.25_mv1.5_mv2 metadata.json",
-					"src/main/resources/data/json-objects/bank-churn-4000-v8_0.25 data.json");
+//			informationTable = InformationTableBuilder.safelyBuildFromJSONFile(
+//					"src/main/resources/data/json-metadata/bank-churn-4000-v8_0.25_mv1.5_mv2 metadata.json",
+//					"src/main/resources/data/json-objects/bank-churn-4000-v8_0.25 data.json");
+			informationTable = InformationTableBuilder.safelyBuildFromCSVFile(
+					"src/main/resources/data/json-metadata/OLM/bank-churn-4000-v8-processed metadata.json",
+					"src/main/resources/data/csv/OLM/bank-churn-4000-v8-processed data.csv",
+					true, ';');
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 			return;
@@ -195,14 +199,16 @@ public class InformationTable2Instances {
 			return;
 		}
 		
-		Instances instances = convert(informationTable, "churn-4000-v8_0.25");
+		//Instances instances = convert(informationTable, "churn-4000-v8_0.25");
+		Instances instances = convert(informationTable, "churn-4000-v8-processed");
 		//instances.deleteAttributeAt(instances.attribute("NumOfProducts_c").index()); //remove cloned attribute
 		
 		ArffSaver arffSaver = new ArffSaver();
 		arffSaver.setInstances(instances);
 		
 		try {
-			arffSaver.setFile(new File("src/main/resources/data/json-objects/bank-churn-4000-v8_0.25 data.arff"));
+			//arffSaver.setFile(new File("src/main/resources/data/arff/bank-churn-4000-v8_0.25 data.arff"));
+			arffSaver.setFile(new File("src/main/resources/data/arff/bank-churn-4000-v8-processed data.arff"));
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;

@@ -94,7 +94,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 			StringBuilder sb = new StringBuilder(100);
 			
 			if (aggregationCount == 1) {
-				sb.append("Number of rules: ").append(totalRulesCount);
+				sb.append("number of rules: ").append(totalRulesCount);
 			} else {
 				sb.append("avg. number of rules: ").append((double)totalRulesCount / aggregationCount);
 			}
