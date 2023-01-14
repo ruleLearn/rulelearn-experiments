@@ -294,14 +294,15 @@ public class BatchExperiment {
 							
 							//OUTPUT
 							outN("Train data accuracy for '%1(%2)': "+System.lineSeparator()+
-									"%3 (%4) # %5 # %6 (%7|%8). Main model decisions ratio: %9."+System.lineSeparator()+
-									"%% [Learning]: %10."+System.lineSeparator()+
-									"%11"+System.lineSeparator()+
-									"%% [Times]: training: %12 [ms], validation: %13 [ms].",
+									"%3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Main model decisions ratio: %10."+System.lineSeparator()+
+									"%% [Learning]: %11."+System.lineSeparator()+
+									"%12"+System.lineSeparator()+
+									"%% [Times]: training: %13 [ms], validation: %14 [ms].",
 									algorithm.getName(),
 									parameters,
 									round(modelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
 									round(classificationStatistics.getOverallAccuracy()), //test if the same as above
+									round(classificationStatistics.getAvgAccuracy()), //test if the same as above
 									round(classificationStatistics.getMainModelAccuracy()),
 									round(classificationStatistics.getDefaultModelAccuracy()),
 									round(classificationStatistics.getDefaultClassAccuracy()),
@@ -369,9 +370,9 @@ public class BatchExperiment {
 							String linePrefix = "      "+foldNumber2Spaces(fold.getIndex());
 							String summaryLinePrefix = linePrefix + "%% ";
 							String messageTemplate = prepareText("%pEnd of fold %1, algorithm %2(%3).%n"
-									+ "%p%% [Accuracy]: %4 (%5) # %6 # %7 (%8|%9). Main model decisions ratio: %10.%n"
-									+ "%11%n"
-									+ "%p%% [Duration]: %12 [ms].", linePrefix); //%p will be replaced by prefix, %n by new line
+									+ "%p%% [Accuracy]: %4 (overall: %5, avg: %6) # %7 # %8 (%9|%10). Main model decisions ratio: %11.%n"
+									+ "%12%n"
+									+ "%p%% [Duration]: %13 [ms].", linePrefix); //%p will be replaced by prefix, %n by new line
 							
 							//long t3;
 							//t3 = b("    Starting calculations for fold "+fold.getIndex()+".");
@@ -438,7 +439,8 @@ public class BatchExperiment {
 									outN(resolveText(messageTemplate, //"End of fold" message
 											fold.getIndex(), algorithm.getName(), parameters,
 											round(modelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
-											round(modelValidationResult.getClassificationStatistics().getOverallAccuracy()),
+											round(modelValidationResult.getClassificationStatistics().getOverallAccuracy()), //test if the same as above
+											round(modelValidationResult.getClassificationStatistics().getAvgAccuracy()), //test if the same as above
 											round(modelValidationResult.getClassificationStatistics().getMainModelAccuracy()),
 											round(modelValidationResult.getClassificationStatistics().getDefaultModelAccuracy()),
 											round(modelValidationResult.getClassificationStatistics().getDefaultClassAccuracy()),
@@ -488,11 +490,12 @@ public class BatchExperiment {
 								
 								//OUTPUT
 								outN("  Avg. accuracy over folds for algorithm '%1(%2)': "+System.lineSeparator()+
-										"    %3 (%4) # %5 # %6 (%7|%8). Avg. main model decisions ratio: %9.",
+										"    %3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Avg. main model decisions ratio: %10.",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parameters,
 										round(aggregatedCVModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
-										round(classificationStatistics.getOverallAccuracy()),
+										round(classificationStatistics.getOverallAccuracy()), //test if the same as above
+										round(classificationStatistics.getAvgAccuracy()), //test if the same as above
 										round(classificationStatistics.getMainModelAccuracy()),
 										round(classificationStatistics.getDefaultModelAccuracy()),
 										round(classificationStatistics.getDefaultClassAccuracy()),
@@ -555,17 +558,18 @@ public class BatchExperiment {
 							
 							//OUTPUT
 							outN("Avg. accuracy over CVs for algorithm '%1(%2)': "+System.lineSeparator()+
-									"  %3 (stdDev: %4) (%5 (stdDev: %6)) # %7 (stdDev: %8) # %9 (stdDev: %10) (%11 (stdDev: %12) | %13 (stdDev: %14)). Avg. main model decisions ratio: %15. "+System.lineSeparator()+
-									"  %% [Learning]: %16"+System.lineSeparator()+
-									"%17"+System.lineSeparator()+
-									"  %% [Model]: %18."+System.lineSeparator()+
-									"  %% [Avg. fold calculation times]: training: %19 [ms], validation: %20 [ms]",
+									"  %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
+									"  %% [Learning]: %17"+System.lineSeparator()+
+									"%18"+System.lineSeparator()+
+									"  %% [Model]: %19."+System.lineSeparator()+
+									"  %% [Avg. fold calculation times]: training: %20 [ms], validation: %21 [ms]",
 									learningAlgorithms.get(learningAlgorithmNumber).getName(),
 									parameters,
-									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
-									round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()),
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+									round(aggregatedModelValidationResult.getClassificationStatistics().getAvgAccuracy()),
 									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
 									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
 									round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
@@ -631,21 +635,22 @@ public class BatchExperiment {
 //								//+++++
 								
 								String summaryLinePrefix = "    %% ";
+								String accuracyType = useMainModelAccuracy ? "main model" : "overall";
 								
 								//OUTPUT
-								outN("  Best avg. %1 accuracy over cross-validations for algorithm '%2(%3)': "+System.lineSeparator()+
-									 "    %4 (stdDev: %5) (%6 (stdDev: %7)) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
+								outN("  Best avg. "+accuracyType+" accuracy over cross-validations for algorithm '%1(%2)': "+System.lineSeparator()+
+									 "    %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
 									 "    %% [Learning]: %17"+System.lineSeparator()+
 									 "%18"+System.lineSeparator()+
 									 "    %% [Model]: %19."+System.lineSeparator()+
 									 "    %% [Avg. fold calculation times]: training: %20 [ms], validation: %21 [ms]",
-										useMainModelAccuracy ? "main model" : "overall",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parametersList.get(selector.parametersNumber),
-										round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
-										round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
 										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
 										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()),
+										round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+										round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+										round(aggregatedModelValidationResult.getClassificationStatistics().getAvgAccuracy()),
 										round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
 										round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
 										round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
@@ -1011,13 +1016,13 @@ public class BatchExperiment {
 		//TODO: comment algorithms that should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 //		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
@@ -1238,16 +1243,17 @@ public class BatchExperiment {
 						
 						//OUTPUT
 						outN("Avg. accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
-								"  %4 (stdDev: %5) (%6 (stdDev: %7)) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
-								"  %% [Learning]: %17"+System.lineSeparator()+
-								"%18"+System.lineSeparator()+
-								"  %% [Model]: %19."+System.lineSeparator()+
-								"  %% [Avg. fold calculation times]: training: %20, validation: %21",
+								"  %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
+								"  %% [Learning]: %18"+System.lineSeparator()+
+								"%19"+System.lineSeparator()+
+								"  %% [Model]: %20."+System.lineSeparator()+
+								"  %% [Avg. fold calculation times]: training: %21, validation: %22",
 								dataSetName, algorithmName, parameters,
-								round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
-								round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
 								round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()), //
 								round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()), //
+								round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+								round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+								round(aggregatedModelValidationResult.getClassificationStatistics().getAvgAccuracy()),
 								round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
 								round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
 								round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
@@ -1313,15 +1319,15 @@ public class BatchExperiment {
 //							//+++++
 							
 							String summaryLinePrefix = "    %% ";
+							String accuracyType = useMainModelAccuracy ? "main model" : "overall";
 							
 							//OUTPUT
-							outN("  Best avg. %1 accuracy for ('%2', %3(%4)): "+System.lineSeparator()+
+							outN("  Best avg. "+accuracyType+" accuracy for ('%2', %3(%4)): "+System.lineSeparator()+
 								 "    %5 (stdDev: %6) (%7 (stdDev: %8)) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
 								 "    %% [Learning]: %18"+System.lineSeparator()+
 								 "%19"+System.lineSeparator()+
 								 "    %% [Model]: %20."+System.lineSeparator()+
 								 "    %% [Avg. fold calculation times]: training: %21, validation: %22",
-									useMainModelAccuracy ? "main model" : "overall",
 									dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
 									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
 									round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),

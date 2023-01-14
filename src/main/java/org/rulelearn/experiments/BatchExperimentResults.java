@@ -270,14 +270,15 @@ public class BatchExperimentResults {
 //				//+++++
 				
 				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s):%n"
-						+ "  %s (%s) # %s # %s (%s|%s). Main model decisions ratio: %s.%n"
+						+ "  %s (overall: %s, avg: %s) # %s # %s (%s|%s). Main model decisions ratio: %s.%n"
 						+ "  [Learning]: %s.%n"
 						+ "%s%n"
 						+ "  [Model]: %s.%n"
 						+ "  [Times]: training: %d [ms], validation: %d [ms].",
 						dataName, algorithmNameWithParameters,
 						BatchExperiment.round(result.getModelValidationResult().getOrdinalMisclassificationMatrix().getAccuracy()),
-						BatchExperiment.round(classificationStatistics.getOverallAccuracy()),
+						BatchExperiment.round(classificationStatistics.getOverallAccuracy()), //test if the same as above
+						BatchExperiment.round(classificationStatistics.getAvgAccuracy()), //test if the same as above
 						BatchExperiment.round(classificationStatistics.getMainModelAccuracy()),
 						BatchExperiment.round(classificationStatistics.getDefaultModelAccuracy()),
 						BatchExperiment.round(classificationStatistics.getDefaultClassAccuracy()),

@@ -3,6 +3,8 @@
  */
 package org.rulelearn.experiments;
 
+import java.util.Locale;
+
 import org.rulelearn.approximations.Unions;
 import org.rulelearn.approximations.UnionsWithSingleLimitingDecision;
 import org.rulelearn.approximations.VCDominanceBasedRoughSetCalculator;
@@ -105,6 +107,8 @@ public interface ClassificationModel {
 		int aggregationCount = 0; //tells how many ModelLearningStatistics objects have been used to build this object
 		AggregationMode aggregationMode = AggregationMode.NONE;
 		
+		double avgQualityOfClassification = -1.0; //averaged aggregationCount times
+		
 		public ModelLearningStatistics(int numberOfLearningObjects, int numberOfConsistentLearningObjects,
 				double consistencyThreshold, int numberOfConsistentLearningObjectsForConsistencyThreshold,
 				String modelLearnerDescription, long statisticsCountingTime) {
@@ -117,6 +121,8 @@ public interface ClassificationModel {
 			
 			aggregationCount = 1;
 			aggregationMode = AggregationMode.NONE;
+			
+			avgQualityOfClassification = (double)totalNumberOfConsistentLearningObjects / totalNumberOfLearningObjects;
 		}
 		
 		public ModelLearningStatistics(AggregationMode aggregationMode, ModelLearningStatistics... modelLearningStatisticsSet) { //assumes presence of at least one statistics
@@ -124,8 +130,14 @@ public interface ClassificationModel {
 				throw new InvalidValueException("Incorrect aggregation mode.");
 			}
 			
+			if (modelLearningStatisticsSet.length == 0) {
+				throw new InvalidValueException("There should be at least one model learning statistics.");
+			}
+			
 			int numberOfConsistentLearningObjectsForConsistencyThresholdSum = 0;
 			boolean numberOfConsistentLearningObjectsForConsistencyThresholdIsUsed = false;
+			
+			double avgQualityOfClassificationSum = 0.0;
 			
 			//calculate sums
 			for (ModelLearningStatistics modelLearningStatistics : modelLearningStatisticsSet) {
@@ -138,16 +150,20 @@ public interface ClassificationModel {
 				totalStatisticsCountingTime += modelLearningStatistics.totalStatisticsCountingTime;
 				
 				aggregationCount += modelLearningStatistics.aggregationCount;
+				
+				avgQualityOfClassificationSum += modelLearningStatistics.avgQualityOfClassification;
 			}
 			
 			if (numberOfConsistentLearningObjectsForConsistencyThresholdIsUsed) {
 				totalNumberOfConsistentLearningObjectsForConsistencyThreshold = numberOfConsistentLearningObjectsForConsistencyThresholdSum;
 			}
 			
-			this.consistencyThreshold = modelLearningStatisticsSet[0].consistencyThreshold; //all statistics should be for the same consistency threshold
-			this.modelLearnerDescription = modelLearningStatisticsSet[0].modelLearnerDescription; //all statistics should be for the same model learner
+			consistencyThreshold = modelLearningStatisticsSet[0].consistencyThreshold; //all statistics should be for the same consistency threshold
+			modelLearnerDescription = modelLearningStatisticsSet[0].modelLearnerDescription; //all statistics should be for the same model learner
 			
 			this.aggregationMode = aggregationMode;
+			
+			avgQualityOfClassification = avgQualityOfClassificationSum / modelLearningStatisticsSet.length;
 			
 			if (this.aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
 				//TODO: calculate means and standard deviations
@@ -182,6 +198,10 @@ public interface ClassificationModel {
 			return aggregationMode;
 		}
 		
+		public double getAvgQualityOfClassification() {
+			return avgQualityOfClassification;
+		}
+		
 		public double getAverageNumberOfConsistentLearningObjects() { //gets average quality of classification over train data
 			return totalNumberOfLearningObjects > 0L ? ((double)totalNumberOfConsistentLearningObjects / totalNumberOfLearningObjects) : 0.0;
 		}
@@ -199,9 +219,16 @@ public interface ClassificationModel {
 			
 			String roundedValue = BatchExperiment.round(getAverageNumberOfConsistentLearningObjects());
 			if (aggregationCount == 1) {
-				sb.append("DRSA quality of classification: ").append(roundedValue);
+				sb.append("quality: ").append(roundedValue);
 			} else {
-				sb.append("avg. DRSA quality of classification: ").append(roundedValue);
+				sb.append("total quality: ").append(roundedValue);
+			}
+			
+			roundedValue = BatchExperiment.round(getAvgQualityOfClassification());
+			if (aggregationCount == 1) {
+				sb.append(", avg. quality (/1): ").append(roundedValue);
+			} else {
+				sb.append(String.format(Locale.US, ", avg. quality (/%d):", aggregationCount)).append(roundedValue);
 			}
 
 			double averageNumberOfConsistentLearningObjectsForConsistencyThreshold = getAverageNumberOfConsistentLearningObjectsForConsistencyThreshold();
@@ -210,9 +237,9 @@ public interface ClassificationModel {
 				roundedValue = BatchExperiment.round(averageNumberOfConsistentLearningObjectsForConsistencyThreshold);
 				
 				if (aggregationCount == 1) {
-					sb.append(", VC-DRSA quality of classification for epsilon="+consistencyThreshold+": ").append(roundedValue);
+					sb.append(", quality for epsilon="+consistencyThreshold+": ").append(roundedValue);
 				} else {
-					sb.append(", avg. VC-DRSA quality of classification for epsilon="+consistencyThreshold+": ").append(roundedValue);
+					sb.append(", total quality for epsilon="+consistencyThreshold+": ").append(roundedValue);
 				}
 			}
 			

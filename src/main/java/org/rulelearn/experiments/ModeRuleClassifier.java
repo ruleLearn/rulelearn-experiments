@@ -260,6 +260,10 @@ public class ModeRuleClassifier implements ClassificationModel {
 			classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel =
 					ClassificationModel.getNumberOfPreAndPostConsistentObjects(testInformationTable, assignedDecisions, 0.0);
 			
+			classificationStatistics.avgQualityOfClassification = (double)classificationStatistics.totalNumberOfPreConsistentTestObjects / classificationStatistics.totalNumberOfClassifiedObjects;
+			
+			classificationStatistics.avgAccuracy = classificationStatistics.getOverallAccuracy();
+			
 			classificationStatistics.totalStatisticsCountingTime = System.currentTimeMillis() - start;
 		}
 		

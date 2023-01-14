@@ -153,6 +153,10 @@ public class WEKAClassifer implements ClassificationModel {
 			classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel =
 					ClassificationModel.getNumberOfPreAndPostConsistentObjects(testData.getInformationTable(), assignedDecisions, 0.0);
 			
+			classificationStatistics.avgQualityOfClassification = (double)classificationStatistics.totalNumberOfPreConsistentTestObjects / classificationStatistics.totalNumberOfClassifiedObjects;
+			
+			classificationStatistics.avgAccuracy = classificationStatistics.getOverallAccuracy();
+			
 			classificationStatistics.totalStatisticsCountingTime = System.currentTimeMillis() - start;
 		}
 		

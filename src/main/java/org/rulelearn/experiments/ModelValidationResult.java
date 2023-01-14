@@ -115,6 +115,10 @@ public class ModelValidationResult {
 		
 		long totalStatisticsCountingTime = 0L; //to be subtracted from model validation time
 		
+		double avgQualityOfClassification = -1.0; //averaged over all folds; //not used if < 0
+		
+		double avgAccuracy = -1.0; //accuracy averaged during each aggregation of classification statistics (whatever aggregation mode is used)
+		
 		/**
 		 * Constructs these classification statistics.
 		 * 
@@ -160,6 +164,11 @@ public class ModelValidationResult {
 			boolean totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClassIsUsed = false;
 			long totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum = 0L;
 			boolean totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed = false;
+			
+			double avgQualityOfClassificationSum = 0.0;
+			boolean avgQualityOfClassificationIsUsed = false;
+			
+			double avgAccuracySum = 0.0;
 
 			//calculate sums
 			for (ClassificationStatistics classificationStatistics : classificationStatisticsSet) {
@@ -197,10 +206,17 @@ public class ModelValidationResult {
 				if (classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel >= 0) {
 					totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum += classificationStatistics.totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel;
 					totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed = true;
-				} 
+				}
+				
+				if (classificationStatistics.avgQualityOfClassification >= 0) {
+					avgQualityOfClassificationSum += classificationStatistics.avgQualityOfClassification;
+					avgQualityOfClassificationIsUsed = true;
+				}
 				
 				totalStatisticsCountingTime += classificationStatistics.totalStatisticsCountingTime;
-			}
+				
+				avgAccuracySum += classificationStatistics.avgAccuracy;
+			} //for
 			
 			if (totalNumberOfPreConsistentTestObjectsIsUsed) {
 				totalNumberOfPreConsistentTestObjects = totalNumberOfPreConsistentTestObjectsSum;
@@ -219,6 +235,12 @@ public class ModelValidationResult {
 			if (totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelIsUsed) {
 				totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel = totalNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModelSum;
 			}
+			
+			if (avgQualityOfClassificationIsUsed) {
+				avgQualityOfClassification = avgQualityOfClassificationSum / classificationStatisticsSet.length;
+			}
+			
+			avgAccuracy = avgAccuracySum / classificationStatisticsSet.length;
 			
 			//additionally calculate means and standard deviations
 			if (aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
@@ -606,39 +628,53 @@ public class ModelValidationResult {
 		}
 		
 		public String getQualitiesOfApproximation() {
-			double originalDecisionsQualityOfApproximation = getAverageNumberOfPreConsistentTestObjects();
-			double assignedDefaultClassDecisionsQualityOfApproximation = getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass();
-			double assignedDecisionsQualityOfApproximation = getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
-			double assignedPreConsistentDefaultClassDecisionsQualityOfApproximation = getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass();
-			double assignedPreConsistentDecisionsQualityOfApproximation = getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
+			double preQuality = getAverageNumberOfPreConsistentTestObjects();
+			double postQualityUsingDefaultClass = getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass();
+			double postQualityUsingDefaultModel = getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
+			double postQualityForPreConsistentObjectsUsingDefaultClass = getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainModelAndDefaultClass();
+			double postQualityForPreConsistentObjectsUsingDefaultModel = getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
+
+			double avgQualityOfClassification = getAvgQualityOfClassification();
 			
 			StringBuilder sb = new StringBuilder(128);
 			sb.append("");
 			
-			if (originalDecisionsQualityOfApproximation >= 0.0) {//pre-consistent
+			if (preQuality >= 0.0) {//pre-consistent
 				sb.append(String.format(Locale.US, "%spre-quality: %s", aggregationMode != AggregationMode.NONE ? "total " : "",
-						BatchExperiment.round(originalDecisionsQualityOfApproximation)));
+						BatchExperiment.round(preQuality)));
 			}
 			
-			if (assignedDefaultClassDecisionsQualityOfApproximation >= 0.0) {
+			if (avgQualityOfClassification >= 0.0) {
+				sb.append(String.format(Locale.US, "; avg. quality: %s", BatchExperiment.round(avgQualityOfClassification)));
+			}
+			
+			if (postQualityUsingDefaultClass >= 0.0) {
 				sb.append(String.format(Locale.US, "; %spost-quality(def.class): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
-						BatchExperiment.round(assignedDefaultClassDecisionsQualityOfApproximation)));
+						BatchExperiment.round(postQualityUsingDefaultClass)));
 			}
-			if (assignedDecisionsQualityOfApproximation >= 0.0) {
+			if (postQualityUsingDefaultModel >= 0.0) {
 				sb.append(String.format(Locale.US, ", %spost-quality(def.model): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
-						BatchExperiment.round(assignedDecisionsQualityOfApproximation)));
+						BatchExperiment.round(postQualityUsingDefaultModel)));
 			}
 			
-			if (assignedPreConsistentDefaultClassDecisionsQualityOfApproximation >= 0.0) {
+			if (postQualityForPreConsistentObjectsUsingDefaultClass >= 0.0) {
 				sb.append(String.format(Locale.US, "; %spost-quality(pre-consistent,def.class): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
-						BatchExperiment.round(assignedPreConsistentDefaultClassDecisionsQualityOfApproximation)));
+						BatchExperiment.round(postQualityForPreConsistentObjectsUsingDefaultClass)));
 			}
-			if (assignedPreConsistentDecisionsQualityOfApproximation >= 0.0) {
+			if (postQualityForPreConsistentObjectsUsingDefaultModel >= 0.0) {
 				sb.append(String.format(Locale.US, ", %spost-quality(pre-consistent,def.model): %s", aggregationMode != AggregationMode.NONE ? "total " : "",
-						BatchExperiment.round(assignedPreConsistentDecisionsQualityOfApproximation)));
+						BatchExperiment.round(postQualityForPreConsistentObjectsUsingDefaultModel)));
 			}
 			
 			return sb.toString();
+		}
+		
+		public double getAvgQualityOfClassification() {
+			return avgQualityOfClassification;
+		}
+		
+		public double getAvgAccuracy() {
+			return avgAccuracy;
 		}
 
 	}
