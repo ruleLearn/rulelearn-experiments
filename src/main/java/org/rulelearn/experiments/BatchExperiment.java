@@ -36,6 +36,9 @@ import weka.classifiers.rules.JRip;
 import weka.classifiers.rules.OLM;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
+import weka.filters.Filter;
+import weka.filters.supervised.attribute.Discretize;
+import weka.filters.unsupervised.attribute.ReplaceMissingValues;
 
 /**
  * Batch repeated cross-validation experiment over multiple data sets, with pre-processing of learning data, and different parameterized learning methods.
@@ -61,8 +64,8 @@ public class BatchExperiment {
 	static final boolean printWEKATrainedClassifiers = true;
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
-	static final boolean OLMData = false; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
-	static final boolean normalData = !OLMData; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
+	static final boolean OLM_OSDL_Data = true; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
+	static final boolean normalData = !OLM_OSDL_Data; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -584,7 +587,7 @@ public class BatchExperiment {
 									.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 									.collect(Collectors.joining(System.lineSeparator())),
 //									info,
-									aggregatedModelValidationResult.getModelDescription(),
+									aggregatedModelValidationResult.getModelDescription().toShortString(),
 									totalFoldCalculationTimes.getAverageTrainingTime(),
 									totalFoldCalculationTimes.getAverageValidationTime()
 								);
@@ -665,7 +668,7 @@ public class BatchExperiment {
 										.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 										.collect(Collectors.joining(System.lineSeparator())),
 //										info,
-										aggregatedModelValidationResult.getModelDescription(),
+										aggregatedModelValidationResult.getModelDescription().toShortString(),
 										totalFoldCalculationTimes.getAverageTrainingTime(),
 										totalFoldCalculationTimes.getAverageValidationTime()
 									);
@@ -769,7 +772,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 		/**/dataProviders.add(new BasicDataProvider(
 		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata.json",
 		/**/		"data/csv/OLM/bank-churn-4000-v8-processed data.csv",
@@ -793,7 +796,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.05 mv2 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 		/**/dataProviders.add(new BasicDataProvider(
 		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 		/**/		"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
@@ -816,7 +819,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.05 mv15 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 		/**/dataProviders.add(new BasicDataProvider(
 		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 		/**/		"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
@@ -839,7 +842,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.10 mv2 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
@@ -862,7 +865,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.10 mv15 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
@@ -885,7 +888,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.15 mv2 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
@@ -908,7 +911,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.15 mv15 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
@@ -931,7 +934,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.20 mv2 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
@@ -954,7 +957,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.20 mv15 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
@@ -977,7 +980,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.25 mv2 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
@@ -1000,7 +1003,7 @@ public class BatchExperiment {
 					k));
 		}
 		//********* OLM version of bank-churn-4000-v8_0.25 mv15 *********
-		if (OLMData) {
+		if (OLM_OSDL_Data) {
 			/**/dataProviders.add(new BasicDataProvider(
 			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 			/**/		"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
@@ -1022,8 +1025,8 @@ public class BatchExperiment {
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
@@ -1146,28 +1149,86 @@ public class BatchExperiment {
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				//-----
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_10_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_10_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_15_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_15_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_20_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_20_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))); //option -D means discretize numeric attributes
-		
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
+				//-----
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_05_mv2,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_05_mv15,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_10_mv2,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_10_mv15,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_15_mv2,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_15_mv15,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_20_mv2,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_20_mv15,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_25_mv2,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_25_mv15,
+						Arrays.asList(
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						));
 		//------------------------------------------------------------------------------------------------------------------------------
 		
 		parametersContainer.sortParametersLists(); //assure parameters for VCDomLEMModeRuleClassifierLearnerDataParameters algorithm are in ascending order w.r.t. consistency threshold
@@ -1268,7 +1329,7 @@ public class BatchExperiment {
 								.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 								.collect(Collectors.joining(System.lineSeparator())),
 //								info,
-								aggregatedModelValidationResult.getModelDescription(),
+								aggregatedModelValidationResult.getModelDescription().toShortString(),
 								totalFoldCalculationTimes.getAverageTrainingTime(),
 								totalFoldCalculationTimes.getAverageValidationTime()
 							);
@@ -1322,17 +1383,18 @@ public class BatchExperiment {
 							String accuracyType = useMainModelAccuracy ? "main model" : "overall";
 							
 							//OUTPUT
-							outN("  Best avg. "+accuracyType+" accuracy for ('%2', %3(%4)): "+System.lineSeparator()+
-								 "    %5 (stdDev: %6) (%7 (stdDev: %8)) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
+							outN("  Best avg. "+accuracyType+" accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
+								 "    %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
 								 "    %% [Learning]: %18"+System.lineSeparator()+
 								 "%19"+System.lineSeparator()+
 								 "    %% [Model]: %20."+System.lineSeparator()+
 								 "    %% [Avg. fold calculation times]: training: %21, validation: %22",
 									dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
-									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
-									round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()), //
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()), //
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+									round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+									round(aggregatedModelValidationResult.getClassificationStatistics().getAvgAccuracy()),
 									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
 									round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
 									round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
@@ -1347,7 +1409,7 @@ public class BatchExperiment {
 									.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 									.collect(Collectors.joining(System.lineSeparator())),
 //									info,
-									aggregatedModelValidationResult.getModelDescription(),
+									aggregatedModelValidationResult.getModelDescription().toShortString(),
 									totalFoldCalculationTimes.getAverageTrainingTime(),
 									totalFoldCalculationTimes.getAverageValidationTime()
 								);

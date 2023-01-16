@@ -23,6 +23,7 @@ import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 import weka.classifiers.AbstractClassifier;
 import weka.core.Instances;
+import weka.filters.Filter;
 
 /**
  * Generic WEKA classifier.
@@ -99,11 +100,13 @@ public class WEKAClassifer implements ClassificationModel {
 	}
 	
 	AbstractClassifier trainedClassifier; //trained classifier
+	Filter[] filters; //filters used during learning, in order, if any
 	ModelLearningStatistics modelLearningStatistics;
 	ModelDescription modelDescription = null;
 
-	public WEKAClassifer(AbstractClassifier trainedClassifier, ModelLearningStatistics modelLearningStatistics) {
+	public WEKAClassifer(AbstractClassifier trainedClassifier, Filter[] filters, ModelLearningStatistics modelLearningStatistics) {
 		this.trainedClassifier = trainedClassifier;
+		this.filters = filters;
 		this.modelLearningStatistics = modelLearningStatistics;
 	}
 
@@ -117,7 +120,20 @@ public class WEKAClassifer implements ClassificationModel {
 		int decisionAttributeIndex = ((SimpleDecision)orderOfDecisions[0]).getAttributeIndex();
 		EvaluationAttribute decisionAttribute = (EvaluationAttribute)testData.getInformationTable().getAttribute(decisionAttributeIndex);
 		
-		Instances instances = testData.getInstances(); //InformationTable2Instances.convert(testData.getInformationTable(), testData.getName());
+		Instances instances = testData.getInstances();
+		
+		if (filters != null) {
+			for (Filter filter : filters) { //use subsequent filters, if there are any filters meant to be used (array is not empty)
+				try {
+					//filter.setInputFormat(instances);
+					instances = Filter.useFilter(instances, filter);
+				} catch (Exception exception) {
+					exception.printStackTrace();
+					return null; //TODO: handle exception?
+				}
+			}
+		}
+		
 		double value;
 		
 		ClassificationStatistics classificationStatistics = new ClassificationStatistics(DefaultClassificationType.NONE, ClassifierType.WEKA_CLASSIFIER);
@@ -131,8 +147,8 @@ public class WEKAClassifer implements ClassificationModel {
 				} else {
 					classificationStatistics.increaseMainModelIncorrectCount(1);
 				}
-			} catch (Exception e) {
-				e.printStackTrace();
+			} catch (Exception exception) {
+				exception.printStackTrace();
 				return null; //TODO: handle exception?
 			}
 		}
@@ -191,12 +207,30 @@ public class WEKAClassifer implements ClassificationModel {
 	public SimpleDecision classify(int i, Data data) {
 		int decisionAttributeIndex = ((SimpleDecision)data.getInformationTable().getDecisions()[0]).getAttributeIndex(); //takes decision from the first object, just to get decision attribute index
 		EvaluationAttribute decisionAttribute = (EvaluationAttribute)data.getInformationTable().getAttribute(decisionAttributeIndex);
+		
+		Instances instances = data.getInstances();
+		
+		if (filters != null && filters.length > 0) {
+			instances = new Instances(instances, i, 1); //if there are filters to use, then creates instances with just one instance
+		}
+		
+		if (filters != null) {
+			for (Filter filter : filters) { //use subsequent filters, if there are any filters meant to be used (array is not empty)
+				try {
+					//filter.setInputFormat(instances);
+					instances = Filter.useFilter(instances, filter);
+				} catch (Exception exception) {
+					exception.printStackTrace();
+					return null; //TODO: handle exception?
+				}
+			}
+		}
 
 		double wekaClassificationResult;
 		try {
-			wekaClassificationResult = trainedClassifier.classifyInstance(data.getInstances().instance(i));
-		} catch (Exception e) {
-			e.printStackTrace();
+			wekaClassificationResult = trainedClassifier.classifyInstance(instances.instance(i));
+		} catch (Exception exception) {
+			exception.printStackTrace();
 			return null; //TODO: handle exception?
 		}
 		

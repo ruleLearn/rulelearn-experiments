@@ -9,6 +9,7 @@ import org.rulelearn.experiments.ClassificationModel.ModelLearningStatistics;
 
 import weka.classifiers.AbstractClassifier;
 import weka.core.Instances;
+import weka.filters.Filter;
 
 /**
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
@@ -28,15 +29,32 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 	public WEKAClassifer learn(Data data, LearningAlgorithmDataParameters parameters) { //parameters can be null, if not used (i.e., WEKA algorithm is used with default options)
 		Instances train = InformationTable2Instances.convert(data.getInformationTable(), data.getName());
 		AbstractClassifier wekaClassifier = wekaClassifierProvider.get();
-
+		
+		Filter[] filters = null;
+		
 		try {
 			String options;
-			if (parameters != null && (options = parameters.getParameter(WEKAAlgorithmOptions.optionsParameterName)) != null) {
-				wekaClassifier.setOptions(weka.core.Utils.splitOptions(options));
+			if (parameters != null) {
+				if ((options = parameters.getParameter(WEKAAlgorithmOptions.optionsParameterName)) != null) {
+					wekaClassifier.setOptions(weka.core.Utils.splitOptions(options));
+				}
+				
+				Supplier<Filter[]> filtersProvider = ((WEKAAlgorithmOptions)parameters).getFiltersProvider();
+				
+				if (filtersProvider != null) {
+					filters = filtersProvider.get();
+					if (filters != null) { //there may be some filters
+						for (Filter filter : filters) { //use subsequent filters, if there are any filters meant to be used (array is not empty)
+							filter.setInputFormat(train);
+							train = Filter.useFilter(train, filter);
+						}
+					}
+				}
 			}
+			
 			wekaClassifier.buildClassifier(train); //train the classifier
-		} catch (Exception e) {
-			e.printStackTrace();
+		} catch (Exception exception) {
+			exception.printStackTrace();
 			return null; //TODO: handle exception?
 		}
 		
@@ -64,7 +82,7 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 				modelLearnerDescription, statisticsCountingTime);
 		//+++++
 		
-		return new WEKAClassifer(wekaClassifier, modelLearningStatistics);
+		return new WEKAClassifer(wekaClassifier, filters, modelLearningStatistics);
 	}
 
 	@Override
