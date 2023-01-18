@@ -41,6 +41,19 @@
 
 package keel.Algorithms.Monotonic_Classification.MoNGEL;
 
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.rulelearn.data.AttributePreferenceType;
+import org.rulelearn.data.InformationTable;
+import org.rulelearn.data.arff.ArffReader;
+import org.rulelearn.experiments.AttributeRanges;
+import org.rulelearn.experiments.AttributeRanges.AttributeRange;
+import org.rulelearn.experiments.InformationTable2InstanceSet;
+
+import keel.Dataset.InstanceSet;
+
 public class Main {
 	
 	//The classifier
@@ -53,20 +66,53 @@ public class Main {
 	 *
 	 */
 	public static void main (String args[]) {
+		//BEGIN MSz
+		long seed = 0L;
+		InstanceSet trainData = null;
+		InstanceSet referenceData = null;
+		InstanceSet testData = null;
+		String[] outFiles = new String[] {
+				"src/main/resources/data/MoNGEL-results/train-results.txt",
+				"src/main/resources/data/MoNGEL-results/test-results.txt",
+				"src/main/resources/data/MoNGEL-results/summary-results.txt"
+		};
+		List<AttributeRanges.AttributeRange> attributeRangesList = new ArrayList<AttributeRanges.AttributeRange>();
+		attributeRangesList.add(new AttributeRange(0, 4.3, 7.9));
+		attributeRangesList.add(new AttributeRange(1, 2.0, 4.4));
+		attributeRangesList.add(new AttributeRange(2, 1.0, 6.9));
+		attributeRangesList.add(new AttributeRange(3, 0.1, 2.5));
+		AttributeRanges attributeRanges = new AttributeRanges(attributeRangesList);
 		
-		if (args.length != 1){
-
-			System.err.println("Error. A parameter is only needed.");
-			
-		} else {
-			
-			classifier = new MoNGEL(args[0]); // Creating the MoNGEL object
-            classifier.initializeRules();     // Initializing the rules structures
-			classifier.getRules();			  
-			classifier.execute();			  // Executing the method MoNGEL
-            classifier.printOutput();	   	  // Processing the output following the Keel requirements 
+		InformationTable informationTable;
+		
+		ArffReader arffReader = new ArffReader();
+		try {
+			informationTable = arffReader.read("src/main/resources/data/arff/iris-0-train.arff", AttributePreferenceType.GAIN);
+		} catch (FileNotFoundException exception) {
+			exception.printStackTrace();
+			return;
 		}
 		
+		trainData = InformationTable2InstanceSet.convert(informationTable, "iris-train", attributeRanges);
+		referenceData = InformationTable2InstanceSet.convert(informationTable, "iris-reference", attributeRanges);
+		
+		try {
+			informationTable = arffReader.read("src/main/resources/data/arff/iris-0-test.arff", AttributePreferenceType.GAIN);
+		} catch (FileNotFoundException exception) {
+			exception.printStackTrace();
+			return;
+		}
+		
+		testData = InformationTable2InstanceSet.convert(informationTable, "iris-test", attributeRanges);
+		//END MSz
+		
+		classifier = new MoNGEL(seed, trainData, referenceData); //MSz
+        classifier.initializeRules();     // Initializing the rules structures
+		classifier.getRules();
+		classifier.loadTestData(testData);//MSz
+		classifier.setOutFiles(outFiles); //MSz
+		classifier.execute();			  // Executing the method MoNGEL
+        classifier.printOutput();	   	  // Processing the output following the Keel requirements
 	} //end-method 
         
         

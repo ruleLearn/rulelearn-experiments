@@ -49,7 +49,6 @@ import java.util.Arrays;
 import java.util.StringTokenizer;
 
 import keel.Dataset.Attribute;
-import keel.Dataset.Attributes;
 import keel.Dataset.Instance;
 import keel.Dataset.InstanceSet;
 
@@ -59,10 +58,10 @@ public abstract class HyperrectanglesAlgorithm {
 
 	//Files
 
-	protected String outFile[];
-	protected String testFile;
-	protected String trainFile;
-	protected String referenceFile;
+	protected String outFile[]; //TODO: comment this line
+//	protected String testFile;
+//	protected String trainFile;
+//	protected String referenceFile;
 	
 	//Instance Sets
 	
@@ -74,9 +73,9 @@ public abstract class HyperrectanglesAlgorithm {
 	
 	//Data
 	
-	protected int inputAtt;
-	protected Attribute[] inputs;
-	protected Attribute output;
+	protected int inputAtt; //number of input attributes
+	protected Attribute[] inputs; //array with input attributes
+	protected Attribute output; //single output attribute
 	protected boolean[] nulls;
 	
 	protected double trainData[][];
@@ -87,7 +86,7 @@ public abstract class HyperrectanglesAlgorithm {
 	protected int referenceOutput[];
 	protected String relation;
 	
-	protected int nClasses;
+	protected int nClasses; //number of decision classes
 	protected int nInstances[];
 	
 	//Timing
@@ -121,63 +120,117 @@ public abstract class HyperrectanglesAlgorithm {
         private double antimontest;
         private double antimontrain;
 	
+//	/** 
+//	 * Read the configuration and data files, and process it.
+//	 * 
+//	 * @param script Name of the configuration script  
+//	 * 
+//	 */
+//	protected void readDataFiles(String script){
+//	    
+//		//Read of the script file
+//		readConfiguracion(script);   
+//		readParameters(script);
+//
+//		//Read of training data files
+//	    try {
+//			train = new InstanceSet();
+//
+//			train.readSet(trainFile, true);
+//
+//			train.setAttributesAsNonStatic();
+//
+//		    inputAtt = train.getAttributeDefinitions().getInputNumAttributes();
+//		    inputs = train.getAttributeDefinitions().getInputAttributes();
+//		    output = train.getAttributeDefinitions().getOutputAttribute(0);
+//		    
+//			//Normalize the data
+//		     
+//			normalizeTrain();
+//			
+//	    } catch (Exception e) {
+//			System.err.println(e);
+//			System.exit(1);
+//	    }
+//
+//	    //Read of test data files
+//	    try {
+//			test = new InstanceSet();
+//			test.readSet(testFile, false);
+//		    test.setAttributesAsNonStatic();
+//			//Normalize the data
+//			normalizeTest();
+//			
+//	    } catch (Exception e) {
+//			System.err.println(e);
+//			System.exit(1);
+//	    }
+//  
+//	    Attributes.clearAll();
+//	    
+//		//Read of reference data files
+//		try {
+//			reference = new InstanceSet();					
+//			reference.readSet(referenceFile, true);
+//			reference.setAttributesAsNonStatic();
+//
+//			//Normalize the data
+//			normalizeReference();
+//					
+//		} catch (Exception e) {
+//			System.err.println(e);
+//			System.exit(1);
+//		}
+//		
+//		//Now, the data is loaded and preprocessed
+//
+//	    //Get the number of classes
+//	    nClasses=train.getAttributeDefinitions().getOutputAttribute(0).getNumNominalValues();
+//	    
+//	    //And the number of instances on each class
+//	    
+//	    nInstances=new int[nClasses];
+//	    for(int i=0;i<nClasses;i++){
+//	    	nInstances[i]=0;
+//		}
+//	    for(int i=0;i<trainOutput.length;i++){
+//	    	nInstances[trainOutput[i]]++;
+//	    }
+//	    
+//	}//end-method
+	
+	
+	/*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 	/** 
-	 * Read the configuration and data files, and process it.
+	 * Reads learning (training and reference) data and processes them.
 	 * 
-	 * @param script Name of the configuration script  
+	 * @param trainData training data
+	 * @param referenceData reference data  
 	 * 
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
 	 */
-	protected void readDataFiles(String script){
-	    
-		//Read of the script file
-		readConfiguracion(script);   
-		readParameters(script);
-
-		//Read of training data files
+	protected void loadLearningData(InstanceSet trainData, InstanceSet referenceData) {
+		//Read training data
 	    try {
-			train = new InstanceSet();
-
-			train.readSet(trainFile, true);
-
-			train.setAttributesAsNonStatic();
+			train = trainData;
 
 		    inputAtt = train.getAttributeDefinitions().getInputNumAttributes();
 		    inputs = train.getAttributeDefinitions().getInputAttributes();
 		    output = train.getAttributeDefinitions().getOutputAttribute(0);
 		    
 			//Normalize the data
-		     
 			normalizeTrain();
-			
 	    } catch (Exception e) {
 			System.err.println(e);
 			System.exit(1);
 	    }
 
-	    //Read of test data files
-	    try {
-			test = new InstanceSet();
-			test.readSet(testFile, false);
-		    test.setAttributesAsNonStatic();
-			//Normalize the data
-			normalizeTest();
-			
-	    } catch (Exception e) {
-			System.err.println(e);
-			System.exit(1);
-	    }
-  
-	    Attributes.clearAll();
-	    
-		//Read of reference data files
+		//Read reference data
 		try {
-			reference = new InstanceSet();					
-			reference.readSet(referenceFile, true);
-			reference.setAttributesAsNonStatic();
+			reference = referenceData;
 
 			//Normalize the data
 			normalizeReference();
-					
 		} catch (Exception e) {
 			System.err.println(e);
 			System.exit(1);
@@ -188,93 +241,115 @@ public abstract class HyperrectanglesAlgorithm {
 	    //Get the number of classes
 	    nClasses=train.getAttributeDefinitions().getOutputAttribute(0).getNumNominalValues();
 	    
-	    //And the number of instances on each class
-	    
-	    nInstances=new int[nClasses];
-	    for(int i=0;i<nClasses;i++){
-	    	nInstances[i]=0;
+	    //and the number of instances in each class
+	    nInstances = new int[nClasses];
+	    for (int i = 0; i < nClasses; i++) {
+	    	nInstances[i] = 0;
 		}
-	    for(int i=0;i<trainOutput.length;i++){
+	    for (int i = 0; i < trainOutput.length; i++) {
 	    	nInstances[trainOutput[i]]++;
 	    }
 	    
-	}//end-method 
-
+	}
+	
 	/** 
-	 * Reads configuration script, and extracts its contents.
+	 * Reads test data and processes them.
 	 * 
-	 * @param script Name of the configuration script  
-	 * 
-	 */	
-	protected void readConfiguracion (String script) {
-
-		String fichero, linea, token;
-		StringTokenizer lineasFichero, tokens;
-		byte line[];
-	    int i, j;
-
-	    outFile = new String[3];
-
-	    fichero = Files.readFile (script);
-	    lineasFichero = new StringTokenizer (fichero,"\n\r");
-
-	    lineasFichero.nextToken();
-	    linea = lineasFichero.nextToken();
-
-	    tokens = new StringTokenizer (linea, "=");
-	    tokens.nextToken();
-	    token = tokens.nextToken();
-
-	    //Getting the names of training and test files
-	    //reference file will be used as comparision
-	    
-	    line = token.getBytes();
-	    for (i=0; line[i]!='\"'; i++);
-	    i++;
-	    for (j=i; line[j]!='\"'; j++);
-	    trainFile = new String (line,i,j-i);
-	    for (i=j+1; line[i]!='\"'; i++);
-	    i++;
-	    for (j=i; line[j]!='\"'; j++);
-	    referenceFile = new String (line,i,j-i);
-	    for (i=j+1; line[i]!='\"'; i++);
-	    i++;
-	    for (j=i; line[j]!='\"'; j++);
-	    testFile = new String (line,i,j-i);
-
-	    //Getting the path and base name of the results files
-	    
-	    linea = lineasFichero.nextToken();
-	    tokens = new StringTokenizer (linea, "=");
-	    tokens.nextToken();
-	    token = tokens.nextToken();
-
-	    //Getting the names of output files
-	    
-	    line = token.getBytes();
-	    for (i=0; line[i]!='\"'; i++);
-	    i++;
-	    for (j=i; line[j]!='\"'; j++);
-	    outFile[0] = new String (line,i,j-i);
-	    for (i=j+1; line[i]!='\"'; i++);
-	    i++;
-	    for (j=i; line[j]!='\"'; j++);
-	    outFile[1] = new String (line,i,j-i);
-	    for (i=j+1; line[i]!='\"'; i++);
-	    i++;
-	    for (j=i; line[j]!='\"'; j++);
-	    outFile[2] = new String (line,i,j-i);
-	    
-	} //end-method
-
-	/** 
-	 * Reads the parameters of the algorithm. 
-	 * Must be implemented in the subclass.
-	 * 
-	 * @param script Configuration script
-	 * 
+	 * @param testData test data
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
 	 */
-	protected abstract void readParameters(String script);
+	public void loadTestData(InstanceSet testData) {
+		//Read of test data files
+	    try {
+			test = testData;
+			//Normalize the data
+			normalizeTest();
+	    } catch (Exception e) {
+			System.err.println(e);
+			System.exit(1);
+	    }
+	}
+	
+	public void setOutFiles(String[] outFiles) {
+		this.outFile = outFiles;
+	}
+	/*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
+
+//	/** 
+//	 * Reads configuration script, and extracts its contents.
+//	 * 
+//	 * @param script Name of the configuration script  
+//	 * 
+//	 */	
+//	protected void readConfiguracion (String script) {
+//
+//		String fichero, linea, token;
+//		StringTokenizer lineasFichero, tokens;
+//		byte line[];
+//	    int i, j;
+//
+//	    outFile = new String[3];
+//
+//	    fichero = Files.readFile (script);
+//	    lineasFichero = new StringTokenizer (fichero,"\n\r");
+//
+//	    lineasFichero.nextToken();
+//	    linea = lineasFichero.nextToken();
+//
+//	    tokens = new StringTokenizer (linea, "=");
+//	    tokens.nextToken();
+//	    token = tokens.nextToken();
+//
+//	    //Getting the names of training and test files
+//	    //reference file will be used as comparision
+//	    
+//	    line = token.getBytes();
+//	    for (i=0; line[i]!='\"'; i++);
+//	    i++;
+//	    for (j=i; line[j]!='\"'; j++);
+//	    trainFile = new String (line,i,j-i);
+//	    for (i=j+1; line[i]!='\"'; i++);
+//	    i++;
+//	    for (j=i; line[j]!='\"'; j++);
+//	    referenceFile = new String (line,i,j-i);
+//	    for (i=j+1; line[i]!='\"'; i++);
+//	    i++;
+//	    for (j=i; line[j]!='\"'; j++);
+//	    testFile = new String (line,i,j-i);
+//
+//	    //Getting the path and base name of the results files
+//	    
+//	    linea = lineasFichero.nextToken();
+//	    tokens = new StringTokenizer (linea, "=");
+//	    tokens.nextToken();
+//	    token = tokens.nextToken();
+//
+//	    //Getting the names of output files
+//	    
+//	    line = token.getBytes();
+//	    for (i=0; line[i]!='\"'; i++);
+//	    i++;
+//	    for (j=i; line[j]!='\"'; j++);
+//	    outFile[0] = new String (line,i,j-i);
+//	    for (i=j+1; line[i]!='\"'; i++);
+//	    i++;
+//	    for (j=i; line[j]!='\"'; j++);
+//	    outFile[1] = new String (line,i,j-i);
+//	    for (i=j+1; line[i]!='\"'; i++);
+//	    i++;
+//	    for (j=i; line[j]!='\"'; j++);
+//	    outFile[2] = new String (line,i,j-i);
+//	    
+//	} //end-method
+
+//	/** 
+//	 * Reads the parameters of the algorithm. 
+//	 * Must be implemented in the subclass.
+//	 * 
+//	 * @param script Configuration script
+//	 * 
+//	 */
+//	protected abstract void readParameters(String script);
 	
 	/** 
 	 * This function builds the data matrix for training data and normalizes inputs values

@@ -46,18 +46,12 @@
 package keel.Algorithms.Monotonic_Classification.MoNGEL;
 
 import java.util.*;
-import java.util.StringTokenizer;
 
-import org.core.Fichero;
 import org.core.Files;
 import org.core.Randomize;
 import keel.Dataset.Attribute;
-import keel.Dataset.Attributes;
 import keel.Algorithms.Monotonic_Classification.Basic.HyperrectanglesAlgorithm;
 import keel.Dataset.InstanceSet;
-
-
-
 
 public class MoNGEL extends HyperrectanglesAlgorithm{
 	
@@ -70,72 +64,109 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
         private int numCover[];
 
 	
+//	/** 
+//	 * The main method of the class
+//	 * 
+//	 * @param script Name of the configuration script  
+//	 * 
+//	 */
+//	public MoNGEL (String script) {
+//		
+//        initialTime = System.currentTimeMillis();
+//		
+//		readDataFiles(script);
+//		
+//		//Naming the algorithm
+//		name="MoNGEL";
+//			
+//		Rule.setSize(inputAtt);
+//		Rule.setAttributes(inputs);
+//		
+//		for(int i=0;i<inputAtt;i++){
+//			if(inputs[i].getType()==Attribute.NOMINAL){
+//				Rule.setNumValue(Attributes.getInputAttribute(i).getNumNominalValues(),i);
+//			}
+//			else{
+//				Rule.setNumValue(1,i);
+//			}
+//		}
+//
+//		
+//		
+//		//Initialization of random generator
+//	    
+//	    Randomize.setSeed(seed);
+//		
+//		//Initialization stuff ends here. So, we can start time-counting
+//		
+//		setInitialTime(); 
+//
+//	} //end-method 
+	
+	/*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 	/** 
-	 * The main method of the class
+	 * Proper constructor.
 	 * 
-	 * @param script Name of the configuration script  
-	 * 
+	 * @param seed random generator seed
+	 * @param trainData training data
+	 * @param referenceData reference data
 	 */
-	public MoNGEL (String script) {
-		
+	public MoNGEL(long seed, InstanceSet trainData, InstanceSet referenceData) {
         initialTime = System.currentTimeMillis();
+        
+        this.seed = seed; //NEW
 		
-		readDataFiles(script);
+        loadLearningData(trainData, referenceData);
 		
 		//Naming the algorithm
 		name="MoNGEL";
 			
-		Rule.setSize(inputAtt);
-		Rule.setAttributes(inputs);
+//		Rule.setSize(inputAtt);
+//		Rule.setAttributes(inputs);
 		
-		for(int i=0;i<inputAtt;i++){
-			if(inputs[i].getType()==Attribute.NOMINAL){
-				Rule.setNumValue(Attributes.getInputAttribute(i).getNumNominalValues(),i);
-			}
-			else{
-				Rule.setNumValue(1,i);
-			}
-		}
+//		for (int i = 0; i < inputAtt; i++) {
+//			if (inputs[i].getType() == Attribute.NOMINAL) {
+//				Rule.setNumValue(inputs[i].getNumNominalValues(), i);
+//			} else {
+//				Rule.setNumValue(1, i);
+//			}
+//		}
 
-		
-		
 		//Initialization of random generator
-	    
-	    Randomize.setSeed(seed);
+	    Randomize.setSeed(this.seed);
 		
 		//Initialization stuff ends here. So, we can start time-counting
-		
 		setInitialTime(); 
-
-	} //end-method 
+	}
+	/*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 	
-	/** 
-	 * Reads configuration script, to extract the parameter's values.
-	 * 
-	 * @param script Name of the configuration script  
-	 * 
-	 */	
-    protected void readParameters (String script) {
-
-        String file;
-        String line;
-        StringTokenizer fileLines, tokens;
-        String mode;
-
-        file = Fichero.leeFichero (script);
-        fileLines = new StringTokenizer (file,"\n\r");
-
-        //Discard in/out files definition
-        fileLines.nextToken();
-        fileLines.nextToken();
-        fileLines.nextToken();
-
-        //Getting the seed
-        line = fileLines.nextToken();
-        tokens = new StringTokenizer (line, "=");
-        tokens.nextToken();
-        seed = Long.parseLong(tokens.nextToken().substring(1));
-        }//end-method
+//	/** 
+//	 * Reads configuration script, to extract the parameter's values.
+//	 * 
+//	 * @param script Name of the configuration script  
+//	 * 
+//	 */	
+//    protected void readParameters (String script) {
+//
+//        String file;
+//        String line;
+//        StringTokenizer fileLines, tokens;
+//        String mode;
+//
+//        file = Fichero.leeFichero (script);
+//        fileLines = new StringTokenizer (file,"\n\r");
+//
+//        //Discard in/out files definition
+//        fileLines.nextToken();
+//        fileLines.nextToken();
+//        fileLines.nextToken();
+//
+//        //Getting the seed
+//        line = fileLines.nextToken();
+//        tokens = new StringTokenizer (line, "=");
+//        tokens.nextToken();
+//        seed = Long.parseLong(tokens.nextToken().substring(1));
+//        }//end-method
     
      /**
      * Extract the rules from the training set. This is the main part of the
@@ -148,7 +179,7 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
             this.nClasses=this.reference.getAttributeDefinitions().getOutputAttributes()[0].getNumNominalValues();
             ruleset=new Rule[this.referenceData.length];
             for(int i=0;i<referenceData.length;i++){			
-                                    ruleset[i]=new Rule(referenceData[i],referenceOutput[i]);		
+                                    ruleset[i]=new Rule(referenceData[i],referenceOutput[i],inputs);		
                     }
             // Hyperrectangles are ordered by the output
             List aux2 = new LinkedList();
@@ -276,7 +307,7 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
             
             else{
                 for(int i=0; i < ruleset.length; i++){
-                    if(ruleset[i].compareInput(new Rule(instance,1))>0){
+                    if(ruleset[i].compareInput(new Rule(instance,1,inputs))>0){
                               return (ruleset[i].getOutput());
                     }
                 }

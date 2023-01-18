@@ -135,6 +135,28 @@ public class InstanceSet {
 	  this.attributes = new InstanceAttributes(is.attributes);
 	  this.storeAttributesAsNonStatic = is.storeAttributesAsNonStatic;
   }
+  
+  /**
+   * Correctly builds this instance set (not using static Attributes and setting all instances at once and thus saving a lot of time...).
+   * 
+   * @param attributes new attributes (with marked decision attribute)
+   * @param instances new instances (all at once)
+   * @param header header to be written to .dat file 
+   * 
+   * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+   */
+  public InstanceSet(InstanceAttributes attributes, Instance[] instances, String header) {
+	  this.attributes = attributes;
+	  this.storeAttributesAsNonStatic = true;
+	  this.instanceSet = instances;
+	  this.outputInfered = false;
+	  
+	  this.header = header;
+	  
+	  //this.attributes.initStatistics();
+	  //this.attributes.finishStatistics();
+	  //classFrequencies, mostUsedValue, meanValue, numStatUpdates - not used outside Attribute class (only calculated there and printed to String)
+  }
 
 
 /**

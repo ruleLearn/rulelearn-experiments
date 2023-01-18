@@ -41,16 +41,14 @@
  * @modified by Javier García (University of Jaén)  30/05/2015
  */
 package keel.Algorithms.Monotonic_Classification.MoNGEL;
-import java.util.StringTokenizer;
+
 import keel.Dataset.Attribute;
-import keel.Dataset.Attributes;
 
-
-public class Rule implements Comparable {
+public class Rule implements Comparable<Rule> {
 	
-	private static int size;            //attributes of the rule
-	private static boolean isNominal[]; //nominal attributes
-	private static int nValues[];       //different values in nominal attributes
+	private int size;            //number of input attributes of the rule
+	private boolean isNominal[]; //nominal attributes
+	private int nValues[];       //different values in nominal attributes
 	
 	private double valueMin[];          //for numeric attributes
 	private double valueMax[];          //for numeric attributes
@@ -60,7 +58,7 @@ public class Rule implements Comparable {
 	
 	private int output;                 //output attribute
         
-        
+	Attribute[] inputs; //input attributes //MSz
 	
 	/**
      * Sets the size of the rule
@@ -68,7 +66,7 @@ public class Rule implements Comparable {
      * @param value Number of attributes of the rule
      *
      */
-	public static void setSize(int value){
+	public void setSize(int value){
 		
 		size=value;
 		nValues=new int[size];
@@ -81,7 +79,7 @@ public class Rule implements Comparable {
      * @param inputs Attributes' descriptions
      *
      */
-	public static void setAttributes(Attribute[] inputs){
+	public void testForNominalAttributes(Attribute[] inputs){
 		
 		isNominal=new boolean[size];
 		
@@ -103,16 +101,31 @@ public class Rule implements Comparable {
      * @param pos Index of the attribute
      *
      */
-	public static void setNumValue(int value,int pos){
+	public void setNumValue(int value,int pos){
 		
 		nValues[pos]=value;
 		
 	}//end-method
 
 	/**
-     * Default builder. Generates a void rule
+     * Default builder. Generates a void rule.
+     * 
+     * @param attributes the attributes for which this rule is generated
      */
-	public Rule(){
+	public Rule(Attribute[] inputAttributes){ //MSz: added inputAttributes
+		//***** BEGIN MSz fix *****
+		this.inputs = inputAttributes;
+		setSize(inputAttributes.length);
+		testForNominalAttributes(inputAttributes);
+		
+		for (int i = 0; i < size; i++) {
+			if (inputs[i].getType() == Attribute.NOMINAL) {
+				setNumValue(inputs[i].getNumNominalValues(), i);
+			} else {
+				setNumValue(1, i);
+			}
+		}
+		//***** END MSz fix *****
 		
 		valueMin=new double[size];
 		valueMax=new double[size];
@@ -135,8 +148,22 @@ public class Rule implements Comparable {
      *
      * @param instance Basic instance
      * @param out Ouput of the instance
+     * @param attributes the attributes for which this rule is generated
      */
-	public Rule(double instance[],int out){
+	public Rule(double instance[], int out, Attribute[] inputAttributes){ //MSz: added inputAttributes
+		//***** BEGIN MSz fix *****
+		this.inputs = inputAttributes;
+		setSize(inputAttributes.length);
+		testForNominalAttributes(inputAttributes);
+		
+		for (int i = 0; i < size; i++) {
+			if (inputs[i].getType() == Attribute.NOMINAL) {
+				setNumValue(inputs[i].getNumNominalValues(), i);
+			} else {
+				setNumValue(1, i);
+			}
+		}
+		//***** END MSz fix *****
 		
 		int nomRep;
 		
@@ -222,9 +249,9 @@ public class Rule implements Comparable {
 	}//end-method
      
 	@Override
-	public int compareTo(Object other){
-            if(!(other instanceof Rule))
-                throw new ClassCastException("Invalid object in Rule:compareTo");
+	public int compareTo(Rule other){
+//            if(!(other instanceof Rule))
+//                throw new ClassCastException("Invalid object in Rule:compareTo");
             if(this.getOutput()>((Rule)other).getOutput())
                 return 1;
             else if(this.getOutput()<((Rule)other).getOutput())
@@ -240,7 +267,7 @@ public class Rule implements Comparable {
      */
 	public Rule clone(){
 		
-		Rule clon=new Rule();	
+		Rule clon=new Rule(inputs);	
 		
 		for(int i=0;i<size;i++){
 			if(isNominal[i]){
@@ -320,14 +347,14 @@ public class Rule implements Comparable {
 			              if(this.valueNom[i][j]==true){
                                           if(numelem>0)
                                               text+=",";    
-                                          text+=Attributes.getInputAttribute(i).getNominalValue(j);
+                                          text+=inputs[i].getNominalValue(j);
                                           numelem++;
                                       }  
 				}
                                 if(this.valueNom[i][nValues[i]-1]==true){
                                     if(numelem>0)
                                             text+=",";    
-                                    text+=Attributes.getInputAttribute(i).getNominalValue(nValues[i]-1);
+                                    text+=inputs[i].getNominalValue(nValues[i]-1);
                                 }    
                                 text+="}";
 			}
@@ -667,9 +694,9 @@ public class Rule implements Comparable {
 	    //Normalize the data
 	    
 	    
-	    if (Attributes.getInputAttribute(j).getType() != Attribute.NOMINAL) {
-		    	minimum=Attributes.getInputAttribute(j).getMinAttribute();
-		    	range=Attributes.getInputAttribute(j).getMaxAttribute()-minimum;
+	    if (inputs[j].getType() != Attribute.NOMINAL) {
+		    	minimum=inputs[j].getMinAttribute();
+		    	range=inputs[j].getMaxAttribute()-minimum;
                         X= Z*range;
                         X=  X+ minimum;
             }
@@ -678,8 +705,8 @@ public class Rule implements Comparable {
 	    
 	    
             else  {
-                if(Attributes.getInputAttribute(j).getNominalValuesList().size()>1)
-                        X = Z* (Attributes.getInputAttribute(j).getNominalValuesList().size()-1);
+                if(inputs[j].getNominalValuesList().size()>1)
+                        X = Z* (inputs[j].getNominalValuesList().size()-1);
             }
             return X;
       }
