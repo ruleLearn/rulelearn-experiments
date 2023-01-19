@@ -58,7 +58,7 @@ public abstract class HyperrectanglesAlgorithm {
 
 	//Files
 
-	protected String outFile[]; //TODO: comment this line
+//	protected String outFile[];
 //	protected String testFile;
 //	protected String trainFile;
 //	protected String referenceFile;
@@ -103,7 +103,7 @@ public abstract class HyperrectanglesAlgorithm {
 	
 	//Random seed
 	
-	protected long seed;
+//	protected long seed;
 	
 	//Results
 	protected int confMatrix[][];
@@ -270,9 +270,9 @@ public abstract class HyperrectanglesAlgorithm {
 	    }
 	}
 	
-	public void setOutFiles(String[] outFiles) {
-		this.outFile = outFiles;
-	}
+//	public void setOutFiles(String[] outFiles) {
+//		this.outFile = outFiles;
+//	}
 	/*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 
 //	/** 
@@ -581,7 +581,7 @@ public abstract class HyperrectanglesAlgorithm {
 	public void execute(){
 		
 		modelTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
-		System.out.println(name+" "+ relation + " Model " + modelTime + "s");
+//		System.out.println(name+" "+ relation + " Model " + modelTime + "s");
 		
 		trainRealClass = new int[trainData.length][1];
 		trainPrediction = new int[trainData.length][1];	
@@ -605,8 +605,8 @@ public abstract class HyperrectanglesAlgorithm {
 		trainingTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
 		
 		//Writing results
-		writeOutput(outFile[0], trainRealClass, trainPrediction);
-		System.out.println(name+" "+ relation + " Training " + trainingTime + "s");
+//		writeOutput(outFile[0], trainRealClass, trainPrediction);
+//		System.out.println(name+" "+ relation + " Training " + trainingTime + "s");
 		
 		//Working on test
 		realClass = new int[testData.length][1];
@@ -630,10 +630,10 @@ public abstract class HyperrectanglesAlgorithm {
                 antimontest=2*antimontest/(prediction.length*prediction.length-prediction.length);
                 testTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
 		//Writing results
-		writeOutput(outFile[1], realClass, prediction);	
-		System.out.println(name+" "+ relation + " Test " + testTime + "s");
+//		writeOutput(outFile[1], realClass, prediction);	
+//		System.out.println(name+" "+ relation + " Test " + testTime + "s");
 		
-		printOutput();
+//		printOutput();
 
 	}//end-method 
 
@@ -661,8 +661,8 @@ public abstract class HyperrectanglesAlgorithm {
 		trainingTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
 		
 		//Writing results
-		writeOutput(outFile[0], trainRealClass, trainPrediction);
-		System.out.println(name+" "+ relation + " Training " + trainingTime + "s");
+//		writeOutput(outFile[0], trainRealClass, trainPrediction);
+//		System.out.println(name+" "+ relation + " Training " + trainingTime + "s");
 		
 		//Working on test
 		realClass = new int[testData.length][1];
@@ -679,10 +679,10 @@ public abstract class HyperrectanglesAlgorithm {
 		testTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
 		
 		//Writing results
-		writeOutput(outFile[1], realClass, prediction);	
-		System.out.println(name+" "+ relation + " Test " + testTime + "s");
+//		writeOutput(outFile[1], realClass, prediction);	
+//		System.out.println(name+" "+ relation + " Test " + testTime + "s");
 		
-		printOutput();
+//		printOutput();
 		
 	}//end-method 
 	
@@ -999,8 +999,8 @@ public abstract class HyperrectanglesAlgorithm {
 		text+=ruleSetText;
 		
 		//Finish additional output file
-		Files.writeFile (outFile[2], text);
-		
+//		Files.writeFile (outFile[2], text);
+		System.out.println(text);
 	}//end-method 
 
 	/** 

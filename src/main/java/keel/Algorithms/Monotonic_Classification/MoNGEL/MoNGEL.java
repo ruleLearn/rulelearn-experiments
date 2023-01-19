@@ -48,7 +48,6 @@ package keel.Algorithms.Monotonic_Classification.MoNGEL;
 import java.util.*;
 
 import org.core.Files;
-import org.core.Randomize;
 import keel.Dataset.Attribute;
 import keel.Algorithms.Monotonic_Classification.Basic.HyperrectanglesAlgorithm;
 import keel.Dataset.InstanceSet;
@@ -107,14 +106,13 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
 	/** 
 	 * Proper constructor.
 	 * 
-	 * @param seed random generator seed
 	 * @param trainData training data
 	 * @param referenceData reference data
 	 */
-	public MoNGEL(long seed, InstanceSet trainData, InstanceSet referenceData) {
+	public MoNGEL(/*long seed, */InstanceSet trainData, InstanceSet referenceData) {
         initialTime = System.currentTimeMillis();
         
-        this.seed = seed; //NEW
+//      this.seed = seed; //NEW
 		
         loadLearningData(trainData, referenceData);
 		
@@ -133,7 +131,7 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
 //		}
 
 		//Initialization of random generator
-	    Randomize.setSeed(this.seed);
+//	    Randomize.setSeed(this.seed);
 		
 		//Initialization stuff ends here. So, we can start time-counting
 		setInitialTime(); 
@@ -592,13 +590,14 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
 	public InstanceSet gettrain(){return train;};
 	public InstanceSet gettest(){return test;};
 	public InstanceSet reference(){return reference;};  
+	
 	public int numRule(){
 		return this.ruleset.length;
 	}
 	
 	public Rule[] gettrule(){return this.ruleset;};  
 	
-	public String[] getfichsalidas(){return this.outFile;};  
+//	public String[] getfichsalidas(){return this.outFile;};  
         
 } //end-class 
 

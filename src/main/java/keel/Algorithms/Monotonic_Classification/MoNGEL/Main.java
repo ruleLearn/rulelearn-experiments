@@ -67,7 +67,6 @@ public class Main {
 	 */
 	public static void main (String args[]) {
 		//BEGIN MSz
-		long seed = 0L;
 		InstanceSet trainData = null;
 		InstanceSet referenceData = null;
 		InstanceSet testData = null;
@@ -106,11 +105,11 @@ public class Main {
 		testData = InformationTable2InstanceSet.convert(informationTable, "iris-test", attributeRanges);
 		//END MSz
 		
-		classifier = new MoNGEL(seed, trainData, referenceData); //MSz
+		classifier = new MoNGEL(trainData, referenceData); //MSz
         classifier.initializeRules();     // Initializing the rules structures
 		classifier.getRules();
 		classifier.loadTestData(testData);//MSz
-		classifier.setOutFiles(outFiles); //MSz
+//		classifier.setOutFiles(outFiles); //MSz
 		classifier.execute();			  // Executing the method MoNGEL
         classifier.printOutput();	   	  // Processing the output following the Keel requirements
 	} //end-method 

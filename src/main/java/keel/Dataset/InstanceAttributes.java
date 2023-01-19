@@ -133,30 +133,30 @@ public final class InstanceAttributes {
 	  this.relationName = new String(ia.relationName);
   }
 
-/**
- * copyStaticAttributes
- * 
- * It copies the attributes definition statically stored in Attributes class
- */
-  public void copyStaticAttributes () {
-	int i;
-      attributes = new Vector();
-      inputAttr  = new Vector();
-      outputAttr = new Vector();
-      undefinedAttr = new Vector();
-
-	for ( i=0; i<Attributes.attributes.size(); i++ ) 	attributes.add ( Attributes.attributes.elementAt(i) );
-	for ( i=0; i<Attributes.inputAttr.size(); i++ )  	inputAttr.add ( Attributes.inputAttr.elementAt(i) );
-	for ( i=0; i<Attributes.outputAttr.size(); i++ ) 	outputAttr.add ( Attributes.outputAttr.elementAt(i) );
-	for ( i=0; i<Attributes.undefinedAttr.size(); i++ )	undefinedAttr.add ( Attributes.undefinedAttr.elementAt(i) );
-
-
-	hasNominal	= Attributes.hasNominal;
-	hasInteger	= Attributes.hasInteger;
-	hasReal		= Attributes.hasReal;
-	relationName = Attributes.relationName;
-
-  }//end copyStaticAttributes 
+///**
+// * copyStaticAttributes
+// * 
+// * It copies the attributes definition statically stored in Attributes class
+// */
+//  public void copyStaticAttributes () {
+//	int i;
+//      attributes = new Vector();
+//      inputAttr  = new Vector();
+//      outputAttr = new Vector();
+//      undefinedAttr = new Vector();
+//
+//	for ( i=0; i<Attributes.attributes.size(); i++ ) 	attributes.add ( Attributes.attributes.elementAt(i) );
+//	for ( i=0; i<Attributes.inputAttr.size(); i++ )  	inputAttr.add ( Attributes.inputAttr.elementAt(i) );
+//	for ( i=0; i<Attributes.outputAttr.size(); i++ ) 	outputAttr.add ( Attributes.outputAttr.elementAt(i) );
+//	for ( i=0; i<Attributes.undefinedAttr.size(); i++ )	undefinedAttr.add ( Attributes.undefinedAttr.elementAt(i) );
+//
+//
+//	hasNominal	= Attributes.hasNominal;
+//	hasInteger	= Attributes.hasInteger;
+//	hasReal		= Attributes.hasReal;
+//	relationName = Attributes.relationName;
+//
+//  }//end copyStaticAttributes 
   
 /**
  * This method adds an attribute definition.

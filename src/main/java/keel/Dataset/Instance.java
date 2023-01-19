@@ -108,6 +108,8 @@ public class Instance {
 	 * It indicates if the instance has any missing value
 	 */
 	private boolean []anyMissingValue;
+	
+	InstanceAttributes attributes;
 
 
 //	The next attriubtes define the position in the arrays where
@@ -133,76 +135,76 @@ public class Instance {
 /////////////////// METHODS OF THE INSTANCE CLASS ///////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-	/**
-	 * It parses a new attribute line.
-	 * @param def is the line to be parsed.
-	 * @param _isTrain is a flag that indicates if the BD is for a train run.
-	 * @param instanceNum is the number of the current instance. It's used to
-	 * write error message with the maximum amount of information.
-	 */
-	public Instance(String def,boolean _isTrain, int instanceNum) {
-		int currentClass = -1;
-		//System.out.println ("Reading data: "+def);
-		StringTokenizer st  = new StringTokenizer(def,","); //Separator: "," and " "
-
-		initClassAttributes();
-		isTrain         = _isTrain;
-
-		int count=0, inAttCount=0, outAttCount=0, indefCount=0, inputOutput = 0, curCount;
-		while (st.hasMoreTokens()) {
-			//Looking if the attribute is an input, an output or it's undefined
-			String att = st.nextToken().trim();
-			Attribute curAt = Attributes.getAttribute(count);
-			switch (curAt.getDirectionAttribute()){
-			case Attribute.INPUT:
-				inputOutput = Instance.ATT_INPUT;
-				curCount = inAttCount++;
-				break;
-			case Attribute.OUTPUT:
-				inputOutput = Instance.ATT_OUTPUT;
-				if (curAt.getType() == Attribute.NOMINAL) {
-					currentClass = curAt.convertNominalValue(att);
-
-					//System.out.println ( " The position of the current class "+ att +" is: "+ currentClass );
-				}
-				curCount = outAttCount++;
-				break;
-			default://Attribute not defined neither as input or output. So, it is not read.
-				inputOutput = Instance.ATT_NONDEF;
-			curCount = indefCount++;
-			}
-
-			//The attribute is defined. So, its value is processed, and the attributes definitions
-			//are checked to detect inconsistencies or to redefine undefined traits.
-			processReadValue(curAt, def, att, inputOutput, count, curCount, instanceNum);
-
-			//Finally, the counter of read attributes is updated.
-			count++;
-		} //end of the while
-
-		//Checking if the instance doesn't have the same number of attributes than defined.
-		if(count != Attributes.getNumAttributes()) {
-			ErrorInfo er = new ErrorInfo(ErrorInfo.BadNumberOfValues, instanceNum, InstanceParser.lineCounter, 0, 0, isTrain,
-					("Instance "+def+" has a different number of attributes than defined\n   > Number of attributes defined: "+Attributes.getNumAttributes()+"   > Number of attributes read:    "+count));
-			InstanceSet.errorLogger.setError(er);
-		}
-
-		//Compute the statistics
-		if (isTrain){
-			Attribute [] atts = Attributes.getInputAttributes();
-
-			for (int i=0; i<atts.length; i++){
-				if(!missingValues[Instance.ATT_INPUT][i]){
-					if (atts[i].getType() == Attribute.NOMINAL && Attributes.getOutputNumAttributes() == 1)
-						atts[i].increaseClassFrequency(currentClass, nominalValues[Instance.ATT_INPUT][i]);
-					else if ((atts[i].getType() == Attribute.INTEGER || atts[i].getType() == Attribute.REAL) &&
-							!missingValues[Instance.ATT_INPUT][i])
-						atts[i].addInMeanValue(currentClass, realValues[Instance.ATT_INPUT][i]);
-				}
-			}
-		}
-
-	}//end Instance
+//	/**
+//	 * It parses a new attribute line.
+//	 * @param def is the line to be parsed.
+//	 * @param _isTrain is a flag that indicates if the BD is for a train run.
+//	 * @param instanceNum is the number of the current instance. It's used to
+//	 * write error message with the maximum amount of information.
+//	 */
+//	public Instance(String def,boolean _isTrain, int instanceNum) {
+//		int currentClass = -1;
+//		//System.out.println ("Reading data: "+def);
+//		StringTokenizer st  = new StringTokenizer(def,","); //Separator: "," and " "
+//
+//		initClassAttributes();
+//		isTrain         = _isTrain;
+//
+//		int count=0, inAttCount=0, outAttCount=0, indefCount=0, inputOutput = 0, curCount;
+//		while (st.hasMoreTokens()) {
+//			//Looking if the attribute is an input, an output or it's undefined
+//			String att = st.nextToken().trim();
+//			Attribute curAt = Attributes.getAttribute(count);
+//			switch (curAt.getDirectionAttribute()){
+//			case Attribute.INPUT:
+//				inputOutput = Instance.ATT_INPUT;
+//				curCount = inAttCount++;
+//				break;
+//			case Attribute.OUTPUT:
+//				inputOutput = Instance.ATT_OUTPUT;
+//				if (curAt.getType() == Attribute.NOMINAL) {
+//					currentClass = curAt.convertNominalValue(att);
+//
+//					//System.out.println ( " The position of the current class "+ att +" is: "+ currentClass );
+//				}
+//				curCount = outAttCount++;
+//				break;
+//			default://Attribute not defined neither as input or output. So, it is not read.
+//				inputOutput = Instance.ATT_NONDEF;
+//			curCount = indefCount++;
+//			}
+//
+//			//The attribute is defined. So, its value is processed, and the attributes definitions
+//			//are checked to detect inconsistencies or to redefine undefined traits.
+//			processReadValue(curAt, def, att, inputOutput, count, curCount, instanceNum);
+//
+//			//Finally, the counter of read attributes is updated.
+//			count++;
+//		} //end of the while
+//
+//		//Checking if the instance doesn't have the same number of attributes than defined.
+//		if(count != Attributes.getNumAttributes()) {
+//			ErrorInfo er = new ErrorInfo(ErrorInfo.BadNumberOfValues, instanceNum, InstanceParser.lineCounter, 0, 0, isTrain,
+//					("Instance "+def+" has a different number of attributes than defined\n   > Number of attributes defined: "+Attributes.getNumAttributes()+"   > Number of attributes read:    "+count));
+//			InstanceSet.errorLogger.setError(er);
+//		}
+//
+//		//Compute the statistics
+//		if (isTrain){
+//			Attribute [] atts = Attributes.getInputAttributes();
+//
+//			for (int i=0; i<atts.length; i++){
+//				if(!missingValues[Instance.ATT_INPUT][i]){
+//					if (atts[i].getType() == Attribute.NOMINAL && Attributes.getOutputNumAttributes() == 1)
+//						atts[i].increaseClassFrequency(currentClass, nominalValues[Instance.ATT_INPUT][i]);
+//					else if ((atts[i].getType() == Attribute.INTEGER || atts[i].getType() == Attribute.REAL) &&
+//							!missingValues[Instance.ATT_INPUT][i])
+//						atts[i].addInMeanValue(currentClass, realValues[Instance.ATT_INPUT][i]);
+//				}
+//			}
+//		}
+//
+//	}//end Instance
 
 	/**
 	 * Creates a deep copy of the Instance
@@ -235,6 +237,8 @@ public class Instance {
 		for(int i=0;i<missingValues.length;i++){
 			this.missingValues[i] = Arrays.copyOf(inst.missingValues[i],inst.missingValues[i].length);
 		}
+		
+		this.attributes = inst.attributes; //MSz
 	}
 
 	/**
@@ -246,7 +250,9 @@ public class Instance {
 	 * @param values A double array with the values (either real or nominals' index). Missing values are stored as Double.NaN
 	 * @param ats The definition of the attributes (optional, if null we use Attributes definition).
 	 */
-	public Instance(double values[],InstanceAttributes ats){
+	public Instance(double values[], InstanceAttributes ats){
+		this.attributes = ats; //MSz
+		
 		Attribute curAt,allat[];
 		int inOut,in,out,undef;
 		
@@ -256,9 +262,10 @@ public class Instance {
 		anyMissingValue[1] = false;
 		anyMissingValue[2] = false;
 		if(ats==null){
-			numInputAttributes  = Attributes.getInputNumAttributes();
-			numOutputAttributes = Attributes.getOutputNumAttributes();
-			numUndefinedAttributes = Attributes.getNumAttributes() - (numInputAttributes+numOutputAttributes);
+//			numInputAttributes  = Attributes.getInputNumAttributes();
+//			numOutputAttributes = Attributes.getOutputNumAttributes();
+//			numUndefinedAttributes = Attributes.getNumAttributes() - (numInputAttributes+numOutputAttributes);
+			throw new NullPointerException("Instance attributes are null.");
 		}else{
 			numInputAttributes  = ats.getInputNumAttributes();
 			numOutputAttributes = ats.getOutputNumAttributes();
@@ -285,12 +292,7 @@ public class Instance {
 		for(int i=0;i<numOutputAttributes;i++)      missingValues[1][i]=false;  
 		for(int i=0;i<numUndefinedAttributes; i++)  missingValues[2][i]=false;
 		
-		//take the correct set of Attributes
-		if(ats!=null){
-			allat = ats.getAttributes();
-		}else{
-			allat = Attributes.getAttributes();
-		}
+		allat = ats.getAttributes();
 
 		//fill the data structures
 		in = out = undef = 0;
@@ -350,113 +352,113 @@ public class Instance {
 	}
 
 
-	/**
-	 * It processes the read value for an attribute
-	 * @param curAtt is the current attribute (the value read is from this attribute)
-	 * @param def is the whole String
-	 * @param inOut is an integer that indicates if the attribute is an input or an output attribute
-	 * @param count is a counter of attributes.
-	 * @param curCount is an attribute counter relative to the inputs or the output. So, it indicates
-	 * that the attribute is the ith attribute of the input or the output.
-	 * @param instanceNum is the number of the current instance. It's needed to write output messages
-	 * with the maximum possible amount of information.
-	 */
-	private void processReadValue(Attribute curAtt, String def, String att, int inOut, 
-			int count, int curCount, int instanceNum){
-		//Checking if there is a missing value.
-		if(att.equalsIgnoreCase("<null>") || att.equalsIgnoreCase("?")) {
-			Attributes.hasMissing = true;
-			missingValues[inOut][curCount]=true;
-			anyMissingValue[inOut] = true;
-			if (inOut == 1){ //If the output is a missing value, an error is generated.
-				ErrorInfo er = new ErrorInfo (ErrorInfo.OutputMissingValue, instanceNum, 
-						InstanceParser.lineCounter, curCount, Attribute.OUTPUT, 
-						isTrain,
-						("Output attribute "+count+" of "+def+" with missing value."));
-				InstanceSet.errorLogger.setError(er);
-			}
-		} else if(Attributes.getAttribute(count).getType()==Attribute.INTEGER ||
-				Attributes.getAttribute(count).getType()==Attribute.REAL) {
-			try {
-				realValues[inOut][curCount]=Double.parseDouble(att);
-			} catch(NumberFormatException e) {
-				ErrorInfo er = new ErrorInfo(ErrorInfo.BadNumericValue, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
-						("Attribute "+count+" of "+def+" is not an integer or real value."));
-				InstanceSet.errorLogger.setError(er);
-			}
-			//Checking if the new train value exceedes the bounds definition in train. The condition
-			//also checks if the attribute is defined (is an input or an output).
-			if (isTrain && inOut != 2){ 
-				if (curAtt.getFixedBounds() && !curAtt.isInBounds(realValues[inOut][curCount])){
-					ErrorInfo er = new ErrorInfo(ErrorInfo.TrainNumberOutOfRange, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
-							("ERROR READING TRAIN FILE. Value "+realValues[inOut][curCount]+" read for a numeric attribute that is not in the bounds fixed in the attribute '"+curAtt.getName()+"' definition."));
-					InstanceSet.errorLogger.setError(er);
-				}       
-				curAtt.enlargeBounds(realValues[inOut][curCount]);
-			}
-			else if (inOut!=2){ //In test mode
-				realValues[inOut][curCount] = curAtt.rectifyValueInBounds(realValues[inOut][curCount]);
-			}
-		} else if(Attributes.getAttribute(count).getType()==Attribute.NOMINAL) {
-			nominalValues[inOut][curCount]= att; 
-			//Testing special cases.
-			if (isTrain && inOut!=2){
-				if (curAtt.getFixedBounds() && !curAtt.isNominalValue(nominalValues[inOut][curCount])){
-					ErrorInfo er = new ErrorInfo(ErrorInfo.TrainNominalOutOfRange, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
-							("ERROR READING TRAIN FILE. Value '"+nominalValues[inOut][curCount]+"' read for a nominal attribute that is not in the possible list of values fixed in the attribute '"+curAtt.getName()+"' definition."));
-					InstanceSet.errorLogger.setError(er);
-				}
-				curAtt.addNominalValue(nominalValues[inOut][curCount]);
-			}else if (inOut!=2){
-				if (curAtt.addTestNominalValue(nominalValues[inOut][curCount])){
-					ErrorInfo er = new ErrorInfo(ErrorInfo.TestNominalOutOfRange, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
-							("ERROR READING TEST FILE. Value '"+nominalValues[inOut][curCount]+"' read for a nominal attribute that is not in the possible list of values fixed in the attribute '"+curAtt.getName()+"' definition."));
-					InstanceSet.errorLogger.setError(er);
-				}
-			}
+//	/**
+//	 * It processes the read value for an attribute
+//	 * @param curAtt is the current attribute (the value read is from this attribute)
+//	 * @param def is the whole String
+//	 * @param inOut is an integer that indicates if the attribute is an input or an output attribute
+//	 * @param count is a counter of attributes.
+//	 * @param curCount is an attribute counter relative to the inputs or the output. So, it indicates
+//	 * that the attribute is the ith attribute of the input or the output.
+//	 * @param instanceNum is the number of the current instance. It's needed to write output messages
+//	 * with the maximum possible amount of information.
+//	 */
+//	private void processReadValue(Attribute curAtt, String def, String att, int inOut, 
+//			int count, int curCount, int instanceNum){
+//		//Checking if there is a missing value.
+//		if(att.equalsIgnoreCase("<null>") || att.equalsIgnoreCase("?")) {
+//			Attributes.hasMissing = true;
+//			missingValues[inOut][curCount]=true;
+//			anyMissingValue[inOut] = true;
+//			if (inOut == 1){ //If the output is a missing value, an error is generated.
+//				ErrorInfo er = new ErrorInfo (ErrorInfo.OutputMissingValue, instanceNum, 
+//						InstanceParser.lineCounter, curCount, Attribute.OUTPUT, 
+//						isTrain,
+//						("Output attribute "+count+" of "+def+" with missing value."));
+//				InstanceSet.errorLogger.setError(er);
+//			}
+//		} else if(Attributes.getAttribute(count).getType()==Attribute.INTEGER ||
+//				Attributes.getAttribute(count).getType()==Attribute.REAL) {
+//			try {
+//				realValues[inOut][curCount]=Double.parseDouble(att);
+//			} catch(NumberFormatException e) {
+//				ErrorInfo er = new ErrorInfo(ErrorInfo.BadNumericValue, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
+//						("Attribute "+count+" of "+def+" is not an integer or real value."));
+//				InstanceSet.errorLogger.setError(er);
+//			}
+//			//Checking if the new train value exceedes the bounds definition in train. The condition
+//			//also checks if the attribute is defined (is an input or an output).
+//			if (isTrain && inOut != 2){ 
+//				if (curAtt.getFixedBounds() && !curAtt.isInBounds(realValues[inOut][curCount])){
+//					ErrorInfo er = new ErrorInfo(ErrorInfo.TrainNumberOutOfRange, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
+//							("ERROR READING TRAIN FILE. Value "+realValues[inOut][curCount]+" read for a numeric attribute that is not in the bounds fixed in the attribute '"+curAtt.getName()+"' definition."));
+//					InstanceSet.errorLogger.setError(er);
+//				}       
+//				curAtt.enlargeBounds(realValues[inOut][curCount]);
+//			}
+//			else if (inOut!=2){ //In test mode
+//				realValues[inOut][curCount] = curAtt.rectifyValueInBounds(realValues[inOut][curCount]);
+//			}
+//		} else if(Attributes.getAttribute(count).getType()==Attribute.NOMINAL) {
+//			nominalValues[inOut][curCount]= att; 
+//			//Testing special cases.
+//			if (isTrain && inOut!=2){
+//				if (curAtt.getFixedBounds() && !curAtt.isNominalValue(nominalValues[inOut][curCount])){
+//					ErrorInfo er = new ErrorInfo(ErrorInfo.TrainNominalOutOfRange, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
+//							("ERROR READING TRAIN FILE. Value '"+nominalValues[inOut][curCount]+"' read for a nominal attribute that is not in the possible list of values fixed in the attribute '"+curAtt.getName()+"' definition."));
+//					InstanceSet.errorLogger.setError(er);
+//				}
+//				curAtt.addNominalValue(nominalValues[inOut][curCount]);
+//			}else if (inOut!=2){
+//				if (curAtt.addTestNominalValue(nominalValues[inOut][curCount])){
+//					ErrorInfo er = new ErrorInfo(ErrorInfo.TestNominalOutOfRange, instanceNum, InstanceParser.lineCounter, curCount, Attribute.INPUT+inOut, isTrain, 
+//							("ERROR READING TEST FILE. Value '"+nominalValues[inOut][curCount]+"' read for a nominal attribute that is not in the possible list of values fixed in the attribute '"+curAtt.getName()+"' definition."));
+//					InstanceSet.errorLogger.setError(er);
+//				}
+//			}
+//
+//			if (inOut != -2){
+//				intNominalValues[inOut][curCount] = curAtt.convertNominalValue(nominalValues[inOut][curCount]);
+//				realValues[inOut][curCount] = intNominalValues[inOut][curCount];
+//			}
+//		}
+//	}//end processReadValue
 
-			if (inOut != -2){
-				intNominalValues[inOut][curCount] = curAtt.convertNominalValue(nominalValues[inOut][curCount]);
-				realValues[inOut][curCount] = intNominalValues[inOut][curCount];
-			}
-		}
-	}//end processReadValue
 
 
-
-	/**
-	 * It reserves all the memory necessary for this instance
-	 */
-	private void initClassAttributes(){ 
-		anyMissingValue = new boolean[3];
-		anyMissingValue[0] = false; 
-		anyMissingValue[1] = false;
-		anyMissingValue[2] = false;
-		numInputAttributes  = Attributes.getInputNumAttributes();
-		numOutputAttributes = Attributes.getOutputNumAttributes();
-		numUndefinedAttributes = Attributes.getNumAttributes() - (numInputAttributes+numOutputAttributes);
-		intNominalValues = new int[3][];
-		nominalValues = new String[3][];
-		realValues    = new double[3][];
-		missingValues = new boolean[3][];
-		nominalValues[0]    = new String[numInputAttributes];
-		nominalValues[1]    = new String[numOutputAttributes];
-		nominalValues[2]    = new String[numUndefinedAttributes];
-		intNominalValues[0] = new int[numInputAttributes];
-		intNominalValues[1] = new int[numOutputAttributes];
-		intNominalValues[2] = new int[numUndefinedAttributes];
-		realValues[0]       = new double[numInputAttributes];
-		realValues[1]       = new double[numOutputAttributes];
-		realValues[2]       = new double[numUndefinedAttributes];
-		missingValues[0]    = new boolean[numInputAttributes];
-		missingValues[1]    = new boolean[numOutputAttributes];
-		missingValues[2]    = new boolean[numUndefinedAttributes];
-
-		for(int i=0;i<numInputAttributes;i++)       missingValues[0][i]=false;   
-		for(int i=0;i<numOutputAttributes;i++)      missingValues[1][i]=false;  
-		for(int i=0;i<numUndefinedAttributes; i++)  missingValues[2][i]=false;
-
-	}//end initClassAttributes
+//	/**
+//	 * It reserves all the memory necessary for this instance
+//	 */
+//	private void initClassAttributes(){ 
+//		anyMissingValue = new boolean[3];
+//		anyMissingValue[0] = false; 
+//		anyMissingValue[1] = false;
+//		anyMissingValue[2] = false;
+//		numInputAttributes  = Attributes.getInputNumAttributes();
+//		numOutputAttributes = Attributes.getOutputNumAttributes();
+//		numUndefinedAttributes = Attributes.getNumAttributes() - (numInputAttributes+numOutputAttributes);
+//		intNominalValues = new int[3][];
+//		nominalValues = new String[3][];
+//		realValues    = new double[3][];
+//		missingValues = new boolean[3][];
+//		nominalValues[0]    = new String[numInputAttributes];
+//		nominalValues[1]    = new String[numOutputAttributes];
+//		nominalValues[2]    = new String[numUndefinedAttributes];
+//		intNominalValues[0] = new int[numInputAttributes];
+//		intNominalValues[1] = new int[numOutputAttributes];
+//		intNominalValues[2] = new int[numUndefinedAttributes];
+//		realValues[0]       = new double[numInputAttributes];
+//		realValues[1]       = new double[numOutputAttributes];
+//		realValues[2]       = new double[numUndefinedAttributes];
+//		missingValues[0]    = new boolean[numInputAttributes];
+//		missingValues[1]    = new boolean[numOutputAttributes];
+//		missingValues[2]    = new boolean[numUndefinedAttributes];
+//
+//		for(int i=0;i<numInputAttributes;i++)       missingValues[0][i]=false;   
+//		for(int i=0;i<numOutputAttributes;i++)      missingValues[1][i]=false;  
+//		for(int i=0;i<numUndefinedAttributes; i++)  missingValues[2][i]=false;
+//
+//	}//end initClassAttributes
 
 
 
@@ -467,7 +469,7 @@ public class Instance {
 	public void print (PrintWriter out){
 		out.print("    > Inputs: ");
 		for (int i=0; i<numInputAttributes; i++){
-			switch(Attributes.getInputAttribute(i).getType()){
+			switch(attributes.getInputAttribute(i).getType()){
 			case Attribute.NOMINAL:
 				out.print(nominalValues[Instance.ATT_INPUT][i]);      
 				break;
@@ -481,7 +483,7 @@ public class Instance {
 		}
 		out.print("\n    > Outputs: ");
 		for (int i=0; i<numOutputAttributes; i++){
-			switch(Attributes.getOutputAttribute(i).getType()){
+			switch(attributes.getOutputAttribute(i).getType()){
 			case Attribute.NOMINAL:
 				out.print(nominalValues[Instance.ATT_OUTPUT][i]);      
 				break;
@@ -495,7 +497,7 @@ public class Instance {
 		}
 		out.print("\n    > Undefined: ");
 		for (int i=0; i<numUndefinedAttributes; i++){
-			switch(Attributes.getOutputAttribute(i).getType()){
+			switch(attributes.getOutputAttribute(i).getType()){
 			case Attribute.NOMINAL:
 				out.print(nominalValues[Instance.ATT_OUTPUT][i]);      
 				break;
@@ -512,15 +514,15 @@ public class Instance {
 
 	/**
 	 * It prints the instance to the specified PrintWriter.
-	 * The attribtes order is the same as the one in the 
+	 * The attributes order is the same as the one in the 
 	 * original file.
 	 * @param out is the PrintWriter where to print.
 	 */
 	public void printAsOriginal (PrintWriter out){
 		int inCount = 0, outCount = 0, undefCount=0, count;
-		int numAttributes = Attributes.getNumAttributes();
+		int numAttributes = attributes.getNumAttributes();
 		for (count=0; count<numAttributes; count++){
-			Attribute at = Attributes.getAttribute(count);
+			Attribute at = attributes.getAttribute(count);
 			switch(at.getDirectionAttribute()){
 			case Attribute.INPUT:
 				printAttribute(out, Instance.ATT_INPUT,   inCount, at.getType());
@@ -576,7 +578,7 @@ public class Instance {
 				System.out.print("?");
 			}
 			else{
-				switch(Attributes.getInputAttribute(i).getType()){
+				switch(attributes.getInputAttribute(i).getType()){
 				case Attribute.NOMINAL:
 					System.out.print(nominalValues[Instance.ATT_INPUT][i]);      
 					break;
@@ -596,7 +598,7 @@ public class Instance {
 				System.out.print("?");
 			}
 			else{
-				switch(Attributes.getOutputAttribute(i).getType()){
+				switch(attributes.getOutputAttribute(i).getType()){
 				case Attribute.NOMINAL:
 					System.out.print(nominalValues[Instance.ATT_OUTPUT][i]);      
 					break;
@@ -617,7 +619,7 @@ public class Instance {
 				System.out.print("?");
 			}
 			else{
-				switch(Attributes.getUndefinedAttribute(i).getType()){
+				switch(attributes.getUndefinedAttribute(i).getType()){
 				case Attribute.NOMINAL:
 					System.out.print(nominalValues[Instance.ATT_NONDEF][i]);      
 					break;
@@ -832,7 +834,7 @@ public class Instance {
 		double [] norm = new double[realValues[0].length];
 		for (int i=0; i<norm.length; i++){
 			if (!missingValues[0][i])
-				norm[i] = Attributes.getInputAttribute(i).normalizeValue(realValues[0][i]);
+				norm[i] = attributes.getInputAttribute(i).normalizeValue(realValues[0][i]);
 			else   
 				norm[i] = -1.;
 		}
@@ -849,7 +851,7 @@ public class Instance {
 		double [] norm = new double[realValues[1].length];
 		for (int i=0; i<norm.length; i++){
 			if (!missingValues[1][i])
-				norm[i] = Attributes.getOutputAttribute(i).normalizeValue(realValues[1][i]);
+				norm[i] = attributes.getOutputAttribute(i).normalizeValue(realValues[1][i]);
 			else
 				norm[i] = -1.;
 		}
@@ -885,7 +887,7 @@ public class Instance {
 	 * been done.
 	 */
 	public boolean setInputNumericValue(int pos, double value){
-		Attribute at = (Attribute)Attributes.getInputAttribute(pos);
+		Attribute at = attributes.getInputAttribute(pos);
 		if (at.getType() == Attribute.NOMINAL) return false;
 		else{
 			if (at.isInBounds(value)){
@@ -910,7 +912,7 @@ public class Instance {
 	 * been done.
 	 */
 	public boolean setOutputNumericValue(int pos, double value){
-		Attribute at = (Attribute)Attributes.getOutputAttribute(pos);
+		Attribute at = attributes.getOutputAttribute(pos);
 		if (at.getType() == Attribute.NOMINAL) return false;
 		else{
 			if (at.isInBounds(value)){
@@ -933,7 +935,7 @@ public class Instance {
 	 * @return boolean set to false if the update has not been done.
 	 */
 	public boolean setInputNominalValue(int pos, String value){
-		Attribute at = (Attribute)Attributes.getInputAttribute(pos);
+		Attribute at = attributes.getInputAttribute(pos);
 		if (at.getType() != Attribute.NOMINAL) return false;
 		else{
 			if (at.convertNominalValue(value) != -1){
@@ -959,7 +961,7 @@ public class Instance {
 	 * @return boolean set to false if the update has not been done.
 	 */
 	public boolean setOutputNominalValue(int pos, String value){
-		Attribute at = (Attribute)Attributes.getOutputAttribute(pos);
+		Attribute at = attributes.getOutputAttribute(pos);
 		if (at.getType() != Attribute.NOMINAL) return false;
 		else{
 			if (at.convertNominalValue(value) != -1){
@@ -1033,7 +1035,7 @@ public class Instance {
 
 		//It search the absolute position of the attribute to be
 		//removed in the list of undefined attributes
-		int undefPosition = Attributes.searchUndefPosition(attToDel);
+		int undefPosition = attributes.searchUndefPosition(attToDel);
 
 		//Reserving auxiliar memory to reconstruct the input or output
 		String [] nominalValuesAux  = new String[newSize];
@@ -1112,7 +1114,7 @@ public class Instance {
 		for (int i=0; i<numInputAttributes; i++){
 			if (i == numInputAttributes-1 &&
 					numOutputAttributes == 0) ending = "";
-			switch(Attributes.getInputAttribute(i).getType()){
+			switch(attributes.getInputAttribute(i).getType()){
 			case Attribute.NOMINAL:
 				aux += nominalValues[0][i];      
 				break;
@@ -1128,7 +1130,7 @@ public class Instance {
 		ending = ",";
 		for (int i=0; i<numOutputAttributes; i++){
 			if (i == numOutputAttributes-1) ending = "";
-			switch(Attributes.getOutputAttribute(i).getType()){
+			switch(attributes.getOutputAttribute(i).getType()){
 			case Attribute.NOMINAL:
 				aux += nominalValues[1][i];      
 				break;
