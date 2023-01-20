@@ -27,6 +27,7 @@ import org.rulelearn.experiments.ModelValidationResult.MeansAndStandardDeviation
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
 import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
 
+import keel.Algorithms.Monotonic_Classification.MoNGEL.MoNGEL;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.functions.MultilayerPerceptron;
 import weka.classifiers.functions.SMO;
@@ -47,6 +48,12 @@ import weka.filters.unsupervised.attribute.ReplaceMissingValues;
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
  */
 public class BatchExperiment {
+	
+	public enum DataSetVersion {
+		NORMAL,
+		OLM_OSDL,
+		MONGEL
+	}
 
 	List<DataProvider> dataProviders;
 	CrossValidationProvider crossValidationProvider;
@@ -61,11 +68,12 @@ public class BatchExperiment {
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
 	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfTestDataDecisions = true;
-	static final boolean printWEKATrainedClassifiers = true;
+	static final boolean printTrainedClassifiers = true; //concerns WEKA and KEEL classifiers
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
-	static final boolean OLM_OSDL_Data = true; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
+	static final boolean OLM_OSDL_Data = false; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
 	static final boolean normalData = !OLM_OSDL_Data; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
+	static final DataSetVersion dataSetVersion = DataSetVersion.NORMAL;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -1026,7 +1034,8 @@ public class BatchExperiment {
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
+		learningAlgorithms.add(new MoNGELClassifierLerner());
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
@@ -1173,62 +1182,163 @@ public class BatchExperiment {
 				//-----
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_05_mv2,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_05_mv15,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_10_mv2,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_10_mv15,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_15_mv2,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_15_mv15,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_20_mv2,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_20_mv15,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_25_mv2,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						))
 				
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_25_mv15,
 						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()}),
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
+								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
+						))
+				//-----
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_05_mv2,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_05_mv2))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+				))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_05_mv15,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_05_mv15))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_10_mv2,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_10_mv2))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_10_mv15,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_10_mv15))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_15_mv2,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_15_mv2))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_15_mv15,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_15_mv15))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_20_mv2,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_20_mv2))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_20_mv15,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_20_mv15))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_25_mv2,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_25_mv2))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
+						))
+				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_25_mv15,
+						Arrays.asList(
+								new KEELAlgorithmDataParameters(new AttributeRanges(
+										dataProviders.stream()
+											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_25_mv15))
+											.limit(1)
+											.collect(Collectors.toList())
+											.get(0).previewOriginalData().getInformationTable() ))
 						));
+				
 		//------------------------------------------------------------------------------------------------------------------------------
 		
 		parametersContainer.sortParametersLists(); //assure parameters for VCDomLEMModeRuleClassifierLearnerDataParameters algorithm are in ascending order w.r.t. consistency threshold

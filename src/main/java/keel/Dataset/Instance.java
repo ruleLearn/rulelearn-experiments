@@ -820,7 +820,7 @@ public class Instance {
 	 * @return a double[] with all input values.
 	 */ 
 	public double[] getAllInputValues(){
-		return realValues[0];
+		return realValues[0].clone(); //MSz: fixed error!!!!!
 	}//end getAllInputValues
 
 

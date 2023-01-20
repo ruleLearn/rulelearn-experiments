@@ -62,7 +62,7 @@ public class Main {
 	/**
 	 * The main method of the class
 	 *
-	 * @param args Arguments of the program (a configuration script, generally)
+	 * @param args arguments of the program (ignored)
 	 *
 	 */
 	public static void main (String args[]) {
@@ -70,11 +70,11 @@ public class Main {
 		InstanceSet trainData = null;
 		InstanceSet referenceData = null;
 		InstanceSet testData = null;
-		String[] outFiles = new String[] {
-				"src/main/resources/data/MoNGEL-results/train-results.txt",
-				"src/main/resources/data/MoNGEL-results/test-results.txt",
-				"src/main/resources/data/MoNGEL-results/summary-results.txt"
-		};
+//		String[] outFiles = new String[] {
+//				"src/main/resources/data/MoNGEL-results/train-results.txt",
+//				"src/main/resources/data/MoNGEL-results/test-results.txt",
+//				"src/main/resources/data/MoNGEL-results/summary-results.txt"
+//		};
 		List<AttributeRanges.AttributeRange> attributeRangesList = new ArrayList<AttributeRanges.AttributeRange>();
 		attributeRangesList.add(new AttributeRange(0, 4.3, 7.9));
 		attributeRangesList.add(new AttributeRange(1, 2.0, 4.4));
@@ -103,18 +103,55 @@ public class Main {
 		}
 		
 		testData = InformationTable2InstanceSet.convert(informationTable, "iris-test", attributeRanges);
-		//END MSz
 		
+		int[] trainPredictions;
+		int[] testPredictions;
+		//END MSz
+
+		//Approach 1
+		System.out.println("Approach 1:");
 		classifier = new MoNGEL(trainData, referenceData); //MSz
         classifier.initializeRules();     // Initializing the rules structures
 		classifier.getRules();
-		classifier.loadTestData(testData);//MSz
+		
 //		classifier.setOutFiles(outFiles); //MSz
-		classifier.execute();			  // Executing the method MoNGEL
-        classifier.printOutput();	   	  // Processing the output following the Keel requirements
+		
+		trainPredictions = classifier.classifyTrainData(); //MSz
+		System.out.println("Train data predictions:");
+        for (int prediction : trainPredictions) {
+        	System.out.println(prediction);
+        }
+        
+		testPredictions = classifier.classify(trainData);   //MSz
+        System.out.println("Train data predictions - v2:");
+        for (int prediction : testPredictions) {
+        	System.out.println(prediction);
+        }
+
+//		classifier.loadTestData(testData);//MSz
+//		int[] testPredictions = classifier.classifyTestData();   //MSz
+        
+		testPredictions = classifier.classify(testData);   //MSz
+		System.out.println("Test data predictions:");
+        for (int prediction : testPredictions) {
+        	System.out.println(prediction);
+        }
+        
+        classifier.execute();			  // Executing the method MoNGEL (one test data are loaded!)
+		classifier.printOutput();	   	  // Processing the output following the Keel requirements
+        
+        //**********
+        
+		//Approach 2
+		System.out.println("Approach 2:");
+		classifier = new MoNGEL(); //MSz
+		classifier.buildClassifier(trainData); //MSz
+		testPredictions = classifier.classify(testData); //MSz
+		
+		classifier.execute();			  // Executing the method MoNGEL (one test data are loaded!)
+		classifier.printOutput();	   	  // Processing the output following the Keel requirements
+		
 	} //end-method 
-        
-        
   
 } //end-class
 

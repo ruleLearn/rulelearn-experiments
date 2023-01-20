@@ -48,13 +48,14 @@ package keel.Algorithms.Monotonic_Classification.Basic;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 
+import keel.Algorithms.Classification.Classifier;
 import keel.Dataset.Attribute;
 import keel.Dataset.Instance;
 import keel.Dataset.InstanceSet;
 
 import org.core.Files;
 
-public abstract class HyperrectanglesAlgorithm {
+public abstract class HyperrectanglesAlgorithm implements Classifier {
 
 	//Files
 
@@ -637,54 +638,54 @@ public abstract class HyperrectanglesAlgorithm {
 
 	}//end-method 
 
-	/** 
-	 * Executes the classification of reference and test data sets
-	 * 
-	 */
-	public void executeReference(){
-		
-		modelTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
-		System.out.println(name+" "+ relation + " Model " + modelTime + "s");
-		
-		trainRealClass = new int[referenceData.length][1];
-		trainPrediction = new int[referenceData.length][1];	
-		
-		//Check  time		
-		setInitialTime();
-		
-		//Working on training
-		for (int i=0; i<trainRealClass.length; i++) {
-			trainRealClass[i][0] = referenceOutput[i];
-			trainPrediction[i][0]=evaluate(referenceData[i]);
-		}
-
-		trainingTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
-		
-		//Writing results
-//		writeOutput(outFile[0], trainRealClass, trainPrediction);
-//		System.out.println(name+" "+ relation + " Training " + trainingTime + "s");
-		
-		//Working on test
-		realClass = new int[testData.length][1];
-		prediction = new int[testData.length][1];	
-		
-		//Check  time		
-		setInitialTime();
-		
-		for (int i=0; i<realClass.length; i++) {
-			realClass[i][0] = testOutput[i];
-			prediction[i][0]=evaluate(testData[i]);
-		}
-
-		testTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
-		
-		//Writing results
-//		writeOutput(outFile[1], realClass, prediction);	
-//		System.out.println(name+" "+ relation + " Test " + testTime + "s");
-		
-//		printOutput();
-		
-	}//end-method 
+//	/** 
+//	 * Executes the classification of reference and test data sets
+//	 * 
+//	 */
+//	public void executeReference(){
+//		
+//		modelTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
+//		System.out.println(name+" "+ relation + " Model " + modelTime + "s");
+//		
+//		trainRealClass = new int[referenceData.length][1];
+//		trainPrediction = new int[referenceData.length][1];	
+//		
+//		//Check  time		
+//		setInitialTime();
+//		
+//		//Working on training
+//		for (int i=0; i<trainRealClass.length; i++) {
+//			trainRealClass[i][0] = referenceOutput[i];
+//			trainPrediction[i][0]=evaluate(referenceData[i]);
+//		}
+//
+//		trainingTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
+//		
+//		//Writing results
+////		writeOutput(outFile[0], trainRealClass, trainPrediction);
+////		System.out.println(name+" "+ relation + " Training " + trainingTime + "s");
+//		
+//		//Working on test
+//		realClass = new int[testData.length][1];
+//		prediction = new int[testData.length][1];	
+//		
+//		//Check  time		
+//		setInitialTime();
+//		
+//		for (int i=0; i<realClass.length; i++) {
+//			realClass[i][0] = testOutput[i];
+//			prediction[i][0]=evaluate(testData[i]);
+//		}
+//
+//		testTime=((double)System.currentTimeMillis()-initialTime)/1000.0;
+//		
+//		//Writing results
+////		writeOutput(outFile[1], realClass, prediction);	
+////		System.out.println(name+" "+ relation + " Test " + testTime + "s");
+//		
+////		printOutput();
+//		
+//	}//end-method 
 	
 	/** 
 	 * Evaluates a instance to predict its class. 
@@ -788,119 +789,119 @@ public abstract class HyperrectanglesAlgorithm {
 		
 	}//end-method
 	
-	/**
-	 * Prints output files.
-	 * 
-	 * @param filename Name of output file
-	 * @param realClass Real output of instances
-	 * @param prediction Predicted output for instances
-	 */
-	private void writeOutput(String filename, int [][] realClass, int [][] prediction) {
-	
-		String text = "";
-		
-		/*Printing input attributes*/
-		text += "@relation "+ relation +"\n";
-
-		for (int i=0; i<inputs.length; i++) {
-			
-			text += "@attribute "+ inputs[i].getName()+" ";
-			
-		    if (inputs[i].getType() == Attribute.NOMINAL) {
-		    	text += "{";
-		        for (int j=0; j<inputs[i].getNominalValuesList().size(); j++) {
-		        	text += (String)inputs[i].getNominalValuesList().elementAt(j);
-		        	if (j < inputs[i].getNominalValuesList().size() -1) {
-		        		text += ", ";
-		        	}
-		        }
-		        text += "}\n";
-		    } else {
-		    	if (inputs[i].getType() == Attribute.INTEGER) {
-		    		text += "integer";
-		        } else {
-		        	text += "real";
-		        }
-		        text += " ["+String.valueOf(inputs[i].getMinAttribute()) + ", " +  String.valueOf(inputs[i].getMaxAttribute())+"]\n";
-		    }
-		}
-
-		/*Printing output attribute*/
-		text += "@attribute "+ output.getName()+" ";
-
-		if (output.getType() == Attribute.NOMINAL) {
-			text += "{";
-			
-			for (int j=0; j<output.getNominalValuesList().size(); j++) {
-				text += (String)output.getNominalValuesList().elementAt(j);
-		        if (j < output.getNominalValuesList().size() -1) {
-		        	text += ", ";
-		        }
-			}		
-			text += "}\n";	    
-		} else {
-		    text += "integer ["+String.valueOf(output.getMinAttribute()) + ", " + String.valueOf(output.getMaxAttribute())+"]\n";
-		}
-
-		/*Printing data*/
-		text += "@data\n";
-
-		Files.writeFile(filename, text);
-		
-		if (output.getType() == Attribute.INTEGER) {
-			
-			text = "";
-			
-			for (int i=0; i<realClass.length; i++) {
-			      
-			      for (int j=0; j<realClass[0].length; j++){
-			    	  text += "" + realClass[i][j] + " ";
-			      }
-			      for (int j=0; j<realClass[0].length; j++){
-			    	  text += "" + prediction[i][j] + " ";
-			      }
-			      text += "\n";			      
-			      if((i%10)==9){
-			    	  Files.addToFile(filename, text);
-			    	  text = "";
-			      }     
-			}			
-			
-			if((realClass.length%10)!=0){
-				Files.addToFile(filename, text);
-			}
-		}
-		else{
-			
-			text = "";
-			
-			for (int i=0; i<realClass.length; i++) {
-			      
-			      for (int j=0; j<realClass[0].length; j++){
-			    	  text += "" + (String)output.getNominalValuesList().elementAt(realClass[i][j]) + " ";
-			      }
-			      for (int j=0; j<realClass[0].length; j++){
-			    	  if(prediction[i][j]>-1){
-			    		  text += "" + (String)output.getNominalValuesList().elementAt(prediction[i][j]) + " ";
-			    	  }
-			    	  else{
-			    		  text += "" + "Unclassified" + " ";
-			    	  }
-			      }
-			      text += "\n";
-			      
-			      if((i%10)==9){
-			    	  Files.addToFile(filename, text);
-			    	  text = "";
-			      } 
-			}			
-			
-			if((realClass.length%10)!=0){
-				Files.addToFile(filename, text);
-			}		
-		}
-		
-	}//end-method 
+//	/**
+//	 * Prints output files.
+//	 * 
+//	 * @param filename Name of output file
+//	 * @param realClass Real output of instances
+//	 * @param prediction Predicted output for instances
+//	 */
+//	private void writeOutput(String filename, int [][] realClass, int [][] prediction) {
+//	
+//		String text = "";
+//		
+//		/*Printing input attributes*/
+//		text += "@relation "+ relation +"\n";
+//
+//		for (int i=0; i<inputs.length; i++) {
+//			
+//			text += "@attribute "+ inputs[i].getName()+" ";
+//			
+//		    if (inputs[i].getType() == Attribute.NOMINAL) {
+//		    	text += "{";
+//		        for (int j=0; j<inputs[i].getNominalValuesList().size(); j++) {
+//		        	text += (String)inputs[i].getNominalValuesList().elementAt(j);
+//		        	if (j < inputs[i].getNominalValuesList().size() -1) {
+//		        		text += ", ";
+//		        	}
+//		        }
+//		        text += "}\n";
+//		    } else {
+//		    	if (inputs[i].getType() == Attribute.INTEGER) {
+//		    		text += "integer";
+//		        } else {
+//		        	text += "real";
+//		        }
+//		        text += " ["+String.valueOf(inputs[i].getMinAttribute()) + ", " +  String.valueOf(inputs[i].getMaxAttribute())+"]\n";
+//		    }
+//		}
+//
+//		/*Printing output attribute*/
+//		text += "@attribute "+ output.getName()+" ";
+//
+//		if (output.getType() == Attribute.NOMINAL) {
+//			text += "{";
+//			
+//			for (int j=0; j<output.getNominalValuesList().size(); j++) {
+//				text += (String)output.getNominalValuesList().elementAt(j);
+//		        if (j < output.getNominalValuesList().size() -1) {
+//		        	text += ", ";
+//		        }
+//			}		
+//			text += "}\n";	    
+//		} else {
+//		    text += "integer ["+String.valueOf(output.getMinAttribute()) + ", " + String.valueOf(output.getMaxAttribute())+"]\n";
+//		}
+//
+//		/*Printing data*/
+//		text += "@data\n";
+//
+//		Files.writeFile(filename, text);
+//		
+//		if (output.getType() == Attribute.INTEGER) {
+//			
+//			text = "";
+//			
+//			for (int i=0; i<realClass.length; i++) {
+//			      
+//			      for (int j=0; j<realClass[0].length; j++){
+//			    	  text += "" + realClass[i][j] + " ";
+//			      }
+//			      for (int j=0; j<realClass[0].length; j++){
+//			    	  text += "" + prediction[i][j] + " ";
+//			      }
+//			      text += "\n";			      
+//			      if((i%10)==9){
+//			    	  Files.addToFile(filename, text);
+//			    	  text = "";
+//			      }     
+//			}			
+//			
+//			if((realClass.length%10)!=0){
+//				Files.addToFile(filename, text);
+//			}
+//		}
+//		else{
+//			
+//			text = "";
+//			
+//			for (int i=0; i<realClass.length; i++) {
+//			      
+//			      for (int j=0; j<realClass[0].length; j++){
+//			    	  text += "" + (String)output.getNominalValuesList().elementAt(realClass[i][j]) + " ";
+//			      }
+//			      for (int j=0; j<realClass[0].length; j++){
+//			    	  if(prediction[i][j]>-1){
+//			    		  text += "" + (String)output.getNominalValuesList().elementAt(prediction[i][j]) + " ";
+//			    	  }
+//			    	  else{
+//			    		  text += "" + "Unclassified" + " ";
+//			    	  }
+//			      }
+//			      text += "\n";
+//			      
+//			      if((i%10)==9){
+//			    	  Files.addToFile(filename, text);
+//			    	  text = "";
+//			      } 
+//			}			
+//			
+//			if((realClass.length%10)!=0){
+//				Files.addToFile(filename, text);
+//			}		
+//		}
+//		
+//	}//end-method 
 	
 	/**
 	 * Prints the additional output file

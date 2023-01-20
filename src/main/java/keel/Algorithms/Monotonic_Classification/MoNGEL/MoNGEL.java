@@ -52,7 +52,7 @@ import keel.Dataset.Attribute;
 import keel.Algorithms.Monotonic_Classification.Basic.HyperrectanglesAlgorithm;
 import keel.Dataset.InstanceSet;
 
-public class MoNGEL extends HyperrectanglesAlgorithm{
+public class MoNGEL extends HyperrectanglesAlgorithm {
 	
     
         Rule ruleset[];
@@ -110,7 +110,7 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
 	 * @param referenceData reference data
 	 */
 	public MoNGEL(/*long seed, */InstanceSet trainData, InstanceSet referenceData) {
-        initialTime = System.currentTimeMillis();
+//		initialTime = System.currentTimeMillis();
         
 //      this.seed = seed; //NEW
 		
@@ -135,6 +135,25 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
 		
 		//Initialization stuff ends here. So, we can start time-counting
 		setInitialTime(); 
+	}
+	
+	/**
+	 * Sole constructor. Should be followed by call to {@link #loadLearningData(InstanceSet, InstanceSet) loadLearningData(trainData, referenceData)}
+	 * or {@link #buildClassifier(InstanceSet) buildClassifier(trainData)}.
+	 */
+	public MoNGEL() {
+		//Naming the algorithm
+		name="MoNGEL";
+	}
+	
+	public void buildClassifier(InstanceSet trainData) {
+		loadLearningData(trainData, trainData); //use train data as reference data (after fixes by MSz the data will not be modified during further processing
+		
+		//Initialization stuff ends here. So, we can start time-counting
+		setInitialTime();
+		
+		initializeRules();     // Initializing the rules structures
+		getRules();
 	}
 	/*&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&*/
 	
@@ -280,39 +299,102 @@ public class MoNGEL extends HyperrectanglesAlgorithm{
      * @return Class assigned to the instance
 	 */
 	protected int evaluate(double instance[]){
+//		System.out.print("classifying instance: ["); //!
+//		for (double e : instance) { //!
+//			System.out.print(e+","); //!
+//		} //!
+//		System.out.println("]"); //!
 		
-        if(type_clasify==0){
-                double minArea=Double.MAX_VALUE;
-		double minDist=Double.MAX_VALUE;
-		int selected=-1;
-		
-		for(int i=0;i<ruleset.length;i++){
-                       if(ruleset[i].distance(instance)==minDist){
-				if(ruleset[i].getArea()<minArea){
-					minArea=ruleset[i].getArea();
-					selected=i;
+		if (type_clasify == 0) {
+			double minArea = Double.MAX_VALUE;
+			double minDist = Double.MAX_VALUE;
+			int selected = -1;
+
+			for (int i = 0; i < ruleset.length; i++) {
+				if (ruleset[i].distance(instance) == minDist) {
+					if (ruleset[i].getArea() < minArea) {
+						minArea = ruleset[i].getArea();
+						selected = i;
+					}
+				}
+				if (ruleset[i].distance(instance) < minDist) {
+					minDist = ruleset[i].distance(instance);
+					minArea = ruleset[i].getArea();
+					selected = i;
 				}
 			}
-			if(ruleset[i].distance(instance)<minDist){
-				minDist=ruleset[i].distance(instance);
-				minArea=ruleset[i].getArea();
-				selected=i;
+			selected = ruleset[selected].getOutput();
+			return selected;
+		}
+		else {
+			for (int i = 0; i < ruleset.length; i++) {
+				if (ruleset[i].compareInput(new Rule(instance, 1, inputs)) > 0) {
+					return (ruleset[i].getOutput());
+				}
 			}
-               }		
-		selected=ruleset[selected].getOutput();
-		return selected;
-            }
-            
-            else{
-                for(int i=0; i < ruleset.length; i++){
-                    if(ruleset[i].compareInput(new Rule(instance,1,inputs))>0){
-                              return (ruleset[i].getOutput());
-                    }
-                }
-                return (ruleset[ruleset.length-1].getOutput());
-            }
+			return (ruleset[ruleset.length - 1].getOutput());
+		}
 
 	}//end-method
+	
+	/**
+	 * Classifies inner train data and returns an array with indices of decisions in the nominal domain of decision attribute.
+	 * 
+	 * @return array with indices of decisions in the nominal domain of decision attribute
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	public int[] classifyTrainData() { //does not change internal state of this classifier
+		int[] trainRealClass = new int[trainData.length];
+		int[] trainPrediction = new int[trainData.length];	
+		
+		//Working on training
+		for (int i = 0; i < trainRealClass.length; i++) {
+			//trainRealClass[i] = trainOutput[i];
+			trainPrediction[i] = evaluate(trainData[i]);
+		}
+		
+		return trainPrediction;
+	}
+	
+	/**
+	 * Classifies inner test data and returns an array with indices of decisions in the nominal domain of decision attribute.
+	 * 
+	 * @return array with indices of decisions in the nominal domain of decision attribute
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	public int[] classifyTestData() { //does not change internal state of this classifier
+		int[] testRealClass = new int[testData.length];
+		int[] testPrediction = new int[testData.length];	
+		
+		//Working on test
+		for (int i = 0; i < testRealClass.length; i++) {
+			//testRealClass[i] = testOutput[i];
+			testPrediction[i] = evaluate(testData[i]);
+		}
+		
+		return testPrediction;
+	}
+	
+	@Override
+	public int[] classify(InstanceSet testData) {
+		loadTestData(testData);
+		
+		return classifyTestData();
+	}
+	
+	/**
+	 * Gets multi-line textual representation of decision rules.
+	 * 
+	 * @return multi-line textual representation of decision rules
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	public String getRulesAsText() {
+		StringBuilder sb = new StringBuilder(ruleset.length * 128);
+		for (int i = 0; i < ruleset.length; i++) {
+			sb.append(ruleset[i]).append(System.lineSeparator());
+		}
+		return sb.toString();
+	}
     
 	/** 
 	 * Writes the final ruleset obtained, in the ruleSetText variable.

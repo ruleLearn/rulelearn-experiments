@@ -40,6 +40,7 @@ public class BasicDataProvider implements DataProvider {
 		}
 		
 		abstract InformationTableWithDecisionDistributions loadInformationTable() throws IOException;
+		abstract InformationTable previewInformationTable() throws IOException; //loads information table but does not calculate its decision distributions
 	}
 	
 	private class JSONParams extends Params {
@@ -61,6 +62,19 @@ public class BasicDataProvider implements DataProvider {
 			}
 			
 			return new InformationTableWithDecisionDistributions(informationTable);
+		}
+		
+		@Override
+		InformationTable previewInformationTable() throws IOException {
+			InformationTable informationTable;
+			
+			try {
+				informationTable = safelyBuildFromJSONFileStream(metadataJSONFilePath, objectsJSONFilePath);
+			} catch (IOException e) {
+				throw e;
+			}
+			
+			return informationTable;
 		}
 		
 		public InformationTable safelyBuildFromJSONFileStream(String pathToJSONAttributeFile, String pathToJSONObjectFile) throws IOException {
@@ -145,6 +159,19 @@ public class BasicDataProvider implements DataProvider {
 			}
 			
 			return new InformationTableWithDecisionDistributions(informationTable);
+		}
+		
+		@Override
+		InformationTable previewInformationTable() throws IOException {
+			InformationTable informationTable;
+			
+			try {
+				informationTable = safelyBuildFromCSVFileStream(metadataJSONFilePath, objectsCSVFilePath, header, separator);
+			} catch (IOException e) {
+				throw e;
+			}
+			
+			return informationTable;
 		}
 		
 		//@throws ObjectParseException if the number of values specified for an object in CSV input exceeds the number of attributes
@@ -255,6 +282,18 @@ public class BasicDataProvider implements DataProvider {
 			throw new UnsupportedOperationException("Data provider has already done his job.");
 		}
 	}
+	
+	@Override
+	public Data previewOriginalData() { //returns Data but does not store information table neither calculates its decision distributions
+		InformationTable informationTable = null; //no decision distributions - loads faster!
+		try {
+			informationTable = params.previewInformationTable();
+		} catch (IOException e) {
+			throw new InvalidValueException("Could not load information table from disk.");
+		}
+		
+		return new Data(informationTable, dataName);
+	}
 
 	/**
 	 * Gets seeds for subsequent cross-validations. It is possible to obtain seeds even if this provide is {@link #done()}.
@@ -297,6 +336,11 @@ public class BasicDataProvider implements DataProvider {
 		//this.seeds = null;
 		this.params = null;
 		done = true;
+	}
+	
+	@Override
+	public void reset() {
+		this.informationTable = null;
 	}
 	
 }

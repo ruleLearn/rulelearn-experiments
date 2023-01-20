@@ -35,7 +35,7 @@ public class WEKAClassifer implements ClassificationModel {
 	public static class ModelDescriptionBuilder extends ClassificationModel.ModelDescriptionBuilder {
 		
 		/**
-		 * @throws ClassCastException if given array is not an instance of {@link ModelDescription[]}.
+		 * @throws ClassCastException if given array does not contain only {@link ModelDescription} objects.
 		 */
 		@Override
 		ModelDescription build(AggregationMode aggregationMode, ClassificationModel.ModelDescription... genericModelDescriptions) { //aggregationMode is ignored
@@ -81,7 +81,7 @@ public class WEKAClassifer implements ClassificationModel {
 		@Override
 		public String toString() {
 			if (!aggregated) {
-				return "[Options: " + options + "]" + (BatchExperiment.printWEKATrainedClassifiers ?  System.lineSeparator() + trainedClassifier : "");
+				return "[Options: " + options + "]" + (BatchExperiment.printTrainedClassifiers ?  System.lineSeparator() + trainedClassifier : "");
 			} else {
 				return "[Options: " + options + "]";
 			}
@@ -98,6 +98,8 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 
 	}
+	
+	//******************** BEGIN class members ********************
 	
 	AbstractClassifier trainedClassifier; //trained classifier
 	Filter[] filters; //filters used during learning, in order, if any
@@ -136,7 +138,7 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		double value;
 		
-		ClassificationStatistics classificationStatistics = new ClassificationStatistics(DefaultClassificationType.NONE, ClassifierType.WEKA_CLASSIFIER);
+		ClassificationStatistics classificationStatistics = new ClassificationStatistics(DefaultClassificationType.NONE, ClassifierType.OTHER_CLASSIFIER);
 		
 		for (int i = 0; i < testDataSize; i++) {
 			try {

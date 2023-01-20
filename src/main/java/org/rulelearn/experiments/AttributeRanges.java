@@ -22,6 +22,7 @@ import org.rulelearn.types.RealField;
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
  */
 public class AttributeRanges {
+	
 	public static class AttributeRange {
 		int attributeIndex = -1;
 		double min;
@@ -29,7 +30,7 @@ public class AttributeRanges {
 		
 		public AttributeRange(int attributeIndex, double min, double max) {
 			if (min > max) {
-				throw new InvalidValueException("Min > max.");
+				throw new InvalidValueException("Ther should be min <= max.");
 			}
 			this.attributeIndex = attributeIndex;
 			this.min = min;
@@ -46,6 +47,12 @@ public class AttributeRanges {
 
 		public double getMax() {
 			return max;
+		}
+		
+		public String toString() {
+			StringBuilder sb = new StringBuilder(32);
+			sb.append(attributeIndex+1).append(": [").append(min).append(", ").append(max).append("]");
+			return sb.toString();
 		}
 		
 	}
@@ -111,6 +118,18 @@ public class AttributeRanges {
 	
 	public AttributeRange getRange(int attributeIndex) {
 		return attributeRanges.get(attributeIndex2attributeRangeIndex.get(attributeIndex)); //can throw an exception
+	}
+	
+	public String toString() {
+		StringBuilder sb = new StringBuilder(128);
+		int index = 0;
+		for (AttributeRange attributeRange : attributeRanges) {
+			if (index++ > 0) {
+				sb.append("; ");
+			}
+			sb.append(attributeRange);
+		}
+		return sb.toString();
 	}
 	
 }

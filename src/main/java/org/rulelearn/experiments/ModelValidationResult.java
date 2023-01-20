@@ -33,7 +33,7 @@ public class ModelValidationResult {
 	
 	public enum ClassifierType {
 		VCDRSA_RULES_CLASSIFIER,
-		WEKA_CLASSIFIER
+		OTHER_CLASSIFIER
 	}
 	
 	public static class MeansAndStandardDeviations {
@@ -297,10 +297,10 @@ public class ModelValidationResult {
 		}
 		
 		public void increaseMainModelCorrectCount(int count) {
-			if (classifierType == ClassifierType.WEKA_CLASSIFIER) {
+			if (classifierType == ClassifierType.OTHER_CLASSIFIER) {
 				preciseCorrectCount += count;
 			} else {
-				throw new UnsupportedOperationException("Increasing main model correct count is only meant for a WEKA classifier.");
+				throw new UnsupportedOperationException("Increasing main model correct count is only meant for a classifier other than VCDRSA_RULES_CLASSIFIER.");
 			}
 		}
 		
@@ -309,10 +309,10 @@ public class ModelValidationResult {
 		}
 		
 		public void increaseMainModelIncorrectCount(int count) {
-			if (classifierType == ClassifierType.WEKA_CLASSIFIER) {
+			if (classifierType == ClassifierType.OTHER_CLASSIFIER) {
 				preciseIncorrectCount += count;
 			} else {
-				throw new UnsupportedOperationException("Increasing main model incorrect count is only meant for a WEKA classifier.");
+				throw new UnsupportedOperationException("Increasing main model incorrect count is only meant for a classifier other than VCDRSA_RULES_CLASSIFIER.");
 			}
 		}
 		

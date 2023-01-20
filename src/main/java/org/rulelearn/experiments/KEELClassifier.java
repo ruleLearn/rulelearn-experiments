@@ -1,9 +1,4 @@
-/**
- * 
- */
 package org.rulelearn.experiments;
-
-import org.rulelearn.data.SimpleDecision;
 
 /**
  * Generic KEEL classifier.
@@ -12,20 +7,10 @@ import org.rulelearn.data.SimpleDecision;
  */
 public abstract class KEELClassifier implements ClassificationModel {
 	ModelLearningStatistics modelLearningStatistics;
-	ModelDescription modelDescription = null;
 	
 	public KEELClassifier(ModelLearningStatistics modelLearningStatistics) {
 		this.modelLearningStatistics = modelLearningStatistics;
 	}
-	
-	@Override
-	public abstract ModelValidationResult validate(Data testData);
-	
-	@Override
-	public abstract SimpleDecision classify(int i, Data data);
-	
-	@Override
-	public abstract ModelDescription getModelDescription();
 	
 	@Override
 	public ModelLearningStatistics getModelLearningStatistics() {

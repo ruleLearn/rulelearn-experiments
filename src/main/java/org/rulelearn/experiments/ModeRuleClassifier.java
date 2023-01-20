@@ -47,7 +47,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 	}
 	
 	public static class ModelDescription extends ClassificationModel.ModelDescription {
-		long totalRulesCount = 0L; //sumRulesCount
+		long totalRulesCount = 0L; //sum of number of rules
 		long sumRuleLength = 0L; //sum of lengths of rules
 		long sumRuleSupport = 0L; //sum of supports of rules
 		double sumRuleConfidence = 0.0; //sum of confidences of rules
@@ -96,7 +96,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 			if (aggregationCount == 1) {
 				sb.append("number of rules: ").append(totalRulesCount);
 			} else {
-				sb.append("avg. number of rules: ").append((double)totalRulesCount / aggregationCount);
+				//sb.append("avg. number of rules: ").append((double)totalRulesCount / aggregationCount);
+				sb.append(String.format(Locale.US, "avg. number of rules: %.2f", aggregationCount > 0 ? (double)totalRulesCount / aggregationCount : 0.0));
 			}
 			
 			sb.append(String.format(Locale.US, ", average length: %.2f", (double)sumRuleLength / totalRulesCount));
@@ -117,6 +118,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 		}
 		
 	}
+	
+	//******************** BEGIN class members ********************
 	
 	RuleSetWithComputableCharacteristics ruleSet;
 	SimpleClassificationResult defaultClassificationResult;
