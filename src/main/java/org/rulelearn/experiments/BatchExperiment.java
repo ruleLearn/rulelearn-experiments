@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.rulelearn.approximations.Unions;
 import org.rulelearn.approximations.UnionsWithSingleLimitingDecision;
 import org.rulelearn.approximations.VCDominanceBasedRoughSetCalculator;
+import org.rulelearn.core.InvalidValueException;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
@@ -51,8 +52,10 @@ public class BatchExperiment {
 	
 	public enum DataSetVersion {
 		NORMAL,
-		OLM_OSDL,
-		MONGEL
+		OLM_OSDL, //tells if versions of data used only by OLM and OSDL should be used (if true, then make sure that OLM and OSDL are the only tested algorithms)
+		MONGEL_2x_GAIN,
+		MONGEL_NONE_INTEGER,
+		MONGEL_NONE_ENUMERATION
 	}
 
 	List<DataProvider> dataProviders;
@@ -71,9 +74,8 @@ public class BatchExperiment {
 	static final boolean printTrainedClassifiers = true; //concerns WEKA and KEEL classifiers
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
-	static final boolean OLM_OSDL_Data = false; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
-	static final boolean normalData = !OLM_OSDL_Data; //tells if versions of data used only by OLM should be used (if true, then make sure that OLM is the only tested algorithm)
-	static final DataSetVersion dataSetVersion = DataSetVersion.NORMAL;
+	
+	static final DataSetVersion dataSetVersion = DataSetVersion.MONGEL_2x_GAIN;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -768,260 +770,60 @@ public class BatchExperiment {
 //				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
 //				k));
 //		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata.json",
-					"data/json-objects/bank-churn-4000-v8 data.json",
-					dataNameChurn4000v8,
-					//SKIP_DATA,
-					//new long[]{},
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8 *********
-		if (OLM_OSDL_Data) {
-		/**/dataProviders.add(new BasicDataProvider(
-		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata.json",
-		/**/		"data/csv/OLM/bank-churn-4000-v8-processed data.csv",
-		/**/		true, ';',
-		/**/		dataNameChurn4000v8,
-		/**/		//SKIP_DATA,
-		/**/		//new long[]{},
-		/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-		/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-		/**/		k));
-		}
+		dataProviders.add(getDataProviderChurn4000v8(
+				dataNameChurn4000v8,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-					"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-					dataNameChurn4000v8_0_05_mv2,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.05 mv2 *********
-		if (OLM_OSDL_Data) {
-		/**/dataProviders.add(new BasicDataProvider(
-		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-		/**/		"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
-		/**/		true, ';',
-		/**/		dataNameChurn4000v8_0_05_mv2,
-		/**/		//SKIP_DATA,
-		/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-		/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-		/**/		k));
-		}
-		/*==========================================================================================*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-					"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-					dataNameChurn4000v8_0_05_mv15,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.05 mv15 *********
-		if (OLM_OSDL_Data) {
-		/**/dataProviders.add(new BasicDataProvider(
-		/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-		/**/		"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
-		/**/		true, ';',
-		/**/		dataNameChurn4000v8_0_05_mv15,
-		/**/		//SKIP_DATA,
-		/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-		/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-		/**/		k));
-		}
+		dataProviders.add(getDataProviderChurn4000v8_0_05_mv2(
+				dataNameChurn4000v8_0_05_mv2,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		
+		dataProviders.add(getDataProviderChurn4000v8_0_05_mv15(
+				dataNameChurn4000v8_0_05_mv15,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-					"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-					dataNameChurn4000v8_0_10_mv2,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.10 mv2 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_10_mv2,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
-		/*==========================================================================================*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-					"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-					dataNameChurn4000v8_0_10_mv15,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.10 mv15 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_10_mv15,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
+		dataProviders.add(getDataProviderChurn4000v8_0_10_mv2(
+				dataNameChurn4000v8_0_10_mv2,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		
+		dataProviders.add(getDataProviderChurn4000v8_0_10_mv15(
+				dataNameChurn4000v8_0_10_mv15,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-					"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-					dataNameChurn4000v8_0_15_mv2,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.15 mv2 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_15_mv2,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
-		/*==========================================================================================*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-					"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-					dataNameChurn4000v8_0_15_mv15,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.15 mv15 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_15_mv15,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
+		dataProviders.add(getDataProviderChurn4000v8_0_15_mv2(
+				dataNameChurn4000v8_0_15_mv2,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		
+		dataProviders.add(getDataProviderChurn4000v8_0_15_mv15(
+				dataNameChurn4000v8_0_15_mv15,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-					"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-					dataNameChurn4000v8_0_20_mv2,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.20 mv2 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_20_mv2,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
-		/*==========================================================================================*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-					"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-					dataNameChurn4000v8_0_20_mv15,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.20 mv15 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_20_mv15,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
+		dataProviders.add(getDataProviderChurn4000v8_0_20_mv2(
+				dataNameChurn4000v8_0_20_mv2,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		
+		dataProviders.add(getDataProviderChurn4000v8_0_20_mv15(
+				dataNameChurn4000v8_0_20_mv15,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-					"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-					dataNameChurn4000v8_0_25_mv2,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.25 mv2 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_25_mv2,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
-		/*==========================================================================================*/
-		if (normalData) {
-			dataProviders.add(new BasicDataProvider(
-					"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-					"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-					dataNameChurn4000v8_0_25_mv15,
-					//SKIP_DATA,
-					//new long[]{0L, 5488762120989881L, 4329629961476882L},
-					new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-					k));
-		}
-		//********* OLM version of bank-churn-4000-v8_0.25 mv15 *********
-		if (OLM_OSDL_Data) {
-			/**/dataProviders.add(new BasicDataProvider(
-			/**/		"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-			/**/		"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
-			/**/		true, ';',
-			/**/		dataNameChurn4000v8_0_25_mv15,
-			/**/		//SKIP_DATA,
-			/**/		//new long[]{0L, 5488762120989881L, 4329629961476882L},
-			/**/		new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
-			/**/		k));
-		}
+		dataProviders.add(getDataProviderChurn4000v8_0_25_mv2(
+				dataNameChurn4000v8_0_25_mv2,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
+		
+		dataProviders.add(getDataProviderChurn4000v8_0_25_mv15(
+				dataNameChurn4000v8_0_25_mv15,
+				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		
 		//TODO: comment algorithms that should not be used in this batch experiment
@@ -1716,7 +1518,402 @@ public class BatchExperiment {
 		} else {
 			return String.format(Locale.US, decimalFormat, number);
 		}
-		
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata.json",
+				"data/json-objects/bank-churn-4000-v8 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata.json",
+				"data/csv/OLM/bank-churn-4000-v8-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
+				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, long[] seeds, int k) {
+		switch (dataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
+				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
+				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_2x_GAIN:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-2xgain data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NONE_ENUMERATION:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
 	}
 	
 }
