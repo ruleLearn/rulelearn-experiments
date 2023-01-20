@@ -1,4 +1,4 @@
-﻿CreditScore;GeographyNG;GeographyNGI;GenderNG;GenderNGI;AgeCG;TenureCG;Balance;NumOfProductsNG;NumOfProductsNGI;HasCrCardNG;HasCrCardNGI;IsActiveMember;EstimatedSalary;ExitedCG
+CreditScore;GeographyNG;GeographyNGI;GenderNG;GenderNGI;AgeCG;TenureCG;Balance;NumOfProductsNG;NumOfProductsNGI;HasCrCardNG;HasCrCardNGI;IsActiveMember;EstimatedSalary;ExitedCG
 584;Germany;Germany;Male;Male;-42;-3;?;1;-1;1;1;0;25669.1;0
 660;Germany;Germany;Male;Male;-39;?;134599.33;2;-2;1;1;0;?;0
 676;Spain;Spain;?;?;-30;-5;?;2;-2;0;0;1;157888.5;0
