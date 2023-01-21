@@ -381,7 +381,8 @@ public class BatchExperiment {
 //						Object[][][][] foldResults = new Object[crossValidationFolds.size()][learningAlgorithms.size()][maxParametersCount][7];
 						
 						//run each fold in parallel!
-						crossValidationFolds.parallelStream().forEach(fold -> {
+						crossValidationFolds.parallelStream().forEach(fold -> { //TODO: ensure parallel stream!
+						//crossValidationFolds.stream().forEach(fold -> {       //just for measuring time!
 							String linePrefix = "      "+foldNumber2Spaces(fold.getIndex());
 							String summaryLinePrefix = linePrefix + "%% ";
 							String messageTemplate = prepareText("%pEnd of fold %1, algorithm %2(%3).%n"
@@ -600,8 +601,8 @@ public class BatchExperiment {
 									.collect(Collectors.joining(System.lineSeparator())),
 //									info,
 									aggregatedModelValidationResult.getModelDescription().toShortString(),
-									totalFoldCalculationTimes.getAverageTrainingTime(),
-									totalFoldCalculationTimes.getAverageValidationTime()
+									round(totalFoldCalculationTimes.getAverageTrainingTime()),
+									round(totalFoldCalculationTimes.getAverageValidationTime())
 								);
 	
 							MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
@@ -681,8 +682,8 @@ public class BatchExperiment {
 										.collect(Collectors.joining(System.lineSeparator())),
 //										info,
 										aggregatedModelValidationResult.getModelDescription().toShortString(),
-										totalFoldCalculationTimes.getAverageTrainingTime(),
-										totalFoldCalculationTimes.getAverageValidationTime()
+										round(totalFoldCalculationTimes.getAverageTrainingTime()),
+										round(totalFoldCalculationTimes.getAverageValidationTime())
 									);
 							} //for
 							outN("--");
@@ -773,6 +774,7 @@ public class BatchExperiment {
 //				k));
 //		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L};
+		//long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L};
 		
 		dataProviders.add(getDataProviderChurn4000v8(
 				dataNameChurn4000v8,
@@ -1246,8 +1248,8 @@ public class BatchExperiment {
 								.collect(Collectors.joining(System.lineSeparator())),
 //								info,
 								aggregatedModelValidationResult.getModelDescription().toShortString(),
-								totalFoldCalculationTimes.getAverageTrainingTime(),
-								totalFoldCalculationTimes.getAverageValidationTime()
+								round(totalFoldCalculationTimes.getAverageTrainingTime()),
+								round(totalFoldCalculationTimes.getAverageValidationTime())
 							);
 	
 						MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
@@ -1326,8 +1328,8 @@ public class BatchExperiment {
 									.collect(Collectors.joining(System.lineSeparator())),
 //									info,
 									aggregatedModelValidationResult.getModelDescription().toShortString(),
-									totalFoldCalculationTimes.getAverageTrainingTime(),
-									totalFoldCalculationTimes.getAverageValidationTime()
+									round(totalFoldCalculationTimes.getAverageTrainingTime()),
+									round(totalFoldCalculationTimes.getAverageValidationTime())
 								);
 						} //for
 						outN("--");
