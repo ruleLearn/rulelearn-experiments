@@ -50,12 +50,13 @@ import weka.filters.unsupervised.attribute.ReplaceMissingValues;
  */
 public class BatchExperiment {
 	
-	public enum DataSetVersion {
+	public enum Churn4000v8DataSetVersion {
 		NORMAL,
 		OLM_OSDL, //tells if versions of data used only by OLM and OSDL should be used (if true, then make sure that OLM and OSDL are the only tested algorithms)
-		MONGEL_2x_GAIN,
-		MONGEL_NONE_INTEGER,
-		MONGEL_NONE_ENUMERATION
+		MONGEL_NUM_OF_PRODUCTS_2X_GAIN, //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
+		MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER, //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
+		MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION, //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
+		MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER //gives the best results for MoNGEL!
 	}
 
 	List<DataProvider> dataProviders;
@@ -75,7 +76,8 @@ public class BatchExperiment {
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
 	
-	static final DataSetVersion dataSetVersion = DataSetVersion.MONGEL_2x_GAIN;
+	//static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER;
+	static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.NORMAL;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -770,65 +772,67 @@ public class BatchExperiment {
 //				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
 //				k));
 //		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L};
+		
 		dataProviders.add(getDataProviderChurn4000v8(
 				dataNameChurn4000v8,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		dataProviders.add(getDataProviderChurn4000v8_0_05_mv2(
 				dataNameChurn4000v8_0_05_mv2,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		
 		dataProviders.add(getDataProviderChurn4000v8_0_05_mv15(
 				dataNameChurn4000v8_0_05_mv15,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		dataProviders.add(getDataProviderChurn4000v8_0_10_mv2(
 				dataNameChurn4000v8_0_10_mv2,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		
 		dataProviders.add(getDataProviderChurn4000v8_0_10_mv15(
 				dataNameChurn4000v8_0_10_mv15,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		dataProviders.add(getDataProviderChurn4000v8_0_15_mv2(
 				dataNameChurn4000v8_0_15_mv2,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		
 		dataProviders.add(getDataProviderChurn4000v8_0_15_mv15(
 				dataNameChurn4000v8_0_15_mv15,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		dataProviders.add(getDataProviderChurn4000v8_0_20_mv2(
 				dataNameChurn4000v8_0_20_mv2,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		
 		dataProviders.add(getDataProviderChurn4000v8_0_20_mv15(
 				dataNameChurn4000v8_0_20_mv15,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		dataProviders.add(getDataProviderChurn4000v8_0_25_mv2(
 				dataNameChurn4000v8_0_25_mv2,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		
 		dataProviders.add(getDataProviderChurn4000v8_0_25_mv15(
 				dataNameChurn4000v8_0_25_mv15,
-				new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L},
+				churn4000v8Seeds,
 				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		
 		//TODO: comment algorithms that should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
-//		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
+		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
@@ -837,7 +841,7 @@ public class BatchExperiment {
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
-		learningAlgorithms.add(new MoNGELClassifierLerner());
+//		learningAlgorithms.add(new MoNGELClassifierLerner());
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
@@ -1533,21 +1537,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1569,21 +1579,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1605,21 +1621,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1641,21 +1663,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1677,21 +1705,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1713,21 +1747,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1749,21 +1789,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1785,21 +1831,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1821,21 +1873,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1857,21 +1915,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
@@ -1893,21 +1957,27 @@ public class BatchExperiment {
 				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_2x_GAIN:
+		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-2xgain data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_INTEGER:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);
-		case MONGEL_NONE_ENUMERATION:
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
 			return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
+				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
+				true, ';',
+				dataSetName, seeds, k);
+		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
 				true, ';',
 				dataSetName, seeds, k);

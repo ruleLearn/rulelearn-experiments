@@ -1,0 +1,118 @@
+[
+  {
+    "name": "CreditScore",
+    "active": true,
+    "preferenceType": "gain",
+    "type": "condition",
+    "valueType": "integer",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "Geography",
+    "active": true,
+    "preferenceType": "none",
+    "type": "condition",
+    "valueType": "enumeration",
+    "domain": [
+      "France",
+      "Spain",
+      "Germany"
+    ],
+    "algorithm": "SHA-256",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "Gender",
+    "active": true,
+    "preferenceType": "none",
+    "type": "condition",
+    "valueType": "enumeration",
+    "domain": [
+      "Female",
+      "Male"
+    ],
+    "algorithm": "SHA-256",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "AgeCG",
+    "active": true,
+    "preferenceType": "gain",
+    "type": "condition",
+    "valueType": "integer",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "TenureCG",
+    "active": true,
+    "preferenceType": "gain",
+    "type": "condition",
+    "valueType": "integer",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "Balance",
+    "active": true,
+    "preferenceType": "gain",
+    "type": "condition",
+    "valueType": "real",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "NumOfProducts",
+    "active": true,
+    "preferenceType": "none",
+    "type": "condition",
+    "valueType": "enumeration",
+    "domain": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "algorithm": "SHA-256",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "HasCrCard",
+    "active": true,
+    "preferenceType": "none",
+    "type": "condition",
+    "valueType": "enumeration",
+    "domain": [
+      "0",
+      "1"
+    ],
+    "algorithm": "SHA-256",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "IsActiveMember",
+    "active": true,
+    "preferenceType": "gain",
+    "type": "condition",
+    "valueType": "integer",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "EstimatedSalary",
+    "active": true,
+    "preferenceType": "gain",
+    "type": "condition",
+    "valueType": "real",
+    "missingValueType": "mv1.5"
+  },
+  {
+    "name": "ExitedCG",
+    "active": true,
+    "preferenceType": "gain",
+    "type": "decision",
+    "valueType": "enumeration",
+    "domain": [
+      "1",
+      "0"
+    ],
+    "algorithm": "SHA-256",
+    "missingValueType": "mv1.5"
+  }
+]
