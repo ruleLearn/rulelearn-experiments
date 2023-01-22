@@ -61,7 +61,11 @@ public class BasicDataProvider implements DataProvider {
 				throw e;
 			}
 			
-			return new InformationTableWithDecisionDistributions(informationTable);
+			long start = System.currentTimeMillis();
+			InformationTableWithDecisionDistributions itwd = new InformationTableWithDecisionDistributions(informationTable);
+			System.out.println("Information table transformation time: "+(System.currentTimeMillis()-start));
+			
+			return itwd;
 		}
 		
 		@Override
@@ -158,7 +162,11 @@ public class BasicDataProvider implements DataProvider {
 				throw e;
 			}
 			
-			return new InformationTableWithDecisionDistributions(informationTable);
+			long start = System.currentTimeMillis();
+			InformationTableWithDecisionDistributions itwd = new InformationTableWithDecisionDistributions(informationTable);
+			System.out.println("Information table transformation time: "+(System.currentTimeMillis()-start));
+			
+			return itwd;
 		}
 		
 		@Override

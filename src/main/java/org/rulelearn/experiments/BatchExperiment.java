@@ -69,7 +69,7 @@ public class BatchExperiment {
 	//TODO: configure?
 	static boolean useMainModelAccuracy = false; //true = use main model accuracy; false = use overall accuracy
 	static final boolean doFullDataReclassification = true;
-	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
+	static final boolean doCrossValidations = false; //true = perform CVs; false = skip CVs
 	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfTestDataDecisions = true;
 	static final boolean printTrainedClassifiers = true; //concerns WEKA and KEEL classifiers
