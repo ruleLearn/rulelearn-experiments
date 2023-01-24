@@ -182,7 +182,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		long statisticsCountingTime = System.currentTimeMillis() - start;
 		
 		//account for calculation of InformationTableWithDecisionDistributions from InformationTable
-		statisticsCountingTime += dataTransformationTime.duration;
+		statisticsCountingTime += dataTransformationTime.duration; //TODO: change?
 		
 		ModelLearningStatistics modelLearningStatistics = new ModelLearningStatistics(
 				numberOfLearningObjects, numberOfConsistentLearningObjects, consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold,
@@ -302,6 +302,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
 				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
 		dataTransformationTime.duration = System.currentTimeMillis() - start; //record time of getting from InformationTable to InformationTableWithDecisionDistributions
+		//dataTransformationTime.duration = 0L; //TODO: change?
 		
 		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, 
 								   new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));

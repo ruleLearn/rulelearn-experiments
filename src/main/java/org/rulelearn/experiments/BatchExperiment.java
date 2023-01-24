@@ -69,10 +69,10 @@ public class BatchExperiment {
 	//TODO: configure?
 	static boolean useMainModelAccuracy = false; //true = use main model accuracy; false = use overall accuracy
 	static final boolean doFullDataReclassification = true;
-	static final boolean doCrossValidations = false; //true = perform CVs; false = skip CVs
+	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
 	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfTestDataDecisions = true;
-	static final boolean printTrainedClassifiers = true; //concerns WEKA and KEEL classifiers
+	static final boolean printTrainedClassifiers = true; //concerns WEKA and KEEL classifiers + full data reclassification
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
 	
@@ -247,7 +247,7 @@ public class BatchExperiment {
 					outN("--");
 					
 					//print full data set accuracies
-					Data fullData = dataProvider.provideOriginalData();
+					Data fullData = dataProvider.provideOriginalData(); //gets InformationTableWithDecisionDistributions, which involves time-consuming transformation from InformationTable read from 2 files
 					outN("Quality of approximation for consistency threshold=%1: %2.", epsilonDRSAConsistencyThreshold, qualityOfDRSAApproximation = calculateQualityOfApproximation(fullData.getInformationTable(), 0.0));
 					consistencyThreshold2QualityOfApproximation.put(Double.valueOf(epsilonDRSAConsistencyThreshold), qualityOfDRSAApproximation);
 					
@@ -256,7 +256,7 @@ public class BatchExperiment {
 						
 						parametersList = parametersContainer.getParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataProvider.getDataName()); //get list of parameters for rule classifier
 						
-						if (parametersList != null) { //rule classifier is there (i.e., has at least one parameters) :)
+						if (parametersList != null) { //VC-DRSA rule classifier is there (i.e., has at least one parameter) :)
 							for (LearningAlgorithmDataParameters parameters : parametersList) { //check quality of approximation for all considered consistency thresholds
 								double consistencyThreshold = Double.valueOf(parameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.consistencyThresholdParameterName));
 								if (!consistencyThreshold2QualityOfApproximation.containsKey(Double.valueOf(consistencyThreshold))) { //ensure that quality of approximation is calculated for each consistency threshold only once
@@ -840,8 +840,8 @@ public class BatchExperiment {
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
 //		learningAlgorithms.add(new MoNGELClassifierLerner());
 		
