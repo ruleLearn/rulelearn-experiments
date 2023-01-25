@@ -111,6 +111,11 @@ public class MoNGELClassifier extends KEELClassifier {
 			return new ModelDescriptionBuilder();
 		}
 		
+		@Override
+		public long getModelDescriptionCalculationTime() {
+			return 0L;
+		}
+		
 	}
 	
 	//******************** BEGIN class members ********************

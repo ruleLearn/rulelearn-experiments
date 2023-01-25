@@ -51,13 +51,14 @@ public class ModeRuleClassifier implements ClassificationModel {
 		long sumRuleLength = 0L; //sum of lengths of rules
 		long sumRuleSupport = 0L; //sum of supports of rules
 		double sumRuleConfidence = 0.0; //sum of confidences of rules
+		long modelDescriptionCalculationTime = 0L; //in [ms]
 		
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
 		AggregationMode aggregationMode = AggregationMode.NONE;
 		
 		//TODO: add more fields to address situation when aggregationMode == AggregationMode.MEAN_AND_DEVIATION
 		
-		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence) {
+		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence, long modelDescriptionCalculationTime) {
 			this.totalRulesCount = totalRulesCount;
 			this.sumRuleLength = sumRuleLength;
 			this.sumRuleSupport = sumRuleSupport;
@@ -65,6 +66,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			aggregationCount = 1;
 			aggregationMode = AggregationMode.NONE;
+			
+			this.modelDescriptionCalculationTime = modelDescriptionCalculationTime;
 		}
 		
 		public ModelDescription(AggregationMode aggregationMode, ModelDescription... modelDescriptions) {
@@ -80,6 +83,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 				sumRuleConfidence += modelDescription.sumRuleConfidence;
 				
 				aggregationCount += modelDescription.aggregationCount;
+				
+				modelDescriptionCalculationTime += modelDescription.modelDescriptionCalculationTime;
 			}
 			
 			this.aggregationMode = aggregationMode;
@@ -115,6 +120,11 @@ public class ModeRuleClassifier implements ClassificationModel {
 		@Override
 		public ModelDescriptionBuilder getModelDescriptionBuilder() {
 			return new ModelDescriptionBuilder();
+		}
+
+		@Override
+		public long getModelDescriptionCalculationTime() {
+			return modelDescriptionCalculationTime;
 		}
 		
 	}
@@ -276,6 +286,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 	@Override
 	public ModelDescription getModelDescription() {
 		if (modelDescription == null) {
+			long start = System.currentTimeMillis(); //!
+			
 			long size = ruleSet.size();
 			long sumLength = 0L;
 			long sumSupport = 0L;
@@ -287,7 +299,9 @@ public class ModeRuleClassifier implements ClassificationModel {
 				sumConfidence += ruleSet.getRuleCharacteristics(i).getConfidence();
 			}
 			
-			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence);
+			long modelDescriptionCalculationTime = System.currentTimeMillis() - start; //!
+			
+			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence, modelDescriptionCalculationTime);
 		}
 		
 		return modelDescription;

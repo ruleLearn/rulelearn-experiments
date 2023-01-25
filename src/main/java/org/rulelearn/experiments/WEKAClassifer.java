@@ -97,6 +97,11 @@ public class WEKAClassifer implements ClassificationModel {
 			return new ModelDescriptionBuilder();
 		}
 
+		@Override
+		public long getModelDescriptionCalculationTime() {
+			return 0L;
+		}
+
 	}
 	
 	//******************** BEGIN class members ********************

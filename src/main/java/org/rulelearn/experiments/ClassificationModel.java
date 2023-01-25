@@ -94,6 +94,7 @@ public interface ClassificationModel {
 		public abstract String toString();
 		public abstract String toShortString(); //one line model description
 		public abstract ModelDescriptionBuilder getModelDescriptionBuilder();
+		public abstract long getModelDescriptionCalculationTime(); //gets time necessary to build model description but not related to further classification
 	}
 	
 	public static class ModelLearningStatistics {
