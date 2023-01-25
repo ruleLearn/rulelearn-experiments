@@ -39,7 +39,7 @@ public class BasicDataProvider implements DataProvider {
 			this.metadataJSONFilePath = metadataJSONFilePath;
 		}
 		
-		abstract InformationTableWithDecisionDistributions loadInformationTable() throws IOException;
+		abstract InformationTableWithDecisionDistributionsPlusTransformationTime loadInformationTable() throws IOException;
 		abstract InformationTable previewInformationTable() throws IOException; //loads information table but does not calculate its decision distributions
 	}
 	
@@ -52,7 +52,7 @@ public class BasicDataProvider implements DataProvider {
 		}
 
 		@Override
-		InformationTableWithDecisionDistributions loadInformationTable() throws IOException {
+		InformationTableWithDecisionDistributionsPlusTransformationTime loadInformationTable() throws IOException {
 			InformationTable informationTable;
 			
 			try {
@@ -62,10 +62,12 @@ public class BasicDataProvider implements DataProvider {
 			}
 			
 			long start = System.currentTimeMillis();
-			InformationTableWithDecisionDistributions itwd = new InformationTableWithDecisionDistributions(informationTable);
-			System.out.println("Information table transformation time: "+(System.currentTimeMillis()-start));
+			InformationTableWithDecisionDistributions itwd = new InformationTableWithDecisionDistributions(informationTable, true, true); //calculate only necessary distributions!
+			long duration = System.currentTimeMillis() - start;
 			
-			return itwd;
+			System.out.println("Information table transformation time: "+duration);
+			
+			return new InformationTableWithDecisionDistributionsPlusTransformationTime(itwd, duration);
 		}
 		
 		@Override
@@ -153,7 +155,7 @@ public class BasicDataProvider implements DataProvider {
 		}
 		
 		@Override
-		InformationTableWithDecisionDistributions loadInformationTable() throws IOException {
+		InformationTableWithDecisionDistributionsPlusTransformationTime loadInformationTable() throws IOException {
 			InformationTable informationTable;
 			
 			try {
@@ -163,10 +165,12 @@ public class BasicDataProvider implements DataProvider {
 			}
 			
 			long start = System.currentTimeMillis();
-			InformationTableWithDecisionDistributions itwd = new InformationTableWithDecisionDistributions(informationTable);
-			System.out.println("Information table transformation time: "+(System.currentTimeMillis()-start));
+			InformationTableWithDecisionDistributions itwd = new InformationTableWithDecisionDistributions(informationTable, true, true); //calculate only necessary distributions!
+			long duration = System.currentTimeMillis() - start;
 			
-			return itwd;
+			System.out.println("Information table transformation time: "+duration);
+			
+			return new InformationTableWithDecisionDistributionsPlusTransformationTime(itwd, duration);
 		}
 		
 		@Override
@@ -219,7 +223,26 @@ public class BasicDataProvider implements DataProvider {
 		}
 	}
 	
+	private class InformationTableWithDecisionDistributionsPlusTransformationTime {
+		InformationTableWithDecisionDistributions informationTable;
+		long transformationTime; //[ms]
+		
+		public InformationTableWithDecisionDistributionsPlusTransformationTime(InformationTableWithDecisionDistributions informationTable, long transformationTime) {
+			this.informationTable = informationTable;
+			this.transformationTime = transformationTime;
+		}
+
+		public InformationTableWithDecisionDistributions getInformationTable() {
+			return informationTable;
+		}
+
+		public long getTransformationTime() {
+			return transformationTime;
+		}
+	}
+	
 	InformationTableWithDecisionDistributions informationTable = null;
+	long informationTableTransformationTime = 0L;
 	Params params;
 	String dataName;
 	long[] seeds;
@@ -260,12 +283,15 @@ public class BasicDataProvider implements DataProvider {
 		if (!done) {
 			if (informationTable == null) {
 				try {
-					informationTable = params.loadInformationTable();
+					InformationTableWithDecisionDistributionsPlusTransformationTime informationTablePlusTransformationCalculationTime = params.loadInformationTable();
+					informationTable = informationTablePlusTransformationCalculationTime.getInformationTable();
+					informationTableTransformationTime = informationTablePlusTransformationCalculationTime.getTransformationTime();
 				} catch (IOException e) {
 					throw new InvalidValueException("Could not load information table from disk.");
 				}
 			}
-			return new Data(informationTable, dataName, seeds[crossValidationNumber]);
+			
+			return new Data(informationTable, dataName, seeds[crossValidationNumber], informationTableTransformationTime);
 		} else {
 			throw new UnsupportedOperationException("Data provider has already done his job.");
 		}
@@ -280,12 +306,15 @@ public class BasicDataProvider implements DataProvider {
 		if (!done) {
 			if (informationTable == null) {
 				try {
-					informationTable = params.loadInformationTable();
+					InformationTableWithDecisionDistributionsPlusTransformationTime informationTablePlusTransformationCalculationTime = params.loadInformationTable();
+					informationTable = informationTablePlusTransformationCalculationTime.getInformationTable();
+					informationTableTransformationTime = informationTablePlusTransformationCalculationTime.getTransformationTime();
 				} catch (IOException e) {
 					throw new InvalidValueException("Could not load information table from disk.");
 				}
 			}
-			return new Data(informationTable, dataName);
+			
+			return new Data(informationTable, dataName, informationTableTransformationTime);
 		} else {
 			throw new UnsupportedOperationException("Data provider has already done his job.");
 		}

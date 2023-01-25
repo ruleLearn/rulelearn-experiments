@@ -27,7 +27,7 @@ public interface ClassificationModel {
 	
 	static int getNumberOfConsistentObjects(InformationTable informationTable, double consistencyThreshold) {
 		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
-				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
+				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true, true));
 		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
 		
 		return unions.getNumberOfConsistentObjects();
@@ -59,13 +59,13 @@ public interface ClassificationModel {
 	 */
 	static int getNumberOfPreAndPostConsistentObjects(InformationTable informationTable, Decision[] decisions, double consistencyThreshold) {
 		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
-				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
+				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true, true));
 		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
 		
 		int[] preConsistentObjects = unions.getNumbersOfConsistentObjects();
 		
 		InformationTable informationTableWithAssignedDecisions = new InformationTable(informationTable, decisions, true);
-		informationTableWithDecisionDistributions = new InformationTableWithDecisionDistributions(informationTableWithAssignedDecisions, true);
+		informationTableWithDecisionDistributions = new InformationTableWithDecisionDistributions(informationTableWithAssignedDecisions, true, true);
 		unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
 		
 		int[] postConsistentObjects = unions.getNumbersOfConsistentObjects();
@@ -102,6 +102,9 @@ public interface ClassificationModel {
 		double consistencyThreshold = -1.0; //<0.0 if not used
 		int totalNumberOfConsistentLearningObjectsForConsistencyThreshold = -1; //< 0 if not used
 		String modelLearnerDescription = null;
+		
+		long totalDataTransformationTime = 0L;
+		long totalModelCalculationTimeSavedByUsingCache = 0L;
 		long totalStatisticsCountingTime = 0L; //to be subtracted from model learning time
 		
 		int aggregationCount = 0; //tells how many ModelLearningStatistics objects have been used to build this object
@@ -111,12 +114,17 @@ public interface ClassificationModel {
 		
 		public ModelLearningStatistics(int numberOfLearningObjects, int numberOfConsistentLearningObjects,
 				double consistencyThreshold, int numberOfConsistentLearningObjectsForConsistencyThreshold,
-				String modelLearnerDescription, long statisticsCountingTime) {
+				String modelLearnerDescription,
+				long dataTransformationTime, long modelCalculationTimeSavedByUsingCache, long statisticsCountingTime) {
+			
 			this.totalNumberOfLearningObjects = numberOfLearningObjects;
 			this.totalNumberOfConsistentLearningObjects = numberOfConsistentLearningObjects;
 			this.consistencyThreshold = consistencyThreshold;
 			this.totalNumberOfConsistentLearningObjectsForConsistencyThreshold = numberOfConsistentLearningObjectsForConsistencyThreshold;
 			this.modelLearnerDescription = modelLearnerDescription;
+			
+			this.totalDataTransformationTime = dataTransformationTime;
+			this.totalModelCalculationTimeSavedByUsingCache = modelCalculationTimeSavedByUsingCache;
 			this.totalStatisticsCountingTime = statisticsCountingTime;
 			
 			aggregationCount = 1;
@@ -148,6 +156,8 @@ public interface ClassificationModel {
 					numberOfConsistentLearningObjectsForConsistencyThresholdIsUsed = true;
 				}
 				totalStatisticsCountingTime += modelLearningStatistics.totalStatisticsCountingTime;
+				totalModelCalculationTimeSavedByUsingCache += modelLearningStatistics.totalModelCalculationTimeSavedByUsingCache;
+				totalDataTransformationTime += modelLearningStatistics.totalDataTransformationTime;
 				
 				aggregationCount += modelLearningStatistics.aggregationCount;
 				
@@ -188,6 +198,14 @@ public interface ClassificationModel {
 
 		public String getModelLearnerDescription() {
 			return modelLearnerDescription;
+		}
+		
+		public long getTotalDataTransformationTime() {
+			return totalDataTransformationTime;
+		}
+		
+		public long getTotalModelCalculationTimeSavedByUsingCache() {
+			return totalModelCalculationTimeSavedByUsingCache;
 		}
 
 		public long getTotalStatisticsCountingTime() {
@@ -235,12 +253,25 @@ public interface ClassificationModel {
 			
 			if (averageNumberOfConsistentLearningObjectsForConsistencyThreshold >= 0) { //used
 				roundedValue = BatchExperiment.round(averageNumberOfConsistentLearningObjectsForConsistencyThreshold);
-				
 				if (aggregationCount == 1) {
-					sb.append(", quality for epsilon="+consistencyThreshold+": ").append(roundedValue);
+					sb.append(", quality for epsilon=").append(consistencyThreshold).append(": ").append(roundedValue);
 				} else {
-					sb.append(", total quality for epsilon="+consistencyThreshold+": ").append(roundedValue);
+					sb.append(", total quality for epsilon=").append(consistencyThreshold).append(": ").append(roundedValue);
 				}
+			}
+			
+			//print data transformation time
+			if (aggregationCount == 1) {
+				sb.append(", data transformation time: ").append(totalDataTransformationTime).append(" [ms]");
+			} else {
+				sb.append(", total data transformation time: ").append(totalDataTransformationTime).append(" [ms]");
+			}
+			
+			//print data transformation time
+			if (aggregationCount == 1) {
+				sb.append(", time saved by using cache: ").append(totalModelCalculationTimeSavedByUsingCache).append(" [ms]");
+			} else {
+				sb.append(", total time saved by using cache: ").append(totalModelCalculationTimeSavedByUsingCache).append(" [ms]");
 			}
 			
 			return sb.toString();

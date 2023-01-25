@@ -21,6 +21,10 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 	public static final String defaultClassificationResultLabelParameterName = "defaultClassificationResultLabel";
 	public static final String defaultClassificationResultChoiceMethodParameterName = "defaultClassificationResultChoiceMethod";
 	
+	public static final String useConditionGeneralizationParameterName = "useConditionGeneralization";
+//	public static final String useFilterParameterName = "useFilter";
+//	public static final String useDefaultClassifierParameterName = "useDefaultClassifier";
+	
 //	public static final String defaultClassificationResultPredictorParameterName = "defaultClassificationResultPredictor";
 //	public static final String defaultClassificationResultPredictorOptionsParameterName = "defaultClassificationResultPredictorOptions";
 	
@@ -30,12 +34,17 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 	LearningAlgorithmDataParameters defaultClassificationResultAlgorithmParameters = null;
 
 	public VCDomLEMModeRuleClassifierLearnerDataParameters(double consistencyThreshold, CompositeRuleCharacteristicsFilter filter,
-			String defaultClassificationResultLabel) {
+			String defaultClassificationResultLabel,
+			boolean useConditionGeneralization) {
 		parameters = new HashMap<String, String>();
 		parameters.put(consistencyThresholdParameterName, String.valueOf(consistencyThreshold));
 		parameters.put(filterParameterName, filter.toString());
 		parameters.put(defaultClassificationResultLabelParameterName, defaultClassificationResultLabel); //default label for each test subset
 		parameters.put(defaultClassificationResultChoiceMethodParameterName, DefaultClassificationResultChoiceMethod.FIXED.toString());
+		
+		parameters.put(useConditionGeneralizationParameterName, Boolean.valueOf(useConditionGeneralization).toString());
+//		parameters.put(useFilterParameterName, Boolean.valueOf(true).toString());
+//		parameters.put(useDefaultClassifierParameterName, Boolean.valueOf(false).toString());
 	}
 	
 	/**
@@ -46,7 +55,8 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 	 * @throws InvalidValueException if given default classification result choice method is neither {@link DefaultClassificationResultChoiceMethod#MODE} nor {@link DefaultClassificationResultChoiceMethod#MEDIAN}
 	 */
 	public VCDomLEMModeRuleClassifierLearnerDataParameters(double consistencyThreshold, CompositeRuleCharacteristicsFilter filter,
-			DefaultClassificationResultChoiceMethod defaultClassificationResultChoiceMethod) {
+			DefaultClassificationResultChoiceMethod defaultClassificationResultChoiceMethod,
+			boolean useConditionGeneralization) {
 		parameters = new HashMap<String, String>();
 		parameters.put(consistencyThresholdParameterName, String.valueOf(consistencyThreshold));
 		parameters.put(filterParameterName, filter.toString());
@@ -56,6 +66,10 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 		} else {
 			throw new InvalidValueException("Invalid value of default classification result choice method.");
 		}
+		
+		parameters.put(useConditionGeneralizationParameterName, Boolean.valueOf(useConditionGeneralization).toString());
+//		parameters.put(useFilterParameterName, Boolean.valueOf(true).toString());
+//		parameters.put(useDefaultClassifierParameterName, Boolean.valueOf(false).toString());
 	}
 	
 	/**
@@ -67,13 +81,18 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 	public VCDomLEMModeRuleClassifierLearnerDataParameters(double consistencyThreshold, CompositeRuleCharacteristicsFilter filter,
 			String defaultClassificationResultLabel, //will not be used!
 			LearningAlgorithm defaultClassificationResultPredictor,
-			LearningAlgorithmDataParameters predictorParameters) {
+			LearningAlgorithmDataParameters predictorParameters,
+			boolean useConditionGeneralization) {
 		parameters = new HashMap<String, String>();
 		parameters.put(consistencyThresholdParameterName, String.valueOf(consistencyThreshold));
 		parameters.put(filterParameterName, filter.toString());
 		parameters.put(defaultClassificationResultLabelParameterName, defaultClassificationResultLabel); //default label for main model
 
 		parameters.put(defaultClassificationResultChoiceMethodParameterName, DefaultClassificationResultChoiceMethod.CLASSIFIER.toString());
+		
+		parameters.put(useConditionGeneralizationParameterName, Boolean.valueOf(useConditionGeneralization).toString());
+//		parameters.put(useFilterParameterName, Boolean.valueOf(true).toString());
+//		parameters.put(useDefaultClassifierParameterName, Boolean.valueOf(true).toString());
 		
 		this.defaultClassificationResultAlgorithm = defaultClassificationResultPredictor;
 		this.defaultClassificationResultAlgorithmParameters = predictorParameters;
@@ -89,7 +108,7 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 	
 	@Override
 	public String toString() {
-		return String.format(Locale.US, "%s=%s, %s=%s, %s=%s%s%s", 
+		return String.format(Locale.US, "%s=%s, %s=%s, %s=%s%s%s, %s", 
 				consistencyThresholdParameterName, parameters.get(consistencyThresholdParameterName),
 				filterParameterName, parameters.get(filterParameterName),
 				defaultClassificationResultChoiceMethodParameterName, parameters.get(defaultClassificationResultChoiceMethodParameterName),
@@ -98,7 +117,10 @@ public class VCDomLEMModeRuleClassifierLearnerDataParameters implements Learning
 				DefaultClassificationResultChoiceMethod.of(parameters.get(defaultClassificationResultChoiceMethodParameterName)) == DefaultClassificationResultChoiceMethod.CLASSIFIER ?
 						String.format(Locale.US, "(%s -> %s(%s))",
 								parameters.get(defaultClassificationResultLabelParameterName),
-								defaultClassificationResultAlgorithm.getName(), defaultClassificationResultAlgorithmParameters) : "");
+								defaultClassificationResultAlgorithm.getName(), defaultClassificationResultAlgorithmParameters) : "",
+				Boolean.valueOf(parameters.get(useConditionGeneralizationParameterName)) == true ? "generalize-conditions" : "!generalize-conditions" );
+//				Boolean.valueOf(parameters.get(useFilterParameterName)) == true ? "t" : "f" );
+//				Boolean.valueOf(parameters.get(useDefaultClassifierParameterName)) == true ? "t" : "f" );
 	}
 	
 	public LearningAlgorithm getDefaultClassificationResultAlgorithm() {

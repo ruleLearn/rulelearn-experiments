@@ -21,6 +21,7 @@ public class Data {
 	String name;
 	long seed;
 	boolean hasSeed = false;
+	long informationTableTransformationTime = 0L; //time of transformation from InformationTable to InformationTableWithDecisionDistributions, if the information table contains decision distributions
 	
 	Data(InformationTable data, String name, long seed) {
 		this.data = data;
@@ -29,10 +30,25 @@ public class Data {
 		this.hasSeed = true;
 	}
 	
+	Data(InformationTableWithDecisionDistributions data, String name, long seed, long informationTableTransformationTime) {
+		this.data = data;
+		this.name = name;
+		this.seed = seed;
+		this.hasSeed = true;
+		this.informationTableTransformationTime = informationTableTransformationTime;
+	}
+	
 	Data(InformationTable data, String name) {
 		this.data = data;
 		this.name = name;
 		this.hasSeed = false;
+	}
+	
+	Data(InformationTableWithDecisionDistributions data, String name, long informationTableTransformationTime) {
+		this.data = data;
+		this.name = name;
+		this.hasSeed = false;
+		this.informationTableTransformationTime = informationTableTransformationTime;
 	}
 	
 	public InformationTable getInformationTable() {
@@ -41,8 +57,10 @@ public class Data {
 	
 	//SIC! replaces data with new reference
 	//next call to getInformationTable() will in fact return an instance of InformationTableWithDecisionDistributions!
-	public void extendInformationTableWithDecisionDistributions() {
-		data = new InformationTableWithDecisionDistributions(data);
+	public void extendInformationTableWithDecisionDistributions() { //does not check if the information table already contains decision distributions
+		long start = System.currentTimeMillis();
+		data = new InformationTableWithDecisionDistributions(data, true, true);
+		this.informationTableTransformationTime = System.currentTimeMillis() - start;
 	}
 	
 	public Instances getInstances() { //builds instances on the first call
@@ -64,6 +82,10 @@ public class Data {
 		}
 	}
 	
+	public long getInformationTableTransformationTime() {
+		return informationTableTransformationTime;
+	}
+
 	@Override
 	public int hashCode() {
 		return Objects.hash(this.getClass(), getName());

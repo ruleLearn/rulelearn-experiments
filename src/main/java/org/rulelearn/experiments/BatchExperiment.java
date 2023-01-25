@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.rulelearn.approximations.Unions;
 import org.rulelearn.approximations.UnionsWithSingleLimitingDecision;
@@ -34,7 +35,6 @@ import weka.classifiers.functions.MultilayerPerceptron;
 import weka.classifiers.functions.SMO;
 import weka.classifiers.misc.OSDL;
 import weka.classifiers.rules.JRip;
-//import weka.classifiers.misc.OSDL;
 import weka.classifiers.rules.OLM;
 import weka.classifiers.trees.J48;
 import weka.classifiers.trees.RandomForest;
@@ -70,11 +70,12 @@ public class BatchExperiment {
 	static boolean useMainModelAccuracy = false; //true = use main model accuracy; false = use overall accuracy
 	static final boolean doFullDataReclassification = true;
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
-	static final boolean generalizeConditions = true;
+//	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfTestDataDecisions = true;
 	static final boolean printTrainedClassifiers = true; //concerns WEKA and KEEL classifiers + full data reclassification
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
+	static final boolean foldsInParallel = false; //false => folds will be done sequentially (useful only to measure more accurately avg. calculation times)
 	
 	//static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER;
 	static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.NORMAL;
@@ -162,7 +163,7 @@ public class BatchExperiment {
 	 */
 	double calculateQualityOfApproximation(InformationTable informationTable, double consistencyThreshold) {
 		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
-				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
+				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true, true));
 		
 		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, 
 				   new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
@@ -256,7 +257,7 @@ public class BatchExperiment {
 						
 						parametersList = parametersContainer.getParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataProvider.getDataName()); //get list of parameters for rule classifier
 						
-						if (parametersList != null) { //VC-DRSA rule classifier is there (i.e., has at least one parameter) :)
+						if (parametersList != null) { //VC-DRSA rule classifier has at least one parameter (although the algorithm itself may not be on the list of considered algorithms)
 							for (LearningAlgorithmDataParameters parameters : parametersList) { //check quality of approximation for all considered consistency thresholds
 								double consistencyThreshold = Double.valueOf(parameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.consistencyThresholdParameterName));
 								if (!consistencyThreshold2QualityOfApproximation.containsKey(Double.valueOf(consistencyThreshold))) { //ensure that quality of approximation is calculated for each consistency threshold only once
@@ -270,7 +271,7 @@ public class BatchExperiment {
 					outN("--");
 					
 					//calculate and process full data models for all (algorithm, parameters) pairs
-					Data processedFullData = trainDataPreprocessor.process(fullData);
+					Data processedFullData = trainDataPreprocessor.process(fullData); //processedFullData should have the same informationTableTransformationTime!
 					int algorithmNumber = -1;
 					//TODO: optimize the following loop using a parallel stream
 					for (LearningAlgorithm algorithm : learningAlgorithms) {
@@ -289,6 +290,11 @@ public class BatchExperiment {
 							//=====
 							/**/long fullDataTrainingTime = System.currentTimeMillis() - trainingStartTime;
 							fullDataTrainingTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
+							fullDataTrainingTime += model.getModelLearningStatistics().getTotalModelCalculationTimeSavedByUsingCache();
+							if (algorithm.getName().equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())) {
+								fullDataTrainingTime += processedFullData.getInformationTableTransformationTime(); //add time of data transformation (done out of time measurement zone marked by /**/), as VC-DRSA rule model needs this transformation!
+								model.getModelLearningStatistics().totalDataTransformationTime = processedFullData.getInformationTableTransformationTime(); //set proper information table transformation time
+							}
 							
 							/**/long validationStartTime = System.currentTimeMillis();
 							//=====
@@ -380,9 +386,9 @@ public class BatchExperiment {
 						
 //						Object[][][][] foldResults = new Object[crossValidationFolds.size()][learningAlgorithms.size()][maxParametersCount][7];
 						
-						//run each fold in parallel!
-						crossValidationFolds.parallelStream().forEach(fold -> { //TODO: ensure parallel stream!
-						//crossValidationFolds.stream().forEach(fold -> {       //just for measuring time!
+						//run certain number of folds in parallel or sequentially
+						Stream<CrossValidationFold> foldsStream = foldsInParallel ? crossValidationFolds.parallelStream() : crossValidationFolds.stream();
+						foldsStream.forEach(fold -> {       //just for measuring time!
 							String linePrefix = "      "+foldNumber2Spaces(fold.getIndex());
 							String summaryLinePrefix = linePrefix + "%% ";
 							String messageTemplate = prepareText("%pEnd of fold %1, algorithm %2(%3).%n"
@@ -418,6 +424,8 @@ public class BatchExperiment {
 									//=====
 									/**/long foldTrainingTime = System.currentTimeMillis() - trainingStartTime;
 									foldTrainingTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
+									foldTrainingTime += model.getModelLearningStatistics().getTotalModelCalculationTimeSavedByUsingCache();
+									//here transformation of information table is done inside time measurement zone, so no correction is necessary
 									
 									/**/long validationStartTime = System.currentTimeMillis();
 									//=====
@@ -774,7 +782,7 @@ public class BatchExperiment {
 //				k));
 //		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L};
-		//long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L};
+		//long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L}; //only first 3 CVs
 		
 		dataProviders.add(getDataProviderChurn4000v8(
 				dataNameChurn4000v8,
@@ -847,51 +855,54 @@ public class BatchExperiment {
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
+				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+				//PARAMETERS FOR MONUMENTS DATA
+				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV,
 						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
 								//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), DefaultClassificationResultChoiceMethod.MODE))
 						))
 						
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV_K9_K10,
 						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
 								//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), DefaultClassificationResultChoiceMethod.MODE))
 						))
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV01,
 						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
 						))
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV01_K9_K10,
 						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes"),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
 						))
 				//-----
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV,
@@ -906,62 +917,113 @@ public class BatchExperiment {
 						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				//-----
 				
+				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+				//PARAMETERS FOR CHURN4000v8 DATA
+				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8,
 						Arrays.asList(
 								/*new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0"),*/
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", true),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
+								/*new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)*/ ))
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList()
 				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv2,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "1")
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv15,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv2,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 						//getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv15,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv2,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv15,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv2,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv15,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"))))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv2,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0",
-								new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) ))
+						Arrays.asList(
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", true),
+								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0",
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				//-----
@@ -1399,109 +1461,109 @@ public class BatchExperiment {
 //		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
 //		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
 
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 				
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 	
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 	
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D")) //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
+		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
 		);
 		
 	}

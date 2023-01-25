@@ -79,7 +79,7 @@ public class WEKAClassifierLearner extends AbstractLearningAlgorithm {
 		
 		ModelLearningStatistics modelLearningStatistics = new ModelLearningStatistics(
 				numberOfLearningObjects, numberOfConsistentLearningObjects, consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold,
-				modelLearnerDescription, statisticsCountingTime);
+				modelLearnerDescription, 0L, 0L, statisticsCountingTime); //no data transformation, no retrieving model from cache
 		//+++++
 		
 		return new WEKAClassifer(wekaClassifier, filters, modelLearningStatistics);

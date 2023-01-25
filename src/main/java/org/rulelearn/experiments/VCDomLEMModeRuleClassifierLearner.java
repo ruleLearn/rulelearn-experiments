@@ -21,6 +21,7 @@ import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.data.SimpleDecision;
 import org.rulelearn.experiments.ClassificationModel.ModelLearningStatistics;
+import org.rulelearn.experiments.VCDomLEMModeRuleClassifierLearnerCache.RuleSetWithComputableCharacteristicsPlusCalculationTime;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
 import org.rulelearn.rules.ApproximatedSetProvider;
 import org.rulelearn.rules.ApproximatedSetRuleDecisionsProvider;
@@ -110,11 +111,6 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		public DataTransformationTime() {
 			this.duration = 0L;
 		}
-		
-		public DataTransformationTime(long duration) {
-			this.duration = duration;
-		}
-		
 	}
 	
 	/**
@@ -137,17 +133,36 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		DataTransformationTime dataTransformationTime = new DataTransformationTime();
 		
 		//first try to get rules from cache
-		RuleSetWithComputableCharacteristics ruleSetWithCharacteristics = VCDomLEMModeRuleClassifierLearnerCache.getInstance().getRules(trainData.getName(), consistencyThreshold);
-		if (ruleSetWithCharacteristics == null) {
+		boolean useConditionGeneralization = Boolean.valueOf(parameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.useConditionGeneralizationParameterName));
+		RuleSetWithComputableCharacteristicsPlusCalculationTime ruleSetWithCharacteristicsPlusCalculationTime = VCDomLEMModeRuleClassifierLearnerCache.getInstance().getRules(
+				trainData.getName(), consistencyThreshold, useConditionGeneralization);
+		RuleSetWithComputableCharacteristics ruleSetWithCharacteristics;
+		long timeSavedByRetreivingRulesFromCache;
+		
+		if (ruleSetWithCharacteristicsPlusCalculationTime == null) {
+			timeSavedByRetreivingRulesFromCache = 0L;
 			
 			//***********************************
-			ruleSetWithCharacteristics = learnRules(trainData.getInformationTable(), consistencyThreshold, dataTransformationTime);
+			long start = System.currentTimeMillis();
+			ruleSetWithCharacteristics = learnRules(trainData.getInformationTable(), consistencyThreshold, useConditionGeneralization, dataTransformationTime);
+			long ruleSetCalculationTime = System.currentTimeMillis() - start;
 			//***********************************
 			
 			//ruleSetWithCharacteristics.setLearningInformationTableHash(trainData.getInformationTable().getHash()); //save data hash along with rules - skipped to speed up computations
-			VCDomLEMModeRuleClassifierLearnerCache.getInstance().putRules(trainData.getName(), consistencyThreshold, ruleSetWithCharacteristics); //store rules in cache for later use!
+			VCDomLEMModeRuleClassifierLearnerCache.getInstance().putRules(trainData.getName(), consistencyThreshold, useConditionGeneralization, ruleSetWithCharacteristics, ruleSetCalculationTime, dataTransformationTime.duration); //store rules in cache for later use!
+		} else {
+			//remember saved time used earlier to calculate rules
+			dataTransformationTime.duration = ruleSetWithCharacteristicsPlusCalculationTime.getInformationTableTransformationTime();
+			timeSavedByRetreivingRulesFromCache = ruleSetWithCharacteristicsPlusCalculationTime.getCalculationTime();
+			ruleSetWithCharacteristics = ruleSetWithCharacteristicsPlusCalculationTime.getRuleSet();
 		}
 		
+//		boolean useFilter = Boolean.valueOf(parameters.getParameter(VCDomLEMModeRuleClassifierLearnerDataParameters.useFilterParameterName));
+//		if (useFilter) {
+//			ruleSetWithCharacteristics = ruleSetWithCharacteristics.filter(ruleFilter);
+//		} else {
+//			ruleSetWithCharacteristics = ruleSetWithCharacteristics.filter(CompositeRuleCharacteristicsFilter.of("s > 0"));
+//		}
 		ruleSetWithCharacteristics = ruleSetWithCharacteristics.filter(ruleFilter);
 		
 		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions;
@@ -181,12 +196,12 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		String modelLearnerDescription = (new StringBuilder(getName())).append("(").append(parameters).append(")").toString();
 		long statisticsCountingTime = System.currentTimeMillis() - start;
 		
-		//account for calculation of InformationTableWithDecisionDistributions from InformationTable
-		statisticsCountingTime += dataTransformationTime.duration; //TODO: change?
+//		//account for calculation of InformationTableWithDecisionDistributions from InformationTable
+//		statisticsCountingTime += dataTransformationTime.duration;
 		
 		ModelLearningStatistics modelLearningStatistics = new ModelLearningStatistics(
 				numberOfLearningObjects, numberOfConsistentLearningObjects, consistencyThreshold, numberOfConsistentLearningObjectsForConsistencyThreshold,
-				modelLearnerDescription, statisticsCountingTime);
+				modelLearnerDescription, dataTransformationTime.duration, timeSavedByRetreivingRulesFromCache, statisticsCountingTime); //separately account for data transformation time
 		//+++++
 		
 		switch (defaultDecisionClassChoiceMethod) {
@@ -276,7 +291,8 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		return VCDomLEMModeRuleClassifierLearner.class.getSimpleName();
 	}
 	
-	RuleSetWithComputableCharacteristics learnRules(InformationTable informationTable, double consistencyThreshold, DataTransformationTime dataTransformationTime) { //dataProcessingTime just 1 element - data processing time in ms
+	RuleSetWithComputableCharacteristics learnRules(InformationTable informationTable, double consistencyThreshold, boolean useConditionGeneralization,
+			DataTransformationTime dataTransformationTime) { //dataProcessingTime just 1 element - data processing time in ms
 		//the code below is copied from method VCDomLEMWrapper.induceRulesWithCharacteristics(InformationTable informationTable, double consistencyThreshold,
 		//with adjusted rule conditions generalizer and skipped calculation of all rule characteristics
 		final RuleInductionStoppingConditionChecker stoppingConditionChecker = 
@@ -295,14 +311,18 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		RuleInducerComponents ruleInducerComponents = new CertainRuleInducerComponents.Builder().
 				ruleInductionStoppingConditionChecker(stoppingConditionChecker).
 				ruleConditionsPruner(new AttributeOrderRuleConditionsPruner(stoppingConditionChecker)).
-				ruleConditionsGeneralizer(BatchExperiment.generalizeConditions ? new OptimizingRuleConditionsGeneralizer(stoppingConditionChecker) : new DummyRuleConditionsGeneralizer()). //THE CHANGE HERE!
+				ruleConditionsGeneralizer(useConditionGeneralization ? new OptimizingRuleConditionsGeneralizer(stoppingConditionChecker) : new DummyRuleConditionsGeneralizer()). //THE CHANGE HERE!
 				build();
 		
-		long start = System.currentTimeMillis();
-		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (informationTable instanceof InformationTableWithDecisionDistributions ?
-				(InformationTableWithDecisionDistributions)informationTable : new InformationTableWithDecisionDistributions(informationTable, true));
-		dataTransformationTime.duration = System.currentTimeMillis() - start; //record time of getting from InformationTable to InformationTableWithDecisionDistributions
-		//dataTransformationTime.duration = 0L; //TODO: change?
+		InformationTableWithDecisionDistributions informationTableWithDecisionDistributions;
+		if (informationTable instanceof InformationTableWithDecisionDistributions) {
+			informationTableWithDecisionDistributions = (InformationTableWithDecisionDistributions)informationTable;
+			dataTransformationTime.duration = 0L;
+		} else {
+			long start = System.currentTimeMillis();
+			informationTableWithDecisionDistributions = new InformationTableWithDecisionDistributions(informationTable, true, true);
+			dataTransformationTime.duration = System.currentTimeMillis() - start; //record time of getting from InformationTable to InformationTableWithDecisionDistributions
+		}
 		
 		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, 
 								   new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));

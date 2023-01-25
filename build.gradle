@@ -20,7 +20,7 @@ repositories {
 
 dependencies {
 	//adding ruleLearn library
-	implementation('com.github.ruleLearn:rulelearn:0.25.0-rc.14')
+	implementation('com.github.ruleLearn:rulelearn:0.25.0-rc.15')
 	implementation('nz.ac.waikato.cms.weka:weka-stable:3.8.6') //https://mvnrepository.com/artifact/nz.ac.waikato.cms.weka/weka-stable
 	implementation('nz.ac.waikato.cms.weka:ordinalLearningMethod:1.0.2') //http://45.136.31.39/tags/ordinal
 	implementation('nz.ac.waikato.cms.weka:ordinalStochasticDominance:1.0.2') //http://45.136.31.39/tags/ordinal

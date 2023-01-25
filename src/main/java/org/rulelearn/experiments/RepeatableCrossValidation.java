@@ -56,15 +56,15 @@ public class RepeatableCrossValidation implements CrossValidation {
 			crossValidator.setSeed(seed);
 			
 			InformationTableWithDecisionDistributions informationTableWithDecisionDistributions = (data.getInformationTable() instanceof InformationTableWithDecisionDistributions ?
-					(InformationTableWithDecisionDistributions)data.getInformationTable() : new InformationTableWithDecisionDistributions(data.getInformationTable(), true));
+					(InformationTableWithDecisionDistributions)data.getInformationTable() : new InformationTableWithDecisionDistributions(data.getInformationTable(), true, true));
 			
 			List<org.rulelearn.sampling.CrossValidator.CrossValidationFold<InformationTable>> folds = crossValidator.splitStratifiedIntoKFolds(informationTableWithDecisionDistributions, true, k); 
 			List<CrossValidationFold> crossValidationFolds = new ArrayList<CrossValidationFold>(k);
 			
 			int foldIndex = 0;
 			for (org.rulelearn.sampling.CrossValidator.CrossValidationFold<InformationTable> fold : folds) {
-				Data trainData = new Data(fold.getTrainingTable(), data.getName()+"_"+seed+"_train_"+foldIndex, data.getSeed());
-				Data testData = new Data(fold.getValidationTable(), data.getName()+"_"+seed+"_test_"+foldIndex, data.getSeed());
+				Data trainData = new Data(fold.getTrainingTable(), data.getName()+"_"+seed+"_train_"+foldIndex, data.getSeed()); //no information table transformation done yet
+				Data testData = new Data(fold.getValidationTable(), data.getName()+"_"+seed+"_test_"+foldIndex, data.getSeed());  //no information table transformation done yet
 				crossValidationFolds.add(new RepeatableCrossValidationFold(trainData, testData, foldIndex++));
 			}
 			
