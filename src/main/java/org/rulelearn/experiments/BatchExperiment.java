@@ -76,7 +76,7 @@ public class BatchExperiment {
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
 	
-	static final boolean foldsInParallel = false; //false => folds will be done sequentially (useful only to measure more accurately avg. calculation times)
+	static final boolean foldsInParallel = true; //false => folds will be done sequentially (useful only to measure more accurately avg. calculation times)
 	
 	//static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER;
 	static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.NORMAL;
