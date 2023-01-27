@@ -3,7 +3,9 @@
  */
 package org.rulelearn.experiments;
 
+import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import org.rulelearn.core.InvalidValueException;
@@ -22,6 +24,9 @@ import org.rulelearn.types.RealFieldFactory;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 import weka.classifiers.AbstractClassifier;
+import weka.classifiers.rules.JRip;
+import weka.classifiers.rules.OLM;
+import weka.classifiers.trees.J48;
 import weka.core.Instances;
 import weka.filters.Filter;
 
@@ -48,15 +53,226 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 	}
 	
+	private class J48ModelDescriptionBuilder extends ModelDescriptionBuilder {
+		/**
+		 * @throws ClassCastException if given array does not contain only {@link J48ModelDescription} objects.
+		 */
+		@Override
+		J48ModelDescription build(AggregationMode aggregationMode, ClassificationModel.ModelDescription... genericModelDescriptions) { //aggregationMode is ignored
+			J48ModelDescription[] modelDescriptions = new J48ModelDescription[genericModelDescriptions.length];
+			int index = 0;
+			for (ClassificationModel.ModelDescription genericModelDescription : genericModelDescriptions) {
+				modelDescriptions[index++] = (J48ModelDescription)genericModelDescription;
+			}
+			return new J48ModelDescription(modelDescriptions);
+		}
+	}
+	
+	private class JRipModelDescriptionBuilder extends ModelDescriptionBuilder {
+		/**
+		 * @throws ClassCastException if given array does not contain only {@link JRipModelDescription} objects.
+		 */
+		@Override
+		JRipModelDescription build(AggregationMode aggregationMode, ClassificationModel.ModelDescription... genericModelDescriptions) { //aggregationMode is ignored
+			JRipModelDescription[] modelDescriptions = new JRipModelDescription[genericModelDescriptions.length];
+			int index = 0;
+			for (ClassificationModel.ModelDescription genericModelDescription : genericModelDescriptions) {
+				modelDescriptions[index++] = (JRipModelDescription)genericModelDescription;
+			}
+			return new JRipModelDescription(modelDescriptions);
+		}
+	}
+	
+	private class OLMModelDescriptionBuilder extends ModelDescriptionBuilder {
+		/**
+		 * @throws ClassCastException if given array does not contain only {@link OLMModelDescription} objects.
+		 */
+		@Override
+		OLMModelDescription build(AggregationMode aggregationMode, ClassificationModel.ModelDescription... genericModelDescriptions) { //aggregationMode is ignored
+			OLMModelDescription[] modelDescriptions = new OLMModelDescription[genericModelDescriptions.length];
+			int index = 0;
+			for (ClassificationModel.ModelDescription genericModelDescription : genericModelDescriptions) {
+				modelDescriptions[index++] = (OLMModelDescription)genericModelDescription;
+			}
+			return new OLMModelDescription(modelDescriptions);
+		}
+	}
+	
+	/**
+	 * {@link J48} Model description.
+	 * 
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	private class J48ModelDescription extends ModelDescription {
+		long totalSize = 0L;
+		long totalNumLeaves = 0L;
+		
+		public J48ModelDescription(String options, String trainedClassifier, long size, long numLeaves) {
+			super(options, trainedClassifier);
+			this.totalSize = size;
+			this.totalNumLeaves = numLeaves;
+		}
+		
+		/**
+		 * @throws InvalidValueException if given array is empty
+		 * 
+		 * @param modelDescriptions array with model descriptions
+		 */
+		public J48ModelDescription(J48ModelDescription... modelDescriptions) {
+			if (modelDescriptions.length == 0) {
+				throw new InvalidValueException("Cannot aggregate over an empty array of model descriptions.");
+			} else if (modelDescriptions.length == 1) {
+				options = modelDescriptions[0].options;
+				trainedClassifier = modelDescriptions[0].trainedClassifier;
+				aggregated = false;
+				aggregationCount = 1;
+			} else {
+				options = modelDescriptions[0].options;
+				trainedClassifier = "classifier not available when aggregating model descriptions";
+				aggregated = true;
+				
+				for (J48ModelDescription modelDescription : modelDescriptions) {
+					totalSize += modelDescription.totalSize;
+					totalNumLeaves += modelDescription.totalNumLeaves;
+					aggregationCount += modelDescription.aggregationCount;
+				}
+			}
+		}
+		
+		@Override
+		public String toShortString() {
+			if (aggregated) {
+				return String.format(Locale.US, "[Options: %s] Avg. num nodes: %.2f, avg. num leaves: %.2f", options, (double)totalSize / aggregationCount, (double)totalNumLeaves / aggregationCount);
+			} else {
+				return String.format(Locale.US, "[Options: %s] Num nodes: %d, num leaves: %d", options, totalSize, totalNumLeaves);
+			}
+		}
+		
+		@Override
+		public J48ModelDescriptionBuilder getModelDescriptionBuilder() {
+			return new J48ModelDescriptionBuilder();
+		}
+	}
+	
+	/**
+	 * {@link JRip} Model description.
+	 * 
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	private class JRipModelDescription extends ModelDescription {
+		long totalNumRules = 0L;
+		
+		public JRipModelDescription(String options, String trainedClassifier, long numRules) {
+			super(options, trainedClassifier);
+			this.totalNumRules = numRules;
+		}
+		
+		/**
+		 * @throws InvalidValueException if given array is empty
+		 * 
+		 * @param modelDescriptions array with model descriptions
+		 */
+		public JRipModelDescription(JRipModelDescription... modelDescriptions) {
+			if (modelDescriptions.length == 0) {
+				throw new InvalidValueException("Cannot aggregate over an empty array of model descriptions.");
+			} else if (modelDescriptions.length == 1) {
+				options = modelDescriptions[0].options;
+				trainedClassifier = modelDescriptions[0].trainedClassifier;
+				aggregated = false;
+				aggregationCount = 1;
+			} else {
+				options = modelDescriptions[0].options;
+				trainedClassifier = "classifier not available when aggregating model descriptions";
+				aggregated = true;
+				
+				for (JRipModelDescription modelDescription : modelDescriptions) {
+					totalNumRules += modelDescription.totalNumRules;
+					aggregationCount += modelDescription.aggregationCount;
+				}
+			}
+		}
+		
+		@Override
+		public String toShortString() {
+			if (aggregated) {
+				return String.format(Locale.US, "[Options: %s] Avg. num rules: %.2f", options, (double)totalNumRules / aggregationCount);
+			} else {
+				return String.format(Locale.US, "[Options: %s] Num rules: %d", options, totalNumRules);
+			}
+		}
+		
+		@Override
+		public JRipModelDescriptionBuilder getModelDescriptionBuilder() {
+			return new JRipModelDescriptionBuilder();
+		}
+	}
+	
+	/**
+	 * {@link OLM} Model description.
+	 * 
+	 * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
+	 */
+	private class OLMModelDescription extends ModelDescription {
+		long totalNumRules = 0L;
+		
+		public OLMModelDescription(String options, String trainedClassifier, long numRules) {
+			super(options, trainedClassifier);
+			this.totalNumRules = numRules;
+		}
+		
+		/**
+		 * @throws InvalidValueException if given array is empty
+		 * 
+		 * @param modelDescriptions array with model descriptions
+		 */
+		public OLMModelDescription(OLMModelDescription... modelDescriptions) {
+			if (modelDescriptions.length == 0) {
+				throw new InvalidValueException("Cannot aggregate over an empty array of model descriptions.");
+			} else if (modelDescriptions.length == 1) {
+				options = modelDescriptions[0].options;
+				trainedClassifier = modelDescriptions[0].trainedClassifier;
+				aggregated = false;
+				aggregationCount = 1;
+			} else {
+				options = modelDescriptions[0].options;
+				trainedClassifier = "classifier not available when aggregating model descriptions";
+				aggregated = true;
+				
+				for (OLMModelDescription modelDescription : modelDescriptions) {
+					totalNumRules += modelDescription.totalNumRules;
+					aggregationCount += modelDescription.aggregationCount;
+				}
+			}
+		}
+		
+		@Override
+		public String toShortString() {
+			if (aggregated) {
+				return String.format(Locale.US, "[Options: %s] Avg. num rules: %.2f", options, (double)totalNumRules / aggregationCount);
+			} else {
+				return String.format(Locale.US, "[Options: %s] Num rules: %d", options, totalNumRules);
+			}
+		}
+		
+		@Override
+		public OLMModelDescriptionBuilder getModelDescriptionBuilder() {
+			return new OLMModelDescriptionBuilder();
+		}
+	}
+	
 	public static class ModelDescription extends ClassificationModel.ModelDescription {
 		String options;
 		String trainedClassifier;
 		boolean aggregated = false;
+		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
+		
+		private ModelDescription() {} //just used by subclasses
 		
 		public ModelDescription(String options, String trainedClassifier) {
 			this.options = options;
 			this.trainedClassifier = trainedClassifier;
 			aggregated = false;
+			aggregationCount = 1;
 		}
 		
 		/**
@@ -71,10 +287,15 @@ public class WEKAClassifer implements ClassificationModel {
 				options = modelDescriptions[0].options;
 				trainedClassifier = modelDescriptions[0].trainedClassifier;
 				aggregated = false;
+				aggregationCount = 1;
 			} else {
 				options = modelDescriptions[0].options;
 				trainedClassifier = "classifier not available when aggregating model descriptions";
 				aggregated = true;
+				
+				for (ModelDescription modelDescription : modelDescriptions) {
+					aggregationCount += modelDescription.aggregationCount;
+				}
 			}
 		}
 
@@ -204,7 +425,19 @@ public class WEKAClassifer implements ClassificationModel {
 		if (modelDescription == null) {
 			String options = Arrays.asList(trainedClassifier.getOptions()).stream().collect(Collectors.joining(" "));
 			
-			modelDescription = new ModelDescription(options, trainedClassifier.toString());
+			if (trainedClassifier instanceof J48) {
+				try {
+					modelDescription = new J48ModelDescription(options, trainedClassifier.toString(), (long)((J48)trainedClassifier).measureTreeSize(), (long)((J48)trainedClassifier).measureNumLeaves());
+				} catch (Exception exception) {
+					exception.printStackTrace(); //TODO: handle exception?
+				}
+			} else if (trainedClassifier instanceof JRip) {
+				modelDescription = new JRipModelDescription(options, trainedClassifier.toString(), (long)((JRip)trainedClassifier).getRuleset().size());
+			} else if (trainedClassifier instanceof OLM) {
+				modelDescription = new OLMModelDescription(options, trainedClassifier.toString(), ((OLM)trainedClassifier).getNumberOfRules());
+			} else {
+				modelDescription = new ModelDescription(options, trainedClassifier.toString());
+			}
 		}
 		
 		return modelDescription;

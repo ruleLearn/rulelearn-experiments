@@ -857,11 +857,12 @@ public class BatchExperiment {
 //		learningAlgorithms.add(new MoNGELClassifierLerner());
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
-		LearningAlgorithmDataParametersContainer parametersContainer = (new LearningAlgorithmDataParametersContainer())
+		LearningAlgorithmDataParametersContainer parametersContainer = new LearningAlgorithmDataParametersContainer();
 				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				//PARAMETERS FOR MONUMENTS DATA
 				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				//-----
+		parametersContainer
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV,
 						Arrays.asList(
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", true),
@@ -906,8 +907,9 @@ public class BatchExperiment {
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
-						))
+						));
 				//-----
+		parametersContainer
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV,
 						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				//------
@@ -917,12 +919,13 @@ public class BatchExperiment {
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01,
 						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01_K9_K10,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))); //option -D means discretize numeric attributes
 				//-----
 				
 				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				//PARAMETERS FOR CHURN4000v8 DATA
 				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		parametersContainer
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8,
 						Arrays.asList(
 								/*new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0"),*/
@@ -1026,10 +1029,11 @@ public class BatchExperiment {
 //								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
 //								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", true),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
+										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ));
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
 				//-----
+		parametersContainer
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8,
 						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv2,
@@ -1051,8 +1055,9 @@ public class BatchExperiment {
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv2,
 						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )); //option -D means discretize numeric attributes
 				//-----
+		parametersContainer
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8,
 						Arrays.asList(
 								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
@@ -1110,8 +1115,10 @@ public class BatchExperiment {
 						Arrays.asList(
 								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
 								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
+						));
 				//-----
+		if (learningAlgorithms.stream().filter(a -> a.getName() == KEELClassifierLerner.getAlgorithmName(MoNGEL.class)).collect(Collectors.toList()).size() > 0) { // MoNGEL is on the list of algorithms
+			parametersContainer
 				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8,
 						Arrays.asList(
 								new KEELAlgorithmDataParameters(new AttributeRanges(
@@ -1211,7 +1218,7 @@ public class BatchExperiment {
 											.collect(Collectors.toList())
 											.get(0).previewOriginalData().getInformationTable() ))
 						));
-				
+		} //if	
 		//------------------------------------------------------------------------------------------------------------------------------
 		
 		parametersContainer.sortParametersLists(); //assure parameters for VCDomLEMModeRuleClassifierLearnerDataParameters algorithm are in ascending order w.r.t. consistency threshold
