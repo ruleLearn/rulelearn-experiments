@@ -846,15 +846,15 @@ public class BatchExperiment {
 		//TODO: comment algorithms that should not be used in this batch experiment
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
-//		learningAlgorithms.add(new MoNGELClassifierLerner());
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM())); //uses special version of data!
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //uses special version of data! //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
+//		learningAlgorithms.add(new MoNGELClassifierLerner()); //uses special version of data!
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = new LearningAlgorithmDataParametersContainer();
