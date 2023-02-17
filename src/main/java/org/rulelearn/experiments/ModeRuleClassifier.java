@@ -56,9 +56,11 @@ public class ModeRuleClassifier implements ClassificationModel {
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
 		AggregationMode aggregationMode = AggregationMode.NONE;
 		
+		RuleSetWithComputableCharacteristics ruleSet = null; //null for aggregated model description
+		
 		//TODO: add more fields to address situation when aggregationMode == AggregationMode.MEAN_AND_DEVIATION
 		
-		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence, long modelDescriptionCalculationTime) {
+		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence, long modelDescriptionCalculationTime, RuleSetWithComputableCharacteristics ruleSet) {
 			this.totalRulesCount = totalRulesCount;
 			this.sumRuleLength = sumRuleLength;
 			this.sumRuleSupport = sumRuleSupport;
@@ -68,6 +70,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 			aggregationMode = AggregationMode.NONE;
 			
 			this.modelDescriptionCalculationTime = modelDescriptionCalculationTime;
+			
+			this.ruleSet = ruleSet;
 		}
 		
 		public ModelDescription(AggregationMode aggregationMode, ModelDescription... modelDescriptions) {
@@ -98,6 +102,20 @@ public class ModeRuleClassifier implements ClassificationModel {
 		public String toString() { //TODO: if aggregationMode == AggregationMode.MEAN_AND_DEVIATION, then print also standard deviations calculated in constructor
 			StringBuilder sb = new StringBuilder(100);
 			
+			sb.append(toShortString());
+			
+			if (ruleSet != null) {
+				sb.append(System.lineSeparator());
+				sb.append(ruleSet.serialize());
+			}
+			
+			return sb.toString();
+		}
+		
+		@Override
+		public String toShortString() {
+			StringBuilder sb = new StringBuilder(100);
+			
 			if (aggregationCount == 1) {
 				sb.append("number of rules: ").append(totalRulesCount);
 			} else {
@@ -110,11 +128,6 @@ public class ModeRuleClassifier implements ClassificationModel {
 			sb.append(String.format(Locale.US, ", average confidence: %.2f", (double)sumRuleConfidence / totalRulesCount));
 			
 			return sb.toString();
-		}
-		
-		@Override
-		public String toShortString() {
-			return toString();
 		}
 
 		@Override
@@ -301,7 +314,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			long modelDescriptionCalculationTime = System.currentTimeMillis() - start; //!
 			
-			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence, modelDescriptionCalculationTime);
+			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence, modelDescriptionCalculationTime, ruleSet);
 		}
 		
 		return modelDescription;

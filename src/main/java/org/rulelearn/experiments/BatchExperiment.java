@@ -347,7 +347,12 @@ public class BatchExperiment {
 							outN("  /");
 							outN(" /");
 							outN("/");
-							outN("[Model]: "+model.getModelDescription().toString());
+							String modelDescription = model.getModelDescription().toString();
+							if (modelDescription.endsWith(System.lineSeparator())) {
+								out("[Model]: "+modelDescription);
+							} else {
+								outN("[Model]: "+modelDescription);
+							}
 							outN("\\");
 							outN(" \\");
 							outN("  \\");
@@ -565,29 +570,6 @@ public class BatchExperiment {
 							MeansAndStandardDeviations meansAndStandardDeviations = classificationStatistics.getMeansAndStandardDeviations();
 							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 							
-//							//+++++
-//							String info;
-//							String qualitiesOfApproximation = classificationStatistics.getQualitiesOfApproximation();
-//							StringBuilder infoBuilder = (new StringBuilder(128)).append(aggregatedModelValidationResult.getModelDescription());
-//							switch (classificationStatistics.getClassifierType()) {
-//							case VCDRSA_RULES_CLASSIFIER:
-//								infoBuilder.append("; ").append(String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfCoveringRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules()));
-//								if (!qualitiesOfApproximation.equals("")) {
-//									infoBuilder.append("; ").append(qualitiesOfApproximation);
-//								}
-//								infoBuilder.append(".");
-//								break;
-//							case WEKA_CLASSIFIER:
-//								if (!qualitiesOfApproximation.equals("")) {
-//									infoBuilder.append(" ").append(qualitiesOfApproximation).append(".");
-//								}
-//								break;
-//							default:
-//								throw new InvalidValueException("Incorrect classifier type.");
-//							}
-//							info = infoBuilder.toString();
-//							//+++++
-							
 							String summaryLinePrefix = "  %% ";
 							
 							//OUTPUT
@@ -617,7 +599,6 @@ public class BatchExperiment {
 									Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 									.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 									.collect(Collectors.joining(System.lineSeparator())),
-//									info,
 									aggregatedModelValidationResult.getModelDescription().toShortString(),
 									round(totalFoldCalculationTimes.getAverageTrainingTime()),
 									round(totalFoldCalculationTimes.getAverageValidationTime())
@@ -644,29 +625,6 @@ public class BatchExperiment {
 								ClassificationStatistics classificationStatistics = aggregatedModelValidationResult.getClassificationStatistics();
 								MeansAndStandardDeviations meansAndStandardDeviations = classificationStatistics.getMeansAndStandardDeviations();
 								CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-								
-//								//+++++
-//								String info;
-//								String qualitiesOfApproximation = classificationStatistics.getQualitiesOfApproximation();
-//								StringBuilder infoBuilder = (new StringBuilder(128)).append(aggregatedModelValidationResult.getModelDescription());
-//								switch (classificationStatistics.getClassifierType()) {
-//								case VCDRSA_RULES_CLASSIFIER:
-//									infoBuilder.append("; ").append(String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfCoveringRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules()));
-//									if (!qualitiesOfApproximation.equals("")) {
-//										infoBuilder.append("; ").append(qualitiesOfApproximation);
-//									}
-//									infoBuilder.append(".");
-//									break;
-//								case WEKA_CLASSIFIER:
-//									if (!qualitiesOfApproximation.equals("")) {
-//										infoBuilder.append(" ").append(qualitiesOfApproximation).append(".");
-//									}
-//									break;
-//								default:
-//									throw new InvalidValueException("Incorrect classifier type.");
-//								}
-//								info = infoBuilder.toString();
-//								//+++++
 								
 								String summaryLinePrefix = "    %% ";
 								String accuracyType = useMainModelAccuracy ? "main model" : "overall";
@@ -698,7 +656,6 @@ public class BatchExperiment {
 										Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 										.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 										.collect(Collectors.joining(System.lineSeparator())),
-//										info,
 										aggregatedModelValidationResult.getModelDescription().toShortString(),
 										round(totalFoldCalculationTimes.getAverageTrainingTime()),
 										round(totalFoldCalculationTimes.getAverageValidationTime())
