@@ -58,6 +58,12 @@ public class BatchExperiment {
 		MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION, //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
 		MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER //gives the best results for MoNGEL!
 	}
+	
+	public enum MonumentsDataSetVersion {
+		NORMAL,
+		OLM_OSDL, //tells if versions of data used only by OLM and OSDL should be used (if true, then make sure that OLM and OSDL are the only tested algorithms)
+		MONGEL //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
+	}
 
 	List<DataProvider> dataProviders;
 	CrossValidationProvider crossValidationProvider;
@@ -79,7 +85,8 @@ public class BatchExperiment {
 	static final boolean foldsInParallel = true; //false => folds will be done sequentially (useful only to measure more accurately avg. calculation times)
 	
 	//static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER;
-	static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.NORMAL;
+	static final Churn4000v8DataSetVersion churn4000v8DataSetVersion = Churn4000v8DataSetVersion.NORMAL;
+	static final MonumentsDataSetVersion monumentsDataSetVersion = MonumentsDataSetVersion.NORMAL;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -744,103 +751,75 @@ public class BatchExperiment {
 		//HINT: comment addition of data provider if given data set should not be used in this batch experiment OR give empty array of seeds
 		//TODO: comment data sets not used in the experiment
 		List<DataProvider> dataProviders = new ArrayList<DataProvider>();
+		
+		long[] monumentsSeeds = new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L};
+//		long[] monumentsSeeds = new long[]{0L, 8897335920153900L, 5347765673520470L}; //only first 3 CVs
+//		long[] monumentsSeeds = SKIP_DATA;
+		
+		dataProviders.add(getDataProviderMonuments(dataNameMonumentsNoMV, monumentsSeeds, k));
+		dataProviders.add(getDataProviderMonuments_K9_K10(dataNameMonumentsNoMV_K9_K10, monumentsSeeds, k));
+		dataProviders.add(getDataProviderMonuments01(dataNameMonumentsNoMV01, monumentsSeeds, k));
+		dataProviders.add(getDataProviderMonuments01_K9_K10(dataNameMonumentsNoMV01_K9_K10, monumentsSeeds, k));
 
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-//				"data/csv/zabytki-data-noMV.csv",
-//				false, ';',
-//				dataNameMonumentsNoMV,
-//				//SKIP_DATA,
-//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-//				k));
-//		/*-----*/
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-//				"data/csv/zabytki-data-noMV.csv",
-//				false, ';',
-//				dataNameMonumentsNoMV_K9_K10,
-//				//SKIP_DATA,
-//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-//				k));
-//		/*-----*/
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-//				"data/csv/zabytki-data-noMV-0-1.csv",
-//				false, ';',
-//				dataNameMonumentsNoMV01,
-//				//SKIP_DATA,
-//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-//				k));
-//		dataProviders.add(new BasicDataProvider(
-//				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-//				"data/csv/zabytki-data-noMV-0-1.csv",
-//				false, ';',
-//				dataNameMonumentsNoMV01_K9_K10,
-//				//SKIP_DATA,
-//				//new long[]{0L, 8897335920153900L, 5347765673520470L},
-//				new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L},
-//				k));
 //		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L};
-		//long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L}; //only first 3 CVs
-		
-		dataProviders.add(getDataProviderChurn4000v8(
-				dataNameChurn4000v8,
-				churn4000v8Seeds,
-				k));
-		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		dataProviders.add(getDataProviderChurn4000v8_0_05_mv2(
-				dataNameChurn4000v8_0_05_mv2,
-				churn4000v8Seeds,
-				k));
-		
-		dataProviders.add(getDataProviderChurn4000v8_0_05_mv15(
-				dataNameChurn4000v8_0_05_mv15,
-				churn4000v8Seeds,
-				k));
-		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		dataProviders.add(getDataProviderChurn4000v8_0_10_mv2(
-				dataNameChurn4000v8_0_10_mv2,
-				churn4000v8Seeds,
-				k));
-		
-		dataProviders.add(getDataProviderChurn4000v8_0_10_mv15(
-				dataNameChurn4000v8_0_10_mv15,
-				churn4000v8Seeds,
-				k));
-		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		dataProviders.add(getDataProviderChurn4000v8_0_15_mv2(
-				dataNameChurn4000v8_0_15_mv2,
-				churn4000v8Seeds,
-				k));
-		
-		dataProviders.add(getDataProviderChurn4000v8_0_15_mv15(
-				dataNameChurn4000v8_0_15_mv15,
-				churn4000v8Seeds,
-				k));
-		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		dataProviders.add(getDataProviderChurn4000v8_0_20_mv2(
-				dataNameChurn4000v8_0_20_mv2,
-				churn4000v8Seeds,
-				k));
-		
-		dataProviders.add(getDataProviderChurn4000v8_0_20_mv15(
-				dataNameChurn4000v8_0_20_mv15,
-				churn4000v8Seeds,
-				k));
-		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-		dataProviders.add(getDataProviderChurn4000v8_0_25_mv2(
-				dataNameChurn4000v8_0_25_mv2,
-				churn4000v8Seeds,
-				k));
-		
-		dataProviders.add(getDataProviderChurn4000v8_0_25_mv15(
-				dataNameChurn4000v8_0_25_mv15,
-				churn4000v8Seeds,
-				k));
+//		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L}; //only first 3 CVs
+//		long[] churn4000v8Seeds = SKIP_DATA;
+
+//		dataProviders.add(getDataProviderChurn4000v8(
+//				dataNameChurn4000v8,
+//				churn4000v8Seeds,
+//				k));
+//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//		dataProviders.add(getDataProviderChurn4000v8_0_05_mv2(
+//				dataNameChurn4000v8_0_05_mv2,
+//				churn4000v8Seeds,
+//				k));
+//		
+//		dataProviders.add(getDataProviderChurn4000v8_0_05_mv15(
+//				dataNameChurn4000v8_0_05_mv15,
+//				churn4000v8Seeds,
+//				k));
+//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//		dataProviders.add(getDataProviderChurn4000v8_0_10_mv2(
+//				dataNameChurn4000v8_0_10_mv2,
+//				churn4000v8Seeds,
+//				k));
+//		
+//		dataProviders.add(getDataProviderChurn4000v8_0_10_mv15(
+//				dataNameChurn4000v8_0_10_mv15,
+//				churn4000v8Seeds,
+//				k));
+//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//		dataProviders.add(getDataProviderChurn4000v8_0_15_mv2(
+//				dataNameChurn4000v8_0_15_mv2,
+//				churn4000v8Seeds,
+//				k));
+//		
+//		dataProviders.add(getDataProviderChurn4000v8_0_15_mv15(
+//				dataNameChurn4000v8_0_15_mv15,
+//				churn4000v8Seeds,
+//				k));
+//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//		dataProviders.add(getDataProviderChurn4000v8_0_20_mv2(
+//				dataNameChurn4000v8_0_20_mv2,
+//				churn4000v8Seeds,
+//				k));
+//		
+//		dataProviders.add(getDataProviderChurn4000v8_0_20_mv15(
+//				dataNameChurn4000v8_0_20_mv15,
+//				churn4000v8Seeds,
+//				k));
+//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//		dataProviders.add(getDataProviderChurn4000v8_0_25_mv2(
+//				dataNameChurn4000v8_0_25_mv2,
+//				churn4000v8Seeds,
+//				k));
+//		
+//		dataProviders.add(getDataProviderChurn4000v8_0_25_mv15(
+//				dataNameChurn4000v8_0_25_mv15,
+//				churn4000v8Seeds,
+//				k));
 		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		
 		//TODO: comment algorithms that should not be used in this batch experiment
@@ -854,15 +833,19 @@ public class BatchExperiment {
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM())); //uses special version of data!
 //		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //uses special version of data! //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
-//		learningAlgorithms.add(new MoNGELClassifierLerner()); //uses special version of data!
+//		learningAlgorithms.add(new MoNGELClassifierLearner()); //uses special version of data!
 		
 		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
 		LearningAlgorithmDataParametersContainer parametersContainer = new LearningAlgorithmDataParametersContainer();
-				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				//PARAMETERS FOR MONUMENTS DATA
-				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				//-----
+		
+		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		//PARAMETERS FOR MONUMENTS DATA
+		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 		parametersContainer
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR VC-DRSA RULES
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV,
 						Arrays.asList(
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", true),
@@ -893,6 +876,7 @@ public class BatchExperiment {
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
 						))
+				//-----
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV01_K9_K10,
 						Arrays.asList(
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
@@ -908,24 +892,74 @@ public class BatchExperiment {
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
 								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
 						));
-				//-----
+
 		parametersContainer
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR NAIVE BAYES
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				//------
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV_K9_K10,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
 				//------
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
+				//------
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01_K9_K10,
-						Arrays.asList(null, new WEKAAlgorithmOptions("-D"))); //option -D means discretize numeric attributes
-				//-----
-				
-				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				//PARAMETERS FOR CHURN4000v8 DATA
-				//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))); //option -D means discretize numeric attributes
+
 		parametersContainer
+			//%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR OSDL
+			//%%%%%%%%%%%%%%%%%%%
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV,
+						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV_K9_K10,
+						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV01,
+						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})))
+				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV01_K9_K10,
+						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})));
+		
+		if (learningAlgorithms.stream().filter(a -> a.getName().equals(KEELClassifierLearner.getAlgorithmName(MoNGEL.class))).collect(Collectors.toList()).size() > 0) { // MoNGEL is on the list of algorithms
+			//%%%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR MONGEL
+			//%%%%%%%%%%%%%%%%%%%%%
+			
+			List<DataProvider> tempDataProvidersList;
+			final String[] dataNameBox = new String[1]; //regular String was not enough to satisfy stream constraint of a final or effectively final variable; unpack by checking index 0!
+			
+			dataNameBox[0] = dataNameMonumentsNoMV;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameMonumentsNoMV_K9_K10;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameMonumentsNoMV01;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameMonumentsNoMV01_K9_K10;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+		} //if
+		
+		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		//PARAMETERS FOR CHURN4000v8 DATA
+		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		
+		parametersContainer
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR VC-DRSA RULES
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8,
 						Arrays.asList(
 								/*new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0"),*/
@@ -1032,8 +1066,11 @@ public class BatchExperiment {
 										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ));
 						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
 //						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				//-----
+
 		parametersContainer
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR NAIVE BAYES
+			//%%%%%%%%%%%%%%%%%%%%%%%%%%
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8,
 						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv2,
@@ -1056,8 +1093,11 @@ public class BatchExperiment {
 						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv15,
 						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )); //option -D means discretize numeric attributes
-				//-----
+
 		parametersContainer
+			//%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR OSDL
+			//%%%%%%%%%%%%%%%%%%%
 				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8,
 						Arrays.asList(
 								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
@@ -1116,109 +1156,72 @@ public class BatchExperiment {
 								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
 								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
 						));
-				//-----
-		if (learningAlgorithms.stream().filter(a -> a.getName() == KEELClassifierLerner.getAlgorithmName(MoNGEL.class)).collect(Collectors.toList()).size() > 0) { // MoNGEL is on the list of algorithms
-			parametersContainer
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_05_mv2,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_05_mv2))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-				))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_05_mv15,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_05_mv15))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_10_mv2,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_10_mv2))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_10_mv15,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_10_mv15))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_15_mv2,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_15_mv2))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_15_mv15,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_15_mv15))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_20_mv2,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_20_mv2))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_20_mv15,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_20_mv15))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_25_mv2,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_25_mv2))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						))
-				.putParameters(KEELClassifierLerner.getAlgorithmName(MoNGEL.class), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(
-								new KEELAlgorithmDataParameters(new AttributeRanges(
-										dataProviders.stream()
-											.filter(p -> p.getDataName().equals(dataNameChurn4000v8_0_25_mv15))
-											.limit(1)
-											.collect(Collectors.toList())
-											.get(0).previewOriginalData().getInformationTable() ))
-						));
-		} //if	
+
+		if (learningAlgorithms.stream().filter(a -> a.getName().equals(KEELClassifierLearner.getAlgorithmName(MoNGEL.class))).collect(Collectors.toList()).size() > 0) { // MoNGEL is on the list of algorithms
+			//%%%%%%%%%%%%%%%%%%%%%
+			//PARAMETERS FOR MONGEL
+			//%%%%%%%%%%%%%%%%%%%%%
+			
+			List<DataProvider> tempDataProvidersList;
+			final String[] dataNameBox = new String[1]; //regular String was not enough to satisfy stream constraint of a final or effectively final variable; unpack by checking index 0!
+			
+			dataNameBox[0] = dataNameChurn4000v8;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_05_mv2;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_05_mv15;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_10_mv2;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_10_mv15;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_15_mv2;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_15_mv15;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_20_mv2;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_20_mv15;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_25_mv2;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+			dataNameBox[0] = dataNameChurn4000v8_0_25_mv15;
+			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
+				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
+						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
+			}
+		} //if
+		
 		//------------------------------------------------------------------------------------------------------------------------------
 		
 		parametersContainer.sortParametersLists(); //assure parameters for VCDomLEMModeRuleClassifierLearnerDataParameters algorithm are in ascending order w.r.t. consistency threshold
@@ -1267,29 +1270,6 @@ public class BatchExperiment {
 						MeansAndStandardDeviations meansAndStandardDeviations = classificationStatistics.getMeansAndStandardDeviations();
 						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 						
-//						//+++++
-//						String info;
-//						String qualitiesOfApproximation = classificationStatistics.getQualitiesOfApproximation();
-//						StringBuilder infoBuilder = (new StringBuilder(128)).append(aggregatedModelValidationResult.getModelDescription());
-//						switch (classificationStatistics.getClassifierType()) {
-//						case VCDRSA_RULES_CLASSIFIER:
-//							infoBuilder.append("; ").append(String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfCoveringRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules()));
-//							if (!qualitiesOfApproximation.equals("")) {
-//								infoBuilder.append("; ").append(qualitiesOfApproximation);
-//							}
-//							infoBuilder.append(".");
-//							break;
-//						case WEKA_CLASSIFIER:
-//							if (!qualitiesOfApproximation.equals("")) {
-//								infoBuilder.append(" ").append(qualitiesOfApproximation).append(".");
-//							}
-//							break;
-//						default:
-//							throw new InvalidValueException("Incorrect classifier type.");
-//						}
-//						info = infoBuilder.toString();
-//						//+++++
-						
 						String summaryLinePrefix = "  %% ";
 						
 						//OUTPUT
@@ -1318,7 +1298,6 @@ public class BatchExperiment {
 								Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 								.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 								.collect(Collectors.joining(System.lineSeparator())),
-//								info,
 								aggregatedModelValidationResult.getModelDescription().toShortString(),
 								round(totalFoldCalculationTimes.getAverageTrainingTime()),
 								round(totalFoldCalculationTimes.getAverageValidationTime())
@@ -1345,29 +1324,6 @@ public class BatchExperiment {
 							ClassificationStatistics classificationStatistics = aggregatedModelValidationResult.getClassificationStatistics();
 							MeansAndStandardDeviations meansAndStandardDeviations = classificationStatistics.getMeansAndStandardDeviations();
 							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-							
-//							//+++++
-//							String info;
-//							String qualitiesOfApproximation = classificationStatistics.getQualitiesOfApproximation();
-//							StringBuilder infoBuilder = (new StringBuilder(128)).append(aggregatedModelValidationResult.getModelDescription());
-//							switch (classificationStatistics.getClassifierType()) {
-//							case VCDRSA_RULES_CLASSIFIER:
-//								infoBuilder.append("; ").append(String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfCoveringRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules()));
-//								if (!qualitiesOfApproximation.equals("")) {
-//									infoBuilder.append("; ").append(qualitiesOfApproximation);
-//								}
-//								infoBuilder.append(".");
-//								break;
-//							case WEKA_CLASSIFIER:
-//								if (!qualitiesOfApproximation.equals("")) {
-//									infoBuilder.append(" ").append(qualitiesOfApproximation).append(".");
-//								}
-//								break;
-//							default:
-//								throw new InvalidValueException("Incorrect classifier type.");
-//							}
-//							info = infoBuilder.toString();
-//							//+++++
 							
 							String summaryLinePrefix = "    %% ";
 							String accuracyType = useMainModelAccuracy ? "main model" : "overall";
@@ -1398,7 +1354,6 @@ public class BatchExperiment {
 									Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 									.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 									.collect(Collectors.joining(System.lineSeparator())),
-//									info,
 									aggregatedModelValidationResult.getModelDescription().toShortString(),
 									round(totalFoldCalculationTimes.getAverageTrainingTime()),
 									round(totalFoldCalculationTimes.getAverageValidationTime())
@@ -1598,8 +1553,108 @@ public class BatchExperiment {
 		}
 	}
 	
+	private static DataProvider getDataProviderMonuments(String dataSetName, long[] seeds, int k) {
+		switch (monumentsDataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
+				"data/csv/zabytki-data-noMV.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-Year1CG.json",
+				"data/csv/zabytki-data-noMV-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case MONGEL:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-Year1CG.json",
+				"data/csv/zabytki-data-noMV-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderMonuments_K9_K10(String dataSetName, long[] seeds, int k) { //without K9 and K10
+		switch (monumentsDataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
+				"data/csv/zabytki-data-noMV.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-K9-K10-Year1CG.json",
+				"data/csv/zabytki-data-noMV-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case MONGEL:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-Year1CG.json",
+				"data/csv/zabytki-data-noMV-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderMonuments01(String dataSetName, long[] seeds, int k) { //binary
+		switch (monumentsDataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
+				"data/csv/zabytki-data-noMV-0-1.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-0-1-Year1CG.json",
+				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case MONGEL:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-Year1CG.json",
+				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
+	private static DataProvider getDataProviderMonuments01_K9_K10(String dataSetName, long[] seeds, int k) { //binary & without K9 and K10
+		switch (monumentsDataSetVersion) {
+		case NORMAL:
+			return new BasicDataProvider(
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
+				"data/csv/zabytki-data-noMV-0-1.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case OLM_OSDL:
+			return new BasicDataProvider(
+				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-0-1-K9-K10-Year1CG.json",
+				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		case MONGEL:
+			return new BasicDataProvider(
+				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-Year1CG.json",
+				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
+				false, ';',
+				dataSetName, seeds, k);
+		default:
+			throw new InvalidValueException("Not supported data set version.");
+		}
+	}
+	
 	private static DataProvider getDataProviderChurn4000v8(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata.json",
@@ -1641,7 +1696,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
@@ -1683,7 +1738,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
@@ -1725,7 +1780,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
@@ -1767,7 +1822,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
@@ -1809,7 +1864,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
@@ -1851,7 +1906,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
@@ -1893,7 +1948,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
@@ -1935,7 +1990,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
@@ -1977,7 +2032,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
@@ -2019,7 +2074,7 @@ public class BatchExperiment {
 	}
 	
 	private static DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, long[] seeds, int k) {
-		switch (dataSetVersion) {
+		switch (churn4000v8DataSetVersion) {
 		case NORMAL:
 			return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
