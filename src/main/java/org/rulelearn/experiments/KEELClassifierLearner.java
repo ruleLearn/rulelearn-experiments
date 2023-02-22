@@ -8,18 +8,18 @@ import keel.Algorithms.Classification.Classifier;
 import keel.Dataset.InstanceSet;
 
 /**
- * Generic KEEL classifier lerner.
+ * Generic KEEL classifier learner.
  * 
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
  */
-public abstract class KEELClassifierLerner extends AbstractLearningAlgorithm {
+public abstract class KEELClassifierLearner extends AbstractLearningAlgorithm {
 	
 	/**
 	 * Supplies new instance of an {@link Classifier}.
 	 */
 	Supplier<Classifier> keelClassifierProvider;
 
-	public KEELClassifierLerner(Supplier<Classifier> keelClassifierProvider) {
+	public KEELClassifierLearner(Supplier<Classifier> keelClassifierProvider) {
 		this.keelClassifierProvider = keelClassifierProvider;
 	}
 	
@@ -67,7 +67,7 @@ public abstract class KEELClassifierLerner extends AbstractLearningAlgorithm {
 	}
 	
 	public static String getAlgorithmName(Class<? extends Classifier> basicClassifierClass) {
-		return KEELClassifierLerner.class.getSimpleName()+"("+basicClassifierClass.getSimpleName()+")";
+		return KEELClassifierLearner.class.getSimpleName()+"("+basicClassifierClass.getSimpleName()+")";
 	}
 
 }

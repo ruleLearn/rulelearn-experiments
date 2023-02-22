@@ -56,9 +56,11 @@ public class ModeRuleClassifier implements ClassificationModel {
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
 		AggregationMode aggregationMode = AggregationMode.NONE;
 		
+		String serializedRuleSet = null; //null for aggregated model description; not used if null
+		
 		//TODO: add more fields to address situation when aggregationMode == AggregationMode.MEAN_AND_DEVIATION
 		
-		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence, long modelDescriptionCalculationTime) {
+		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence, long modelDescriptionCalculationTime, String serializedRuleSet) {
 			this.totalRulesCount = totalRulesCount;
 			this.sumRuleLength = sumRuleLength;
 			this.sumRuleSupport = sumRuleSupport;
@@ -68,6 +70,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 			aggregationMode = AggregationMode.NONE;
 			
 			this.modelDescriptionCalculationTime = modelDescriptionCalculationTime;
+			
+			this.serializedRuleSet = serializedRuleSet;
 		}
 		
 		public ModelDescription(AggregationMode aggregationMode, ModelDescription... modelDescriptions) {
@@ -98,6 +102,20 @@ public class ModeRuleClassifier implements ClassificationModel {
 		public String toString() { //TODO: if aggregationMode == AggregationMode.MEAN_AND_DEVIATION, then print also standard deviations calculated in constructor
 			StringBuilder sb = new StringBuilder(100);
 			
+			sb.append(toShortString());
+			
+			if (serializedRuleSet != null && BatchExperiment.printTrainedClassifiers) {
+				sb.append(System.lineSeparator());
+				sb.append(serializedRuleSet);
+			}
+			
+			return sb.toString();
+		}
+		
+		@Override
+		public String toShortString() {
+			StringBuilder sb = new StringBuilder(100);
+			
 			if (aggregationCount == 1) {
 				sb.append("number of rules: ").append(totalRulesCount);
 			} else {
@@ -111,11 +129,6 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			return sb.toString();
 		}
-		
-		@Override
-		public String toShortString() {
-			return toString();
-		}
 
 		@Override
 		public ModelDescriptionBuilder getModelDescriptionBuilder() {
@@ -125,6 +138,11 @@ public class ModeRuleClassifier implements ClassificationModel {
 		@Override
 		public long getModelDescriptionCalculationTime() {
 			return modelDescriptionCalculationTime;
+		}
+
+		@Override
+		public void compress() {
+			this.serializedRuleSet = null;
 		}
 		
 	}
@@ -301,7 +319,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			long modelDescriptionCalculationTime = System.currentTimeMillis() - start; //!
 			
-			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence, modelDescriptionCalculationTime);
+			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence, modelDescriptionCalculationTime,
+					BatchExperiment.printTrainedClassifiers ? ruleSet.serialize() : null);
 		}
 		
 		return modelDescription;

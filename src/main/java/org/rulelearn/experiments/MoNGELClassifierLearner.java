@@ -8,12 +8,12 @@ import keel.Algorithms.Monotonic_Classification.MoNGEL.MoNGEL;
 /**
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
  */
-public class MoNGELClassifierLerner extends KEELClassifierLerner {
+public class MoNGELClassifierLearner extends KEELClassifierLearner {
 	
 	/**
 	 * Sole constructor.
 	 */
-	public MoNGELClassifierLerner() {
+	public MoNGELClassifierLearner() {
 		super(() -> new MoNGEL()); //use provider that provides MoNGEL as KEEL classifier
 	}
 

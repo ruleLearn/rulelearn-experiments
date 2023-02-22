@@ -95,6 +95,7 @@ public interface ClassificationModel {
 		public abstract String toShortString(); //one line model description
 		public abstract ModelDescriptionBuilder getModelDescriptionBuilder();
 		public abstract long getModelDescriptionCalculationTime(); //gets time necessary to build model description but not related to further classification
+		public abstract void compress(); //reduces occupied memory to bare minimum (e.g., by dropping textual model representation (if present))
 	}
 	
 	public static class ModelLearningStatistics {
