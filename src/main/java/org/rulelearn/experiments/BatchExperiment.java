@@ -16,8 +16,10 @@ import java.util.stream.Stream;
 import org.rulelearn.approximations.Unions;
 import org.rulelearn.approximations.UnionsWithSingleLimitingDecision;
 import org.rulelearn.approximations.VCDominanceBasedRoughSetCalculator;
+import org.rulelearn.data.Decision;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
+import org.rulelearn.data.SimpleDecision;
 import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
 import org.rulelearn.experiments.BatchExperimentResults.CalculationTimes;
 import org.rulelearn.experiments.BatchExperimentResults.DataAlgorithmParametersSelector;
@@ -34,6 +36,8 @@ import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsMoNGEL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOLM_OSDL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOriginal;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
+import org.rulelearn.validation.MisclassificationMatrix;
+import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 /**
  * Batch repeated cross-validation experiment over multiple data sets, with pre-processing of learning data, and different parameterized learning methods.
@@ -152,6 +156,23 @@ public class BatchExperiment {
 				   new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
 		
 		return unions.getQualityOfApproximation();
+	}
+	
+	static String getTruePositiveRates(OrdinalMisclassificationMatrix misclassificationMatrix) {
+		Decision[] decisions = misclassificationMatrix.getOrderOfDecisions();
+		StringBuilder truePositivesSB = new StringBuilder(64);
+		int counter = 0; //tells how many decisions have been processed
+		
+		for (Decision decision : decisions) {
+			truePositivesSB.append(((SimpleDecision)decision).getEvaluation()).append(":").append(round(misclassificationMatrix.getTruePositiveRate(decision)));
+			counter++;
+			
+			if (counter < decisions.length) {
+				truePositivesSB.append(" # ");
+			}
+		}
+		
+		return truePositivesSB.toString();
 	}
 	
 	private static List<LearningAlgorithmDataParameters> processListOfParameters(List<LearningAlgorithmDataParameters> parametersList) {
@@ -299,11 +320,12 @@ public class BatchExperiment {
 							ClassificationStatistics classificationStatistics = modelValidationResult.getClassificationStatistics();
 							
 							//OUTPUT
-							outN("Train data accuracy for '%1(%2)': "+System.lineSeparator()+
-									"%3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Main model decisions ratio: %10."+System.lineSeparator()+
-									"%% [Learning]: %11."+System.lineSeparator()+
-									"%12"+System.lineSeparator()+
-									"%% [Times]: training: %13 [ms], validation: %14 [ms].",
+							outN("Train data result for '%1(%2)': "+System.lineSeparator()+
+									"Accuracy: %3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Main model decisions ratio: %10."+System.lineSeparator()+
+									"True positive rates: %11. Gmean: %12."+System.lineSeparator()+
+									"%% [Learning]: %13."+System.lineSeparator()+
+									"%14"+System.lineSeparator()+
+									"%% [Times]: training: %15 [ms], validation: %16 [ms].",
 									algorithm.getName(),
 									parameters,
 									round(modelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
@@ -314,6 +336,8 @@ public class BatchExperiment {
 									round(classificationStatistics.getDefaultClassAccuracy()),
 									round(classificationStatistics.getDefaultClassifierAccuracy()),
 									round(classificationStatistics.getMainModelDecisionsRatio()),
+									getTruePositiveRates(modelValidationResult.getOrdinalMisclassificationMatrix()),
+									round(modelValidationResult.getOrdinalMisclassificationMatrix().getGmean()),
 									modelValidationResult.getModelLearningStatistics().toString(),
 									Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 									.map(line -> (new StringBuilder("%% ")).append(line).toString())
@@ -382,10 +406,12 @@ public class BatchExperiment {
 						foldsStream.forEach(fold -> {       //just for measuring time!
 							String linePrefix = "      "+foldNumber2Spaces(fold.getIndex());
 							String summaryLinePrefix = linePrefix + "%% ";
+							//OUTPUT
 							String messageTemplate = prepareText("%pEnd of fold %1, algorithm %2(%3).%n"
 									+ "%p%% [Accuracy]: %4 (overall: %5, avg: %6) # %7 # %8 (%9|%10). Main model decisions ratio: %11.%n"
-									+ "%12%n"
-									+ "%p%% [Duration]: %13 [ms].", linePrefix); //%p will be replaced by prefix, %n by new line
+									+ "%p%% [TP rates]: %12. Gmean: %13.%n"
+									+ "%14%n"
+									+ "%p%% [Duration]: %15 [ms].", linePrefix); //%p will be replaced by prefix, %n by new line
 							
 							//long t3;
 							//t3 = b("    Starting calculations for fold "+fold.getIndex()+".");
@@ -462,6 +488,8 @@ public class BatchExperiment {
 											round(modelValidationResult.getClassificationStatistics().getDefaultClassAccuracy()),
 											round(modelValidationResult.getClassificationStatistics().getDefaultClassifierAccuracy()),
 											round(modelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+											getTruePositiveRates(modelValidationResult.getOrdinalMisclassificationMatrix()),
+											round(modelValidationResult.getOrdinalMisclassificationMatrix().getGmean()),
 											Arrays.asList(classificationStatisticsAsText.split(System.lineSeparator())).stream()
 											.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
 											.collect(Collectors.joining(System.lineSeparator())), //print validation summary in several lines
@@ -505,8 +533,9 @@ public class BatchExperiment {
 								ClassificationStatistics classificationStatistics = aggregatedCVModelValidationResult.getClassificationStatistics();
 								
 								//OUTPUT
-								outN("  Avg. accuracy over folds for algorithm '%1(%2)': "+System.lineSeparator()+
-										"    %3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Avg. main model decisions ratio: %10.",
+								outN("  Avg. result over folds for algorithm '%1(%2)': "+System.lineSeparator()+
+										"    Accuracy: %3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Avg. main model decisions ratio: %10."+System.lineSeparator()+
+										"    True positive rates: %11. Gmean: %12.",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parameters,
 										round(aggregatedCVModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
@@ -516,7 +545,10 @@ public class BatchExperiment {
 										round(classificationStatistics.getDefaultModelAccuracy()),
 										round(classificationStatistics.getDefaultClassAccuracy()),
 										round(classificationStatistics.getDefaultClassifierAccuracy()),
-										round(classificationStatistics.getMainModelDecisionsRatio()) );
+										round(classificationStatistics.getMainModelDecisionsRatio()),
+										getTruePositiveRates(aggregatedCVModelValidationResult.getOrdinalMisclassificationMatrix()),
+										round(aggregatedCVModelValidationResult.getOrdinalMisclassificationMatrix().getGmean())
+								);
 							}
 						}
 						outN("  ----------");
@@ -550,12 +582,13 @@ public class BatchExperiment {
 							String summaryLinePrefix = "  %% ";
 							
 							//OUTPUT
-							outN("Avg. accuracy over CVs for algorithm '%1(%2)': "+System.lineSeparator()+
-									"  %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
-									"  %% [Learning]: %17"+System.lineSeparator()+
-									"%18"+System.lineSeparator()+
-									"  %% [Model]: %19."+System.lineSeparator()+
-									"  %% [Avg. fold calculation times]: training: %20 [ms], validation: %21 [ms]",
+							outN("Avg. result over CVs for algorithm '%1(%2)': "+System.lineSeparator()+
+									"  Accuracy: %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
+									"  True positive rates: %17. Gmean: %18."+System.lineSeparator()+
+									"  %% [Learning]: %19"+System.lineSeparator()+
+									"%20"+System.lineSeparator()+
+									"  %% [Model]: %21."+System.lineSeparator()+
+									"  %% [Avg. fold calculation times]: training: %22 [ms], validation: %23 [ms]",
 									learningAlgorithms.get(learningAlgorithmNumber).getName(),
 									parameters,
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
@@ -572,6 +605,8 @@ public class BatchExperiment {
 									round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getMean()),
 									round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getStdDev()),
 									round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+									getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
+									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()),
 									aggregatedModelValidationResult.getModelLearningStatistics().toString(),
 									Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 									.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
@@ -607,12 +642,13 @@ public class BatchExperiment {
 								String accuracyType = useMainModelAccuracy ? "main model" : "overall";
 								
 								//OUTPUT
-								outN("  Best avg. "+accuracyType+" accuracy over cross-validations for algorithm '%1(%2)': "+System.lineSeparator()+
-									 "    %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
-									 "    %% [Learning]: %17"+System.lineSeparator()+
-									 "%18"+System.lineSeparator()+
-									 "    %% [Model]: %19."+System.lineSeparator()+
-									 "    %% [Avg. fold calculation times]: training: %20 [ms], validation: %21 [ms]",
+								outN("  Best avg. "+accuracyType+" result over cross-validations for algorithm '%1(%2)': "+System.lineSeparator()+
+									 "    Accuracy: %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
+									 "    True positive rates: %17. Gmean: %18."+System.lineSeparator()+
+									 "    %% [Learning]: %19"+System.lineSeparator()+
+									 "%20"+System.lineSeparator()+
+									 "    %% [Model]: %21."+System.lineSeparator()+
+									 "    %% [Avg. fold calculation times]: training: %22 [ms], validation: %23 [ms]",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parametersList.get(selector.parametersNumber),
 										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
@@ -629,6 +665,8 @@ public class BatchExperiment {
 										round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getMean()),
 										round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getStdDev()),
 										round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+										getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
+										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()),
 										aggregatedModelValidationResult.getModelLearningStatistics().toString(),
 										Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 										.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
@@ -657,7 +695,9 @@ public class BatchExperiment {
 	}
 	
 	public static void main(String[] args) {
+		//<BEGIN EXPERIMENT CONFIG>
 		int k = 10; //number of folds
+//		int k = 4; //number of folds
 		
 //		long[] SKIP_DATA = new long[]{};
 		
@@ -668,11 +708,11 @@ public class BatchExperiment {
 //		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L};
 //		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L}; //only first 3 CVs
+//		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L}; //only first 2 CVs
 //		long[] churn4000v8Seeds = SKIP_DATA;
 		
 		long[] churn10000v8Seeds = churn4000v8Seeds;
 
-		//<BEGIN EXPERIMENT CONFIG>
 		//TODO: configure which setup should be used in this batch experiment
 		BatchExperimentSetup[] batchExperimentSetups = {
 				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k),
@@ -743,12 +783,13 @@ public class BatchExperiment {
 							String summaryLinePrefix = "  %% ";
 							
 							//OUTPUT
-							outN("Avg. accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
-									"  %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
-									"  %% [Learning]: %18"+System.lineSeparator()+
-									"%19"+System.lineSeparator()+
-									"  %% [Model]: %20."+System.lineSeparator()+
-									"  %% [Avg. fold calculation times]: training: %21, validation: %22",
+							outN("Avg. result for ('%1', %2(%3)): "+System.lineSeparator()+
+									"  Accuracy: %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
+									"  True positive rates: %18. Gmean: %19."+System.lineSeparator()+
+									"  %% [Learning]: %20"+System.lineSeparator()+
+									"%21"+System.lineSeparator()+
+									"  %% [Model]: %22."+System.lineSeparator()+
+									"  %% [Avg. fold calculation times]: training: %23, validation: %24",
 									dataSetName, algorithmName, parameters,
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()), //
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()), //
@@ -764,6 +805,8 @@ public class BatchExperiment {
 									round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getMean()), //
 									round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getStdDev()), //
 									round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+									getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
+									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()),
 									aggregatedModelValidationResult.getModelLearningStatistics().toString(),
 									Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 									.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
@@ -799,12 +842,13 @@ public class BatchExperiment {
 								String accuracyType = useMainModelAccuracy ? "main model" : "overall";
 								
 								//OUTPUT
-								outN("  Best avg. "+accuracyType+" accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
-									 "    %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
-									 "    %% [Learning]: %18"+System.lineSeparator()+
-									 "%19"+System.lineSeparator()+
-									 "    %% [Model]: %20."+System.lineSeparator()+
-									 "    %% [Avg. fold calculation times]: training: %21, validation: %22",
+								outN("  Best avg. "+accuracyType+" result for ('%1', %2(%3)): "+System.lineSeparator()+
+									 "    Accuracy: %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
+									 "    True positive rates: %18. Gmean: %19."+System.lineSeparator()+
+									 "    %% [Learning]: %20"+System.lineSeparator()+
+									 "%21"+System.lineSeparator()+
+									 "    %% [Model]: %22."+System.lineSeparator()+
+									 "    %% [Avg. fold calculation times]: training: %23, validation: %24",
 										dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
 										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()), //
 										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()), //
@@ -820,6 +864,8 @@ public class BatchExperiment {
 										round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getMean()), //
 										round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getStdDev()), //
 										round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+										getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
+										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()),
 										aggregatedModelValidationResult.getModelLearningStatistics().toString(),
 										Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 										.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())

@@ -241,36 +241,9 @@ public class BatchExperimentResults {
 			(algorithmNameWithParameters, result) -> {
 				ClassificationStatistics classificationStatistics = result.getModelValidationResult().getClassificationStatistics();
 				
-//				//+++++
-//				StringBuilder infoBuilder = new StringBuilder(128);
-//				String info;
-//				String qualitiesOfApproximation = classificationStatistics.getQualitiesOfApproximation();
-//				
-//				switch (classificationStatistics.getClassifierType()) {
-//				case VCDRSA_RULES_CLASSIFIER:
-//					infoBuilder.append(result.getModelValidationResult().getModelDescription().toString())
-//					.append("; ").append(String.format(Locale.US, "%s: %.2f", ModeRuleClassifier.avgNumberOfCoveringRulesIndicator, classificationStatistics.getAverageNumberOfCoveringRules()));
-//					
-//					if (!qualitiesOfApproximation.equals("")) {
-//						infoBuilder.append("; ").append(qualitiesOfApproximation);
-//					}
-//					
-//					info = infoBuilder.toString();
-//					break;
-//				case WEKA_CLASSIFIER:
-//					if (!qualitiesOfApproximation.equals("")) {
-//						info = qualitiesOfApproximation;
-//					} else {
-//						info = "--";
-//					}
-//					break;
-//				default:
-//					throw new InvalidValueException("Incorrect classifier type.");
-//				}
-//				//+++++
-				
-				sb.append(String.format(Locale.US, "Train data accuracy for ('%s', %s):%n"
-						+ "  %s (overall: %s, avg: %s) # %s # %s (%s|%s). Main model decisions ratio: %s.%n"
+				sb.append(String.format(Locale.US, "Train data result for ('%s', %s):%n"
+						+ "  Accuracy: %s (overall: %s, avg: %s) # %s # %s (%s|%s). Main model decisions ratio: %s.%n"
+						+ "  True positive rates: %s. Gmean: %s.%n"
 						+ "  [Learning]: %s.%n"
 						+ "%s%n"
 						+ "  [Model]: %s.%n"
@@ -284,6 +257,8 @@ public class BatchExperimentResults {
 						BatchExperiment.round(classificationStatistics.getDefaultClassAccuracy()),
 						BatchExperiment.round(classificationStatistics.getDefaultClassifierAccuracy()),
 						BatchExperiment.round(classificationStatistics.getMainModelDecisionsRatio()),
+						BatchExperiment.getTruePositiveRates(result.getModelValidationResult().getOrdinalMisclassificationMatrix()),
+						BatchExperiment.round(result.getModelValidationResult().getOrdinalMisclassificationMatrix().getGmean()),
 						result.getModelValidationResult().getModelLearningStatistics().toString(),
 						Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 						.map(line -> (new StringBuilder("  ")).append(line).toString())
