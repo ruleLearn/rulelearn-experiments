@@ -678,10 +678,10 @@ public class BatchExperiment {
 				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k),
 				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k),
 				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k),
-//				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k),
-//				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k),
-//				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k),
-//				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k)
+				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k),
+				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k),
+				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k),
+				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k)
 		};
 		//<END EXPERIMENT CONFIG>
 		
