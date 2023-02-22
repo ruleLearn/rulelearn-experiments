@@ -56,11 +56,11 @@ public class ModeRuleClassifier implements ClassificationModel {
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
 		AggregationMode aggregationMode = AggregationMode.NONE;
 		
-		RuleSetWithComputableCharacteristics ruleSet = null; //null for aggregated model description
+		String serializedRuleSet = null; //null for aggregated model description; not used if null
 		
 		//TODO: add more fields to address situation when aggregationMode == AggregationMode.MEAN_AND_DEVIATION
 		
-		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence, long modelDescriptionCalculationTime, RuleSetWithComputableCharacteristics ruleSet) {
+		public ModelDescription(long totalRulesCount, long sumRuleLength, long sumRuleSupport, double sumRuleConfidence, long modelDescriptionCalculationTime, String serializedRuleSet) {
 			this.totalRulesCount = totalRulesCount;
 			this.sumRuleLength = sumRuleLength;
 			this.sumRuleSupport = sumRuleSupport;
@@ -71,7 +71,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			this.modelDescriptionCalculationTime = modelDescriptionCalculationTime;
 			
-			this.ruleSet = ruleSet;
+			this.serializedRuleSet = serializedRuleSet;
 		}
 		
 		public ModelDescription(AggregationMode aggregationMode, ModelDescription... modelDescriptions) {
@@ -104,9 +104,9 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			sb.append(toShortString());
 			
-			if (ruleSet != null) {
+			if (serializedRuleSet != null && BatchExperiment.printTrainedClassifiers) {
 				sb.append(System.lineSeparator());
-				sb.append(ruleSet.serialize());
+				sb.append(serializedRuleSet);
 			}
 			
 			return sb.toString();
@@ -138,6 +138,11 @@ public class ModeRuleClassifier implements ClassificationModel {
 		@Override
 		public long getModelDescriptionCalculationTime() {
 			return modelDescriptionCalculationTime;
+		}
+
+		@Override
+		public void compress() {
+			this.serializedRuleSet = null;
 		}
 		
 	}
@@ -314,7 +319,8 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			long modelDescriptionCalculationTime = System.currentTimeMillis() - start; //!
 			
-			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence, modelDescriptionCalculationTime, ruleSet);
+			modelDescription = new ModelDescription(size, sumLength, sumSupport, sumConfidence, modelDescriptionCalculationTime,
+					BatchExperiment.printTrainedClassifiers ? ruleSet.serialize() : null);
 		}
 		
 		return modelDescription;

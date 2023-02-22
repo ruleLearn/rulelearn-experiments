@@ -262,7 +262,7 @@ public class WEKAClassifer implements ClassificationModel {
 	
 	public static class ModelDescription extends ClassificationModel.ModelDescription {
 		String options;
-		String trainedClassifier;
+		String trainedClassifier = null;
 		boolean aggregated = false;
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
 		
@@ -302,7 +302,7 @@ public class WEKAClassifer implements ClassificationModel {
 		@Override
 		public String toString() {
 			if (!aggregated) {
-				return "[Options: " + options + "]" + (BatchExperiment.printTrainedClassifiers ?  System.lineSeparator() + trainedClassifier : "");
+				return "[Options: " + options + "]" + (trainedClassifier != null && BatchExperiment.printTrainedClassifiers ?  System.lineSeparator() + trainedClassifier : "");
 			} else {
 				return "[Options: " + options + "]";
 			}
@@ -321,6 +321,11 @@ public class WEKAClassifer implements ClassificationModel {
 		@Override
 		public long getModelDescriptionCalculationTime() {
 			return 0L;
+		}
+
+		@Override
+		public void compress() {
+			this.trainedClassifier = null;
 		}
 
 	}
@@ -427,16 +432,19 @@ public class WEKAClassifer implements ClassificationModel {
 			
 			if (trainedClassifier instanceof J48) {
 				try {
-					modelDescription = new J48ModelDescription(options, trainedClassifier.toString(), (long)((J48)trainedClassifier).measureTreeSize(), (long)((J48)trainedClassifier).measureNumLeaves());
+					modelDescription = new J48ModelDescription(options, BatchExperiment.printTrainedClassifiers ? trainedClassifier.toString() : null,
+							(long)((J48)trainedClassifier).measureTreeSize(), (long)((J48)trainedClassifier).measureNumLeaves());
 				} catch (Exception exception) {
 					exception.printStackTrace(); //TODO: handle exception?
 				}
 			} else if (trainedClassifier instanceof JRip) {
-				modelDescription = new JRipModelDescription(options, trainedClassifier.toString(), (long)((JRip)trainedClassifier).getRuleset().size());
+				modelDescription = new JRipModelDescription(options, BatchExperiment.printTrainedClassifiers ? trainedClassifier.toString() : null,
+						(long)((JRip)trainedClassifier).getRuleset().size());
 			} else if (trainedClassifier instanceof OLM) {
-				modelDescription = new OLMModelDescription(options, trainedClassifier.toString(), ((OLM)trainedClassifier).getNumberOfRules());
+				modelDescription = new OLMModelDescription(options, BatchExperiment.printTrainedClassifiers ? trainedClassifier.toString() : null,
+						((OLM)trainedClassifier).getNumberOfRules());
 			} else {
-				modelDescription = new ModelDescription(options, trainedClassifier.toString());
+				modelDescription = new ModelDescription(options, BatchExperiment.printTrainedClassifiers ? trainedClassifier.toString() : null);
 			}
 		}
 		

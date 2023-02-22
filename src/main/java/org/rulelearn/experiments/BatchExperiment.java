@@ -16,7 +16,6 @@ import java.util.stream.Stream;
 import org.rulelearn.approximations.Unions;
 import org.rulelearn.approximations.UnionsWithSingleLimitingDecision;
 import org.rulelearn.approximations.VCDominanceBasedRoughSetCalculator;
-import org.rulelearn.core.InvalidValueException;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
@@ -26,21 +25,15 @@ import org.rulelearn.experiments.BatchExperimentResults.FullDataModelValidationR
 import org.rulelearn.experiments.BatchExperimentResults.FullDataResults;
 import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
 import org.rulelearn.experiments.ModelValidationResult.MeansAndStandardDeviations;
+import org.rulelearn.experiments.setup.BatchExperimentSetup;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8Original;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8MoNGEL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8OLM_OSDL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8Original;
+import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsMoNGEL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOLM_OSDL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOriginal;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
-import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
-
-import keel.Algorithms.Monotonic_Classification.MoNGEL.MoNGEL;
-import weka.classifiers.bayes.NaiveBayes;
-import weka.classifiers.functions.MultilayerPerceptron;
-import weka.classifiers.functions.SMO;
-import weka.classifiers.misc.OSDL;
-import weka.classifiers.rules.JRip;
-import weka.classifiers.rules.OLM;
-import weka.classifiers.trees.J48;
-import weka.classifiers.trees.RandomForest;
-import weka.filters.Filter;
-import weka.filters.supervised.attribute.Discretize;
-import weka.filters.unsupervised.attribute.ReplaceMissingValues;
 
 /**
  * Batch repeated cross-validation experiment over multiple data sets, with pre-processing of learning data, and different parameterized learning methods.
@@ -50,21 +43,6 @@ import weka.filters.unsupervised.attribute.ReplaceMissingValues;
  */
 public class BatchExperiment {
 	
-	public enum Churn4000v8DataSetVersion {
-		NORMAL,
-		OLM_OSDL, //tells if versions of data used only by OLM and OSDL should be used (if true, then make sure that OLM and OSDL are the only tested algorithms)
-		MONGEL_NUM_OF_PRODUCTS_2X_GAIN, //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
-		MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER, //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
-		MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION, //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
-		MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER //gives the best results for MoNGEL!
-	}
-	
-	public enum MonumentsDataSetVersion {
-		NORMAL,
-		OLM_OSDL, //tells if versions of data used only by OLM and OSDL should be used (if true, then make sure that OLM and OSDL are the only tested algorithms)
-		MONGEL //tells if versions of data used only by MoNGEL should be used (if true, then make sure that MoNGEL is the only tested algorithm)
-	}
-
 	List<DataProvider> dataProviders;
 	CrossValidationProvider crossValidationProvider;
 	DataProcessor trainDataPreprocessor;
@@ -74,19 +52,16 @@ public class BatchExperiment {
 	//<BEGIN EXPERIMENT CONFIG>
 	//TODO: configure?
 	static boolean useMainModelAccuracy = false; //true = use main model accuracy; false = use overall accuracy
+	
 	static final boolean doFullDataReclassification = true;
 	static final boolean doCrossValidations = true; //true = perform CVs; false = skip CVs
-//	static final boolean generalizeConditions = true;
 	static final boolean checkConsistencyOfTestDataDecisions = true;
 	static final boolean printTrainedClassifiers = true; //concerns WEKA and KEEL classifiers + full data reclassification
+	
 	static final String decimalFormat = "%.5f"; //tells number of decimal places
 	static final String percentDecimalFormat = "%.3f"; //tells number of decimal places in percentages
 	
 	static final boolean foldsInParallel = true; //false => folds will be done sequentially (useful only to measure more accurately avg. calculation times)
-	
-	//static final Churn4000v8DataSetVersion dataSetVersion = Churn4000v8DataSetVersion.MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER;
-	static final Churn4000v8DataSetVersion churn4000v8DataSetVersion = Churn4000v8DataSetVersion.NORMAL;
-	static final MonumentsDataSetVersion monumentsDataSetVersion = MonumentsDataSetVersion.NORMAL;
 	//<END EXPERIMENT CONFIG>
 	
 	/**
@@ -207,6 +182,7 @@ public class BatchExperiment {
 				}
 			}
 		}
+		outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> STARTING BATCH EXPERIMENT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 		outN("Maximum number of algorithm vs data parameters, over all (data, algorithm) pairs: %1.", maxParametersCount); //!
 		
 		//calculate maximum number of cross validations among all data sets
@@ -348,6 +324,7 @@ public class BatchExperiment {
 							outN(" /");
 							outN("/");
 							String modelDescription = model.getModelDescription().toString();
+							model.getModelDescription().compress(); //free some memory occupied by model description
 							if (modelDescription.endsWith(System.lineSeparator())) {
 								out("[Model]: "+modelDescription);
 							} else {
@@ -682,617 +659,97 @@ public class BatchExperiment {
 	public static void main(String[] args) {
 		int k = 10; //number of folds
 		
-		//-----
-		final String dataNameMonumentsNoMV = "zabytki";
-		//-----
-		final String dataNameMonumentsNoMV_K9_K10 = "zabytki-K9-K10";
-		//-----
-		final String dataNameMonumentsNoMV01 = "zabytki01";
-		final String dataNameMonumentsNoMV01_K9_K10 = "zabytki01-K9-K10";
-		//-----
-		String dataNameChurn4000v8 = "bank-churn-4000-v8";
-		//-----
-		String dataNameChurn4000v8_0_05_mv2 = "bank-churn-4000-v8-0.05-mv2";
-		String dataNameChurn4000v8_0_05_mv15 = "bank-churn-4000-v8-0.05-mv1.5";
-		String dataNameChurn4000v8_0_10_mv2 = "bank-churn-4000-v8-0.10-mv2";
-		String dataNameChurn4000v8_0_10_mv15 = "bank-churn-4000-v8-0.10-mv1.5";
-		String dataNameChurn4000v8_0_15_mv2 = "bank-churn-4000-v8-0.15-mv2";
-		String dataNameChurn4000v8_0_15_mv15 = "bank-churn-4000-v8-0.15-mv1.5";
-		String dataNameChurn4000v8_0_20_mv2 = "bank-churn-4000-v8-0.20-mv2";
-		String dataNameChurn4000v8_0_20_mv15 = "bank-churn-4000-v8-0.20-mv1.5";
-		String dataNameChurn4000v8_0_25_mv2 = "bank-churn-4000-v8-0.25-mv2";
-		String dataNameChurn4000v8_0_25_mv15 = "bank-churn-4000-v8-0.25-mv1.5";
-		
 //		long[] SKIP_DATA = new long[]{};
-		
-		//HINT: comment addition of data provider if given data set should not be used in this batch experiment OR give empty array of seeds
-		//TODO: comment data sets not used in the experiment
-		List<DataProvider> dataProviders = new ArrayList<DataProvider>();
 		
 		long[] monumentsSeeds = new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L};
 //		long[] monumentsSeeds = new long[]{0L, 8897335920153900L, 5347765673520470L}; //only first 3 CVs
 //		long[] monumentsSeeds = SKIP_DATA;
 		
-		dataProviders.add(getDataProviderMonuments(dataNameMonumentsNoMV, monumentsSeeds, k));
-		dataProviders.add(getDataProviderMonuments_K9_K10(dataNameMonumentsNoMV_K9_K10, monumentsSeeds, k));
-		dataProviders.add(getDataProviderMonuments01(dataNameMonumentsNoMV01, monumentsSeeds, k));
-		dataProviders.add(getDataProviderMonuments01_K9_K10(dataNameMonumentsNoMV01_K9_K10, monumentsSeeds, k));
-
 //		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L, 9522694898378332L, 6380856248140969L, 6557502705862619L, 2859990958560648L, 3853558955285837L, 6493344966644321L, 8051004458813256L};
 //		long[] churn4000v8Seeds = new long[]{0L, 5488762120989881L, 4329629961476882L}; //only first 3 CVs
 //		long[] churn4000v8Seeds = SKIP_DATA;
-
-//		dataProviders.add(getDataProviderChurn4000v8(
-//				dataNameChurn4000v8,
-//				churn4000v8Seeds,
-//				k));
-//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-//		dataProviders.add(getDataProviderChurn4000v8_0_05_mv2(
-//				dataNameChurn4000v8_0_05_mv2,
-//				churn4000v8Seeds,
-//				k));
-//		
-//		dataProviders.add(getDataProviderChurn4000v8_0_05_mv15(
-//				dataNameChurn4000v8_0_05_mv15,
-//				churn4000v8Seeds,
-//				k));
-//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-//		dataProviders.add(getDataProviderChurn4000v8_0_10_mv2(
-//				dataNameChurn4000v8_0_10_mv2,
-//				churn4000v8Seeds,
-//				k));
-//		
-//		dataProviders.add(getDataProviderChurn4000v8_0_10_mv15(
-//				dataNameChurn4000v8_0_10_mv15,
-//				churn4000v8Seeds,
-//				k));
-//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-//		dataProviders.add(getDataProviderChurn4000v8_0_15_mv2(
-//				dataNameChurn4000v8_0_15_mv2,
-//				churn4000v8Seeds,
-//				k));
-//		
-//		dataProviders.add(getDataProviderChurn4000v8_0_15_mv15(
-//				dataNameChurn4000v8_0_15_mv15,
-//				churn4000v8Seeds,
-//				k));
-//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-//		dataProviders.add(getDataProviderChurn4000v8_0_20_mv2(
-//				dataNameChurn4000v8_0_20_mv2,
-//				churn4000v8Seeds,
-//				k));
-//		
-//		dataProviders.add(getDataProviderChurn4000v8_0_20_mv15(
-//				dataNameChurn4000v8_0_20_mv15,
-//				churn4000v8Seeds,
-//				k));
-//		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-//		dataProviders.add(getDataProviderChurn4000v8_0_25_mv2(
-//				dataNameChurn4000v8_0_25_mv2,
-//				churn4000v8Seeds,
-//				k));
-//		
-//		dataProviders.add(getDataProviderChurn4000v8_0_25_mv15(
-//				dataNameChurn4000v8_0_25_mv15,
-//				churn4000v8Seeds,
-//				k));
-		/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 		
-		//TODO: comment algorithms that should not be used in this batch experiment
-		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
-		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new NaiveBayes()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new SMO()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new RandomForest()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new MultilayerPerceptron()));
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM())); //uses special version of data!
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //uses special version of data! //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
-//		learningAlgorithms.add(new MoNGELClassifierLearner()); //uses special version of data!
-		
-		//HINT: there may be given lists of parameters for (algorithm-name, data-name) pairs for which there will be no calculations - they are just not used
-		LearningAlgorithmDataParametersContainer parametersContainer = new LearningAlgorithmDataParametersContainer();
-		
-		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		//PARAMETERS FOR MONUMENTS DATA
-		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		long[] churn10000v8Seeds = churn4000v8Seeds;
 
-		parametersContainer
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR VC-DRSA RULES
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV,
-						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
-								//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), DefaultClassificationResultChoiceMethod.MODE))
-						))
-						
-				//-----
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV_K9_K10,
-						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
-								//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("confidence>0.5"), DefaultClassificationResultChoiceMethod.MODE))
-						))
-				//-----
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV01,
-						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
-						))
-				//-----
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameMonumentsNoMV01_K9_K10,
-						Arrays.asList(
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.018, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.036, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.054, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.072, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.09, CompositeRuleCharacteristicsFilter.of("s>0"), "yes", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
-						));
-
-		parametersContainer
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR NAIVE BAYES
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
-				//------
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV_K9_K10,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
-				//------
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))) //option -D means discretize numeric attributes
-				//------
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameMonumentsNoMV01_K9_K10,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D"))); //option -D means discretize numeric attributes
-
-		parametersContainer
-			//%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR OSDL
-			//%%%%%%%%%%%%%%%%%%%
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV,
-						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV_K9_K10,
-						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV01,
-						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameMonumentsNoMV01_K9_K10,
-						Arrays.asList(new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize()})));
+		//<BEGIN EXPERIMENT CONFIG>
+		//TODO: configure which setup should be used in this batch experiment
+		BatchExperimentSetup[] batchExperimentSetups = {
+				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k),
+				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k),
+				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k),
+//				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k),
+//				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k),
+//				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k),
+//				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k)
+		};
+		//<END EXPERIMENT CONFIG>
 		
-		if (learningAlgorithms.stream().filter(a -> a.getName().equals(KEELClassifierLearner.getAlgorithmName(MoNGEL.class))).collect(Collectors.toList()).size() > 0) { // MoNGEL is on the list of algorithms
-			//%%%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR MONGEL
-			//%%%%%%%%%%%%%%%%%%%%%
+		for (BatchExperimentSetup batchExperimentSetup : batchExperimentSetups) {
+			List<DataProvider> dataProviders = batchExperimentSetup.getDataProviders();
+			List<LearningAlgorithm> learningAlgorithms = batchExperimentSetup.getLearningAlgorithms();
+			LearningAlgorithmDataParametersContainer parametersContainer = batchExperimentSetup.getLearningAlgorithmDataParametersContainer();
 			
-			List<DataProvider> tempDataProvidersList;
-			final String[] dataNameBox = new String[1]; //regular String was not enough to satisfy stream constraint of a final or effectively final variable; unpack by checking index 0!
+			BatchExperimentResults results = (new BatchExperiment(
+					dataProviders,
+					new RepeatableCrossValidationProvider(),
+					batchExperimentSetup.getDataProcessor(),
+					learningAlgorithms,
+					parametersContainer)
+			).run();
 			
-			dataNameBox[0] = dataNameMonumentsNoMV;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameMonumentsNoMV_K9_K10;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameMonumentsNoMV01;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameMonumentsNoMV01_K9_K10;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-		} //if
-		
-		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		//PARAMETERS FOR CHURN4000v8 DATA
-		//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-		
-		parametersContainer
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR VC-DRSA RULES
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8,
-						Arrays.asList(
-								/*new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0"),*/
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)
-								/*new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true)*/ ))
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList()
-				//-----
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv2,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "1")
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_05_mv15,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv2,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-						//getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_10_mv15,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv2,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_15_mv15,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv2,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_20_mv15,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv2,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ))
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-				.putParameters(VCDomLEMModeRuleClassifierLearner.getAlgorithmName(), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", false),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", true),
-//								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", true),
-								new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0",
-										new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) ));
-						//new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0") //BEST w.r.t. overall accuracy when using default class
-//						getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList())
-
-		parametersContainer
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR NAIVE BAYES
-			//%%%%%%%%%%%%%%%%%%%%%%%%%%
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_05_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_10_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_10_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_15_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_15_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_20_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_20_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv2,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )) //option -D means discretize numeric attributes
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(NaiveBayes.class), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(/*null, */new WEKAAlgorithmOptions("-D") )); //option -D means discretize numeric attributes
-
-		parametersContainer
-			//%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR OSDL
-			//%%%%%%%%%%%%%%%%%%%
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_05_mv2,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_05_mv15,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_10_mv2,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_10_mv15,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_15_mv2,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_15_mv15,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_20_mv2,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_20_mv15,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_25_mv2,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						))
-				
-				.putParameters(WEKAClassifierLearner.getAlgorithmName(OSDL.class), dataNameChurn4000v8_0_25_mv15,
-						Arrays.asList(
-								new WEKAAlgorithmOptions(null, () -> new Filter[] {new ReplaceMissingValues(), new Discretize()})
-								//, new WEKAAlgorithmOptions(null, () -> new Filter[] {new Discretize(), new ReplaceMissingValues()})
-						));
-
-		if (learningAlgorithms.stream().filter(a -> a.getName().equals(KEELClassifierLearner.getAlgorithmName(MoNGEL.class))).collect(Collectors.toList()).size() > 0) { // MoNGEL is on the list of algorithms
-			//%%%%%%%%%%%%%%%%%%%%%
-			//PARAMETERS FOR MONGEL
-			//%%%%%%%%%%%%%%%%%%%%%
+			//------------------------------------------------------------------------------------------------------------------------------
 			
-			List<DataProvider> tempDataProvidersList;
-			final String[] dataNameBox = new String[1]; //regular String was not enough to satisfy stream constraint of a final or effectively final variable; unpack by checking index 0!
+			Function<String, Integer> d2i = (dataName) -> {
+				return dataProviders.stream().map(provider -> provider.getDataName()).collect(Collectors.toList()).indexOf(dataName);
+			}; //maps data name to data index at the dataProviders list
+			Function<String, Integer> a2i = (algorithmName) -> {
+				return learningAlgorithms.stream().map(algorithm -> algorithm.getName()).collect(Collectors.toList()).indexOf(algorithmName);
+			}; //maps algorithm name to algorithm index at the learningAlgorithms list
 			
-			dataNameBox[0] = dataNameChurn4000v8;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_05_mv2;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_05_mv15;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_10_mv2;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_10_mv15;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_15_mv2;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_15_mv15;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_20_mv2;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_20_mv15;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_25_mv2;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-			dataNameBox[0] = dataNameChurn4000v8_0_25_mv15;
-			if ( (tempDataProvidersList = dataProviders.stream().filter(p -> p.getDataName().equals(dataNameBox[0])).limit(1).collect(Collectors.toList()) ).size() > 0) { //data will be provided
-				parametersContainer.putParameters(KEELClassifierLearner.getAlgorithmName(MoNGEL.class), dataNameBox[0],
-						Arrays.asList(new KEELAlgorithmDataParameters(new AttributeRanges(tempDataProvidersList.get(0).previewOriginalData().getInformationTable() ))) );
-			}
-		} //if
-		
-		//------------------------------------------------------------------------------------------------------------------------------
-		
-		parametersContainer.sortParametersLists(); //assure parameters for VCDomLEMModeRuleClassifierLearnerDataParameters algorithm are in ascending order w.r.t. consistency threshold
-		
-		BatchExperimentResults results = (new BatchExperiment(dataProviders, new RepeatableCrossValidationProvider(), new AcceptingDataProcessor(), learningAlgorithms, parametersContainer)).run();
-		
-		//------------------------------------------------------------------------------------------------------------------------------
-		
-		Function<String, Integer> d2i = (dataName) -> {
-			return dataProviders.stream().map(provider -> provider.getDataName()).collect(Collectors.toList()).indexOf(dataName);
-		}; //maps data name to data index at the dataProviders list
-		Function<String, Integer> a2i = (algorithmName) -> {
-			return learningAlgorithms.stream().map(algorithm -> algorithm.getName()).collect(Collectors.toList()).indexOf(algorithmName);
-		}; //maps algorithm name to algorithm index at the learningAlgorithms list
-		
-		//------------------------------------------------------------------------------------------------------------------------------
-		
-		//get names of data sets for which there is a provider with non-empty list of seeds
-		List<String> dataSetsNames = dataProviders.stream().filter(provider -> provider.getSeeds().length > 0).map(provider -> provider.getDataName()).collect(Collectors.toList());
-		//get names of algorithms
-		List<String> algorithmsNames = learningAlgorithms.stream().map(algorithm -> algorithm.getName()).collect(Collectors.toList());
-		
-		List<LearningAlgorithmDataParameters> parametersList;
-		int parametersNumber;
-
-		//print experiment summary:
-		outN("####################");
-		for (String dataSetName : dataSetsNames) {
-			if (doFullDataReclassification) {
-				outN(results.reportFullDataResults(dataSetName));
-			} //if (doFullDataReclassification)
+			//------------------------------------------------------------------------------------------------------------------------------
 			
-			if (doCrossValidations) {
-				for (String algorithmName : algorithmsNames) {
-					parametersList = processListOfParameters(parametersContainer.getParameters(algorithmName, dataSetName));
-					parametersNumber = -1;
-					List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
-					double bestAccuracy = -1.0;
-					
-					for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for the current algorithm
-						parametersNumber++;
-						DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
-								.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
-						ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
-						ClassificationStatistics classificationStatistics = aggregatedModelValidationResult.getClassificationStatistics();
-						MeansAndStandardDeviations meansAndStandardDeviations = classificationStatistics.getMeansAndStandardDeviations();
-						CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
-						
-						String summaryLinePrefix = "  %% ";
-						
-						//OUTPUT
-						outN("Avg. accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
-								"  %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
-								"  %% [Learning]: %18"+System.lineSeparator()+
-								"%19"+System.lineSeparator()+
-								"  %% [Model]: %20."+System.lineSeparator()+
-								"  %% [Avg. fold calculation times]: training: %21, validation: %22",
-								dataSetName, algorithmName, parameters,
-								round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()), //
-								round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()), //
-								round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
-								round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
-								round(aggregatedModelValidationResult.getClassificationStatistics().getAvgAccuracy()),
-								round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
-								round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
-								round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
-								round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getStdDev()),
-								round(meansAndStandardDeviations.getDefaultClassAverageAccuracy().getMean()), //
-								round(meansAndStandardDeviations.getDefaultClassAverageAccuracy().getStdDev()), //
-								round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getMean()), //
-								round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getStdDev()), //
-								round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
-								aggregatedModelValidationResult.getModelLearningStatistics().toString(),
-								Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
-								.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
-								.collect(Collectors.joining(System.lineSeparator())),
-								aggregatedModelValidationResult.getModelDescription().toShortString(),
-								round(totalFoldCalculationTimes.getAverageTrainingTime()),
-								round(totalFoldCalculationTimes.getAverageValidationTime())
-							);
+			//get names of data sets for which there is a provider with non-empty list of seeds
+			List<String> dataSetsNames = dataProviders.stream().filter(provider -> provider.getSeeds().length > 0).map(provider -> provider.getDataName()).collect(Collectors.toList());
+			//get names of algorithms
+			List<String> algorithmsNames = learningAlgorithms.stream().map(algorithm -> algorithm.getName()).collect(Collectors.toList());
+			
+			List<LearningAlgorithmDataParameters> parametersList;
+			int parametersNumber;
 	
-						MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
-								meansAndStandardDeviations.getMainModelAverageAccuracy() :
-								meansAndStandardDeviations.getOverallAverageAccuracy();
-						if (averageAccuracy.getMean() > bestAccuracy) { //better accuracy found
-							bestAccuracy = averageAccuracy.getMean();
-							bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
-							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
-						} else if (averageAccuracy.getMean() == bestAccuracy) {
-							bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
-						}
-					} //for
-					
-					//print the best parameters + accuracy for the current algorithm
-					if (parametersList.size() > 1) {
-						outN();
+			//print experiment summary:
+			outN("####################");
+			for (String dataSetName : dataSetsNames) {
+				if (doFullDataReclassification) {
+					outN(results.reportFullDataResults(dataSetName));
+				} //if (doFullDataReclassification)
+				
+				if (doCrossValidations) {
+					for (String algorithmName : algorithmsNames) {
+						parametersList = processListOfParameters(parametersContainer.getParameters(algorithmName, dataSetName));
+						parametersNumber = -1;
+						List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
+						double bestAccuracy = -1.0;
 						
-						for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
+						for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for the current algorithm
+							parametersNumber++;
+							DataAlgorithmParametersSelector selector = (new DataAlgorithmParametersSelector())
+									.dataSetNumber(d2i.apply(dataSetName)).learningAlgorithmNumber(a2i.apply(algorithmName)).parametersNumber(parametersNumber);
 							ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
 							ClassificationStatistics classificationStatistics = aggregatedModelValidationResult.getClassificationStatistics();
 							MeansAndStandardDeviations meansAndStandardDeviations = classificationStatistics.getMeansAndStandardDeviations();
 							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 							
-							String summaryLinePrefix = "    %% ";
-							String accuracyType = useMainModelAccuracy ? "main model" : "overall";
+							String summaryLinePrefix = "  %% ";
 							
 							//OUTPUT
-							outN("  Best avg. "+accuracyType+" accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
-								 "    %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
-								 "    %% [Learning]: %18"+System.lineSeparator()+
-								 "%19"+System.lineSeparator()+
-								 "    %% [Model]: %20."+System.lineSeparator()+
-								 "    %% [Avg. fold calculation times]: training: %21, validation: %22",
-									dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
+							outN("Avg. accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
+									"  %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
+									"  %% [Learning]: %18"+System.lineSeparator()+
+									"%19"+System.lineSeparator()+
+									"  %% [Model]: %20."+System.lineSeparator()+
+									"  %% [Avg. fold calculation times]: training: %21, validation: %22",
+									dataSetName, algorithmName, parameters,
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()), //
 									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()), //
 									round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
@@ -1315,178 +772,73 @@ public class BatchExperiment {
 									round(totalFoldCalculationTimes.getAverageTrainingTime()),
 									round(totalFoldCalculationTimes.getAverageValidationTime())
 								);
+		
+							MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
+									meansAndStandardDeviations.getMainModelAverageAccuracy() :
+									meansAndStandardDeviations.getOverallAverageAccuracy();
+							if (averageAccuracy.getMean() > bestAccuracy) { //better accuracy found
+								bestAccuracy = averageAccuracy.getMean();
+								bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
+								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+							} else if (averageAccuracy.getMean() == bestAccuracy) {
+								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+							}
 						} //for
-						outN("--");
-					} else {
-						outN("--");
-					}
-				} //for
-			} //if (doCrossValidations)
-			outN("####################");
-		}
-		
-	}
-	
-	static List<LearningAlgorithmDataParameters> getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList() {
-		return Arrays.asList(
-		//parameter space search 1
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0")
-		//parameter space search 2
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0")
-		//parameter space search 3
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0"),
-		//parameter space search 4
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0"),
-//		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0")
-
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-				
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0125"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.005, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0175"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0075, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.0225"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.01, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0125, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.015, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0175, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.02, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-	
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0225, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.025, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0275, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.03, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-	
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0325, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.035, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.0375, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("support >= 1"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.01 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.015 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.02 & confidence > 0.6666"), "0", new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true), //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		new VCDomLEMModeRuleClassifierLearnerDataParameters(0.04, CompositeRuleCharacteristicsFilter.of("s > 0 & coverage-factor >= 0.025 & confidence > 0.6666"), "0",	new WEKAClassifierLearner(() -> new NaiveBayes()), new WEKAAlgorithmOptions("-D"), true) //provide default class using trained NaiveBayes classifier with options "-D" (i.e., discretize numeric attributes)
-		);
+						
+						//print the best parameters + accuracy for the current algorithm
+						if (parametersList.size() > 1) {
+							outN();
+							
+							for (DataAlgorithmParametersSelector selector : bestAlgorithmParametersSelectors) {
+								ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
+								ClassificationStatistics classificationStatistics = aggregatedModelValidationResult.getClassificationStatistics();
+								MeansAndStandardDeviations meansAndStandardDeviations = classificationStatistics.getMeansAndStandardDeviations();
+								CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
+								
+								String summaryLinePrefix = "    %% ";
+								String accuracyType = useMainModelAccuracy ? "main model" : "overall";
+								
+								//OUTPUT
+								outN("  Best avg. "+accuracyType+" accuracy for ('%1', %2(%3)): "+System.lineSeparator()+
+									 "    %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
+									 "    %% [Learning]: %18"+System.lineSeparator()+
+									 "%19"+System.lineSeparator()+
+									 "    %% [Model]: %20."+System.lineSeparator()+
+									 "    %% [Avg. fold calculation times]: training: %21, validation: %22",
+										dataSetName, algorithmName, parametersList.get(selector.parametersNumber),
+										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()), //
+										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()), //
+										round(meansAndStandardDeviations.getOverallAverageAccuracy().getMean()),
+										round(meansAndStandardDeviations.getOverallAverageAccuracy().getStdDev()),
+										round(aggregatedModelValidationResult.getClassificationStatistics().getAvgAccuracy()),
+										round(meansAndStandardDeviations.getMainModelAverageAccuracy().getMean()),
+										round(meansAndStandardDeviations.getMainModelAverageAccuracy().getStdDev()),
+										round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getMean()),
+										round(meansAndStandardDeviations.getDefaultModelAverageAccuracy().getStdDev()),
+										round(meansAndStandardDeviations.getDefaultClassAverageAccuracy().getMean()), //
+										round(meansAndStandardDeviations.getDefaultClassAverageAccuracy().getStdDev()), //
+										round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getMean()), //
+										round(meansAndStandardDeviations.getDefaultClassifierAverageAccuracy().getStdDev()), //
+										round(aggregatedModelValidationResult.getClassificationStatistics().getMainModelDecisionsRatio()),
+										aggregatedModelValidationResult.getModelLearningStatistics().toString(),
+										Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
+										.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
+										.collect(Collectors.joining(System.lineSeparator())),
+										aggregatedModelValidationResult.getModelDescription().toShortString(),
+										round(totalFoldCalculationTimes.getAverageTrainingTime()),
+										round(totalFoldCalculationTimes.getAverageValidationTime())
+									);
+							} //for
+							outN("--");
+						} else {
+							outN("--");
+						}
+					} //for
+				} //if (doCrossValidations)
+				outN("####################");
+			} //for dataSetName
+			
+		} //for batchExperimentSetup
 		
 	}
 	
@@ -1507,568 +859,6 @@ public class BatchExperiment {
 			return "0.0";
 		} else {
 			return String.format(Locale.US, decimalFormat, number);
-		}
-	}
-	
-	private static DataProvider getDataProviderMonuments(String dataSetName, long[] seeds, int k) {
-		switch (monumentsDataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-				"data/csv/zabytki-data-noMV.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-Year1CG.json",
-				"data/csv/zabytki-data-noMV-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case MONGEL:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-Year1CG.json",
-				"data/csv/zabytki-data-noMV-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderMonuments_K9_K10(String dataSetName, long[] seeds, int k) { //without K9 and K10
-		switch (monumentsDataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-				"data/csv/zabytki-data-noMV.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-K9-K10-Year1CG.json",
-				"data/csv/zabytki-data-noMV-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case MONGEL:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-Year1CG.json",
-				"data/csv/zabytki-data-noMV-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderMonuments01(String dataSetName, long[] seeds, int k) { //binary
-		switch (monumentsDataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-				"data/csv/zabytki-data-noMV-0-1.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-0-1-Year1CG.json",
-				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case MONGEL:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-Year1CG.json",
-				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderMonuments01_K9_K10(String dataSetName, long[] seeds, int k) { //binary & without K9 and K10
-		switch (monumentsDataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-				"data/csv/zabytki-data-noMV-0-1.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-0-1-K9-K10-Year1CG.json",
-				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		case MONGEL:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-Year1CG.json",
-				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
-				false, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata.json",
-				"data/json-objects/bank-churn-4000-v8 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata.json",
-				"data/csv/OLM/bank-churn-4000-v8-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
-		}
-	}
-	
-	private static DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, long[] seeds, int k) {
-		switch (churn4000v8DataSetVersion) {
-		case NORMAL:
-			return new BasicDataProvider(
-				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
-				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataSetName, seeds, k);
-		case OLM_OSDL:
-			return new BasicDataProvider(
-				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
-				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_2X_GAIN:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-2xgain metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-2xgain data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		case MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER:
-			return new BasicDataProvider(
-				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
-				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
-				true, ';',
-				dataSetName, seeds, k);
-		default:
-			throw new InvalidValueException("Not supported data set version.");
 		}
 	}
 	

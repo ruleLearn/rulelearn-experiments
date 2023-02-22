@@ -41,7 +41,7 @@ public class MoNGELClassifier extends KEELClassifier {
 	
 	public static class ModelDescription extends ClassificationModel.ModelDescription {
 		long totalRulesCount = 0L;
-		String trainedClassifier;
+		String trainedClassifier = null;
 		int aggregationCount = 0; //tells how many ModelDescription objects have been used to build this object
 		AggregationMode aggregationMode = AggregationMode.NONE;
 		
@@ -59,22 +59,32 @@ public class MoNGELClassifier extends KEELClassifier {
 		 * @param modelDescriptions array with model descriptions to be aggregated
 		 * 
 		 * @throws InvalidValueException if aggregation mode is {@code null} or equal to {@link AggregationMode#NONE}
+		 * @throws InvalidValueException if given array of model descriptions is empty
 		 */
 		public ModelDescription(AggregationMode aggregationMode, ModelDescription... modelDescriptions) {
 			if (aggregationMode == null || aggregationMode == AggregationMode.NONE) {
 				throw new InvalidValueException("Incorrect aggregation mode.");
 			}
 			
-			for (ModelDescription modelDescription : modelDescriptions) {
-				totalRulesCount += modelDescription.totalRulesCount;
-				aggregationCount += modelDescription.aggregationCount;
-			}
-			
-			trainedClassifier = "classifier not available when aggregating model descriptions";
-			this.aggregationMode = aggregationMode;
-
-			if (this.aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
-				//TODO: calculate means and standard deviations
+			if (modelDescriptions.length == 0) {
+				throw new InvalidValueException("Cannot aggregate over an empty array of model descriptions.");
+			} else if (modelDescriptions.length == 1) {
+				totalRulesCount = modelDescriptions[0].totalRulesCount;
+				trainedClassifier = modelDescriptions[0].trainedClassifier;
+				aggregationCount = 1;
+				aggregationMode = AggregationMode.NONE;
+			} else {
+				for (ModelDescription modelDescription : modelDescriptions) {
+					totalRulesCount += modelDescription.totalRulesCount;
+					aggregationCount += modelDescription.aggregationCount;
+				}
+				
+				trainedClassifier = "classifier not available when aggregating model descriptions";
+				this.aggregationMode = aggregationMode;
+	
+				if (this.aggregationMode == AggregationMode.MEAN_AND_DEVIATION) {
+					//TODO: calculate means and standard deviations
+				}
 			}
 		}
 		
@@ -85,7 +95,7 @@ public class MoNGELClassifier extends KEELClassifier {
 			if (aggregationCount == 1) {
 				sb.append("number of rules: ").append(totalRulesCount);
 				
-				if (BatchExperiment.printTrainedClassifiers) {
+				if (trainedClassifier != null && BatchExperiment.printTrainedClassifiers) {
 					sb.append(System.lineSeparator());
 					sb.append(trainedClassifier);
 				}
@@ -114,6 +124,11 @@ public class MoNGELClassifier extends KEELClassifier {
 		@Override
 		public long getModelDescriptionCalculationTime() {
 			return 0L;
+		}
+
+		@Override
+		public void compress() {
+			this.trainedClassifier = null;
 		}
 		
 	}
@@ -205,7 +220,7 @@ public class MoNGELClassifier extends KEELClassifier {
 	@Override
 	public ModelDescription getModelDescription() {
 		if (modelDescription == null) {
-			modelDescription = new ModelDescription(trainedClassifier.numRule(), trainedClassifier.getRulesAsText());
+			modelDescription = new ModelDescription(trainedClassifier.numRule(), BatchExperiment.printTrainedClassifiers ? trainedClassifier.getRulesAsText() : null);
 		}
 		return modelDescription;
 	}
