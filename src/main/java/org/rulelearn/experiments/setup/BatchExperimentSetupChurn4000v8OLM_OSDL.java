@@ -1,5 +1,6 @@
 package org.rulelearn.experiments.setup;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -204,6 +205,14 @@ public class BatchExperimentSetupChurn4000v8OLM_OSDL extends BatchExperimentSetu
 				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
 				true, ';',
 				dataSetName, seeds, k);
+	}
+	
+	@Override
+	public List<LearningAlgorithm> getLearningAlgorithmsForOLM_OSDLData() { //only OSDL!
+		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM())); //uses special version of data!
+		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //uses special version of data! //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
+		return learningAlgorithms;
 	}
 	
 }

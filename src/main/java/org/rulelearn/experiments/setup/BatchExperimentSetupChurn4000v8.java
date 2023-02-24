@@ -6,6 +6,10 @@ import java.util.List;
 import org.rulelearn.experiments.AcceptingDataProcessor;
 import org.rulelearn.experiments.DataProcessor;
 import org.rulelearn.experiments.DataProvider;
+import org.rulelearn.experiments.LearningAlgorithm;
+import org.rulelearn.experiments.WEKAClassifierLearner;
+
+import weka.classifiers.misc.OSDL;
 
 /**
  * Batch experiment setup for churn4000v8 data set.
@@ -38,19 +42,19 @@ public abstract class BatchExperimentSetupChurn4000v8 extends BatchExperimentSet
 			
 			dataProviders.add(getDataProviderChurn4000v8(dataNameChurn4000v8, seeds, k));
 			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-			dataProviders.add(getDataProviderChurn4000v8_0_05_mv2(dataNameChurn4000v8_0_05_mv2, seeds, k));
+//			dataProviders.add(getDataProviderChurn4000v8_0_05_mv2(dataNameChurn4000v8_0_05_mv2, seeds, k));
 			dataProviders.add(getDataProviderChurn4000v8_0_05_mv15(dataNameChurn4000v8_0_05_mv15, seeds, k));
-			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-			dataProviders.add(getDataProviderChurn4000v8_0_10_mv2(dataNameChurn4000v8_0_10_mv2, seeds, k));
+//			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//			dataProviders.add(getDataProviderChurn4000v8_0_10_mv2(dataNameChurn4000v8_0_10_mv2, seeds, k));
 			dataProviders.add(getDataProviderChurn4000v8_0_10_mv15(dataNameChurn4000v8_0_10_mv15, seeds, k));
-			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-			dataProviders.add(getDataProviderChurn4000v8_0_15_mv2(dataNameChurn4000v8_0_15_mv2, seeds, k));
+//			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//			dataProviders.add(getDataProviderChurn4000v8_0_15_mv2(dataNameChurn4000v8_0_15_mv2, seeds, k));
 			dataProviders.add(getDataProviderChurn4000v8_0_15_mv15(dataNameChurn4000v8_0_15_mv15, seeds, k));
-			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-			dataProviders.add(getDataProviderChurn4000v8_0_20_mv2(dataNameChurn4000v8_0_20_mv2, seeds, k));
+//			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//			dataProviders.add(getDataProviderChurn4000v8_0_20_mv2(dataNameChurn4000v8_0_20_mv2, seeds, k));
 			dataProviders.add(getDataProviderChurn4000v8_0_20_mv15(dataNameChurn4000v8_0_20_mv15, seeds, k));
-			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
-			dataProviders.add(getDataProviderChurn4000v8_0_25_mv2(dataNameChurn4000v8_0_25_mv2, seeds, k));
+//			/*-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
+//			dataProviders.add(getDataProviderChurn4000v8_0_25_mv2(dataNameChurn4000v8_0_25_mv2, seeds, k));
 			dataProviders.add(getDataProviderChurn4000v8_0_25_mv15(dataNameChurn4000v8_0_25_mv15, seeds, k));
 		}
 		
@@ -73,5 +77,5 @@ public abstract class BatchExperimentSetupChurn4000v8 extends BatchExperimentSet
 	abstract protected DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, long[] seeds, int k);
 	abstract protected DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, long[] seeds, int k);
 	abstract protected DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, long[] seeds, int k);
-
+	
 }

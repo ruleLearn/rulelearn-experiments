@@ -28,6 +28,7 @@ import org.rulelearn.experiments.BatchExperimentResults.FullDataResults;
 import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
 import org.rulelearn.experiments.ModelValidationResult.MeansAndStandardDeviations;
 import org.rulelearn.experiments.setup.BatchExperimentSetup;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8OLM_OSDL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8Original;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8MoNGEL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8OLM_OSDL;
@@ -721,7 +722,8 @@ public class BatchExperiment {
 				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k),
 				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k),
 				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k),
-				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k)
+				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessor()),
+				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessor())
 		};
 		//<END EXPERIMENT CONFIG>
 		
@@ -759,12 +761,34 @@ public class BatchExperiment {
 	
 			//print experiment summary:
 			outN("####################");
+			
+			//$$$$$
+			ResultsTable<String> avgAccuracies = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> stdDevs = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> avgTPRsAndGmean = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			
+			if (doCrossValidations) { //there are going to be average results => initialize tables
+				avgAccuracies.setTopLeftCell("% missing");
+				avgAccuracies.setColumnHeaders(algorithmsNames);
+				stdDevs.setTopLeftCell("% missing");
+				stdDevs.setColumnHeaders(algorithmsNames);
+				avgTPRsAndGmean.setTopLeftCell("% missing");
+				avgTPRsAndGmean.setColumnHeaders(algorithmsNames);
+			}
+			//$$$$$
+			
 			for (String dataSetName : dataSetsNames) {
 				if (doFullDataReclassification) {
 					outN(results.reportFullDataResults(dataSetName));
 				} //if (doFullDataReclassification)
 				
 				if (doCrossValidations) {
+					//$$$$$
+					avgAccuracies.newRow(dataSetName);
+					stdDevs.newRow(dataSetName);
+					avgTPRsAndGmean.newRow(dataSetName);
+					//$$$$$
+					
 					for (String algorithmName : algorithmsNames) {
 						parametersList = processListOfParameters(parametersContainer.getParameters(algorithmName, dataSetName));
 						parametersNumber = -1;
@@ -879,10 +903,34 @@ public class BatchExperiment {
 						} else {
 							outN("--");
 						}
-					} //for
+						
+						//$$$$$
+						{ //update results tables
+							DataAlgorithmParametersSelector selector = bestAlgorithmParametersSelectors.get(0); //get first selector concerning best parameters
+							ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
+							
+							avgAccuracies.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()));
+							stdDevs.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()));
+							avgTPRsAndGmean.addRowValue(String.format(Locale.US, "%s. Gmean: %s",
+									getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
+									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()) ));
+						}
+						//$$$$$
+					} //for algorithmName
 				} //if (doCrossValidations)
 				outN("####################");
 			} //for dataSetName
+			
+			if (doCrossValidations) {
+				//$$$$$
+				outN(avgAccuracies.toString("\t"));
+				outN("--");
+				outN(stdDevs.toString("\t"));
+				outN("--");
+				outN(avgTPRsAndGmean.toString("\t"));
+				outN("--");
+				//$$$$$
+			}
 			
 		} //for batchExperimentSetup
 		

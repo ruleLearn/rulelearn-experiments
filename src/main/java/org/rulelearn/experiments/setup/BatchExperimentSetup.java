@@ -45,7 +45,7 @@ public abstract class BatchExperimentSetup {
 	abstract public LearningAlgorithmDataParametersContainer getLearningAlgorithmDataParametersContainer();
 	abstract public DataProcessor getDataProcessor();
 	
-	public static List<LearningAlgorithm> getLearningAlgorithmsForOriginalData() {
+	public List<LearningAlgorithm> getLearningAlgorithmsForOriginalData() {
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
@@ -57,14 +57,14 @@ public abstract class BatchExperimentSetup {
 		return learningAlgorithms;
 	}
 	
-	public static List<LearningAlgorithm> getLearningAlgorithmsForOLM_OSDLData() {
+	public List<LearningAlgorithm> getLearningAlgorithmsForOLM_OSDLData() {
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM())); //uses special version of data!
 		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //uses special version of data! //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
 		return learningAlgorithms;
 	}
 	
-	public static List<LearningAlgorithm> getLearningAlgorithmsForMoNGELData() {
+	public List<LearningAlgorithm> getLearningAlgorithmsForMoNGELData() {
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
 		learningAlgorithms.add(new MoNGELClassifierLearner()); //uses special version of data!
 		return learningAlgorithms;
