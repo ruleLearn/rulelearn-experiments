@@ -93,6 +93,7 @@ public interface ClassificationModel {
 	public abstract class ModelDescription {
 		public abstract String toString();
 		public abstract String toShortString(); //one line model description
+		public abstract String toCompressedShortString(); //even shorter one line model description (to be put into a spreadsheet table)
 		public abstract ModelDescriptionBuilder getModelDescriptionBuilder();
 		public abstract long getModelDescriptionCalculationTime(); //gets time necessary to build model description but not related to further classification
 		public abstract void compress(); //reduces occupied memory to bare minimum (e.g., by dropping textual model representation (if present))
@@ -269,7 +270,7 @@ public interface ClassificationModel {
 				sb.append(", total data transformation time: ").append(totalDataTransformationTime).append(" [ms]");
 			}
 			
-			//print data transformation time
+			//print time saved by using cache
 			if (aggregationCount == 1) {
 				sb.append(", time saved by using cache: ").append(totalModelCalculationTimeSavedByUsingCache).append(" [ms]");
 			} else {

@@ -129,6 +129,18 @@ public class ModeRuleClassifier implements ClassificationModel {
 			
 			return sb.toString();
 		}
+		
+		@Override
+		public String toCompressedShortString() {
+			StringBuilder sb = new StringBuilder(100);
+			
+			sb.append(String.format(Locale.US, "r: %.2f", aggregationCount > 0 ? (double)totalRulesCount / aggregationCount : 0.0));
+			sb.append(String.format(Locale.US, ", l: %.2f", (double)sumRuleLength / totalRulesCount));
+			sb.append(String.format(Locale.US, ", s: %.2f", (double)sumRuleSupport / totalRulesCount));
+			sb.append(String.format(Locale.US, ", avg.conf: %.2f", (double)sumRuleConfidence / totalRulesCount));
+			
+			return sb.toString();
+		}
 
 		@Override
 		public ModelDescriptionBuilder getModelDescriptionBuilder() {

@@ -20,6 +20,7 @@ import org.rulelearn.data.Decision;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.data.SimpleDecision;
+import org.rulelearn.experiments.BalancingDataProcessor.BalancingStrategy;
 import org.rulelearn.experiments.BatchExperimentResults.CVSelector;
 import org.rulelearn.experiments.BatchExperimentResults.CalculationTimes;
 import org.rulelearn.experiments.BatchExperimentResults.DataAlgorithmParametersSelector;
@@ -37,7 +38,6 @@ import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsMoNGEL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOLM_OSDL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOriginal;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
-import org.rulelearn.validation.MisclassificationMatrix;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 /**
@@ -165,7 +165,8 @@ public class BatchExperiment {
 		int counter = 0; //tells how many decisions have been processed
 		
 		for (Decision decision : decisions) {
-			truePositivesSB.append(((SimpleDecision)decision).getEvaluation()).append(":").append(round(misclassificationMatrix.getTruePositiveRate(decision)));
+			truePositivesSB.append(((SimpleDecision)decision).getEvaluation()).append(": ").append(round(misclassificationMatrix.getTruePositiveRate(decision)))
+				.append(" (stdDev: ").append(round(misclassificationMatrix.getDeviationOfTruePositiveRate(decision))).append(")");
 			counter++;
 			
 			if (counter < decisions.length) {
@@ -204,7 +205,8 @@ public class BatchExperiment {
 				}
 			}
 		}
-		outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> STARTING BATCH EXPERIMENT <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+		outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> STARTING BATCH EXPERIMENT RUN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+		outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Training data preprocessor: " + trainDataPreprocessor.toString());
 		outN("Maximum number of algorithm vs data parameters, over all (data, algorithm) pairs: %1.", maxParametersCount); //!
 		
 		//calculate maximum number of cross validations among all data sets
@@ -277,7 +279,8 @@ public class BatchExperiment {
 					outN("--");
 					
 					//calculate and process full data models for all (algorithm, parameters) pairs
-					Data processedFullData = trainDataPreprocessor.process(fullData); //processedFullData should have the same informationTableTransformationTime!
+					Data processedFullData = trainDataPreprocessor.process(fullData); //processedFullData will have the same informationTableTransformationTime only if AcceptingDataProcessor is used
+					
 					int algorithmNumber = -1;
 					//TODO: optimize the following loop using a parallel stream
 					for (LearningAlgorithm algorithm : learningAlgorithms) {
@@ -297,9 +300,9 @@ public class BatchExperiment {
 							/**/long fullDataTrainingTime = System.currentTimeMillis() - trainingStartTime;
 							fullDataTrainingTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
 							fullDataTrainingTime += model.getModelLearningStatistics().getTotalModelCalculationTimeSavedByUsingCache();
-							if (algorithm.getName().equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())) {
-								fullDataTrainingTime += processedFullData.getInformationTableTransformationTime(); //add time of data transformation (done out of time measurement zone marked by /**/), as VC-DRSA rule model needs this transformation!
-								model.getModelLearningStatistics().totalDataTransformationTime = processedFullData.getInformationTableTransformationTime(); //set proper information table transformation time
+							if (algorithm.getName().equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName()) && trainDataPreprocessor instanceof AcceptingDataProcessor) { //processedFullData is the same as fullData
+								fullDataTrainingTime += fullData.getInformationTableTransformationTime(); //add time of data transformation (done out of time measurement zone marked by /**/, when fullData were provided), as VC-DRSA rule model needs this transformation!
+								model.getModelLearningStatistics().totalDataTransformationTime = fullData.getInformationTableTransformationTime(); //set proper information table transformation time
 							}
 							
 							/**/long validationStartTime = System.currentTimeMillis();
@@ -418,7 +421,7 @@ public class BatchExperiment {
 							//t3 = b("    Starting calculations for fold "+fold.getIndex()+".");
 							//t3 = b(null);
 							b(null);
-							Data processedTrainData = trainDataPreprocessor.process(fold.getTrainData()); //e.g.: over-sampling, under-sampling, bagging
+							Data processedTrainData = trainDataPreprocessor.process(fold.getTrainData()); //e.g.: over-sampling, under-sampling, bootstrapping
 							
 							//long t4;
 							
@@ -619,7 +622,7 @@ public class BatchExperiment {
 	
 							MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
 									meansAndStandardDeviations.getMainModelAverageAccuracy() :
-									meansAndStandardDeviations.getOverallAverageAccuracy();
+									meansAndStandardDeviations.getOverallAverageAccuracy(); //TODO: generalize comparison to other quality measures!
 							if (averageAccuracy.getMean() > bestAccuracy) { //better accuracy found
 								bestAccuracy = averageAccuracy.getMean();
 								bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
@@ -640,7 +643,7 @@ public class BatchExperiment {
 								CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 								
 								String summaryLinePrefix = "    %% ";
-								String accuracyType = useMainModelAccuracy ? "main model" : "overall";
+								String accuracyType = useMainModelAccuracy ? "main model" : "overall"; //TODO: generalize comparison to other quality measures!
 								
 								//OUTPUT
 								outN("  Best avg. "+accuracyType+" result over cross-validations for algorithm '%1(%2)': "+System.lineSeparator()+
@@ -713,15 +716,29 @@ public class BatchExperiment {
 //		long[] churn4000v8Seeds = SKIP_DATA;
 		
 		long[] churn10000v8Seeds = churn4000v8Seeds;
-
+		
 		//TODO: configure which setup should be used in this batch experiment
 		BatchExperimentSetup[] batchExperimentSetups = {
-				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k),
-				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k),
-				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k),
-				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k),
-				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k),
-				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k),
+				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new AcceptingDataProcessor()),
+				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k, new AcceptingDataProcessor()),
+				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k, new AcceptingDataProcessor()),
+				
+				//setups just for testing purposes:
+//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessor(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
+//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessor(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
+//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
+				
+				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k, new AcceptingDataProcessor()),
+				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k, new AcceptingDataProcessor()),
+				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k, new AcceptingDataProcessor()),
+				
+				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
+				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),				
+				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
+				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
+				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
+				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
+				
 				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessor()),
 				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessor())
 		};
@@ -763,10 +780,19 @@ public class BatchExperiment {
 			outN("####################");
 			
 			//$$$$$
+			ResultsTable<String> accuracies = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> avgAccuracies = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> stdDevs = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> avgTPRsAndGmean = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> avgTrainingTimes = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> avgValidationTimes = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> avgTestDataModelCharacteristics = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> avgTestDataQualities = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			
+			if (doFullDataReclassification) {
+				accuracies.setTopLeftCell("% missing");
+				accuracies.setColumnHeaders(algorithmsNames);
+			}
 			if (doCrossValidations) { //there are going to be average results => initialize tables
 				avgAccuracies.setTopLeftCell("% missing");
 				avgAccuracies.setColumnHeaders(algorithmsNames);
@@ -774,12 +800,23 @@ public class BatchExperiment {
 				stdDevs.setColumnHeaders(algorithmsNames);
 				avgTPRsAndGmean.setTopLeftCell("% missing");
 				avgTPRsAndGmean.setColumnHeaders(algorithmsNames);
+				avgTrainingTimes.setTopLeftCell("% missing");
+				avgTrainingTimes.setColumnHeaders(algorithmsNames);
+				avgValidationTimes.setTopLeftCell("% missing");
+				avgValidationTimes.setColumnHeaders(algorithmsNames);
+				avgTestDataModelCharacteristics.setTopLeftCell("% missing");
+				avgTestDataModelCharacteristics.setColumnHeaders(algorithmsNames);
+				avgTestDataQualities.setTopLeftCell("% missing");
+				avgTestDataQualities.setColumnHeaders(algorithmsNames);
 			}
 			//$$$$$
 			
 			for (String dataSetName : dataSetsNames) {
 				if (doFullDataReclassification) {
 					outN(results.reportFullDataResults(dataSetName));
+					//$$$$$
+					accuracies.newRow(dataSetName);
+					//$$$$$
 				} //if (doFullDataReclassification)
 				
 				if (doCrossValidations) {
@@ -787,6 +824,10 @@ public class BatchExperiment {
 					avgAccuracies.newRow(dataSetName);
 					stdDevs.newRow(dataSetName);
 					avgTPRsAndGmean.newRow(dataSetName);
+					avgTrainingTimes.newRow(dataSetName);
+					avgValidationTimes.newRow(dataSetName);
+					avgTestDataModelCharacteristics.newRow(dataSetName);
+					avgTestDataQualities.newRow(dataSetName);
 					//$$$$$
 					
 					for (String algorithmName : algorithmsNames) {
@@ -794,6 +835,7 @@ public class BatchExperiment {
 						parametersNumber = -1;
 						List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
 						double bestAccuracy = -1.0;
+						LearningAlgorithmDataParameters firstBestParameters = null;
 						
 						for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for the current algorithm
 							parametersNumber++;
@@ -842,11 +884,12 @@ public class BatchExperiment {
 		
 							MeanAndStandardDeviation averageAccuracy = useMainModelAccuracy ?
 									meansAndStandardDeviations.getMainModelAverageAccuracy() :
-									meansAndStandardDeviations.getOverallAverageAccuracy();
+									meansAndStandardDeviations.getOverallAverageAccuracy(); //TODO: generalize comparison to other quality measures!
 							if (averageAccuracy.getMean() > bestAccuracy) { //better accuracy found
 								bestAccuracy = averageAccuracy.getMean();
 								bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
 								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
+								firstBestParameters = parameters;
 							} else if (averageAccuracy.getMean() == bestAccuracy) {
 								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
 							}
@@ -863,7 +906,7 @@ public class BatchExperiment {
 								CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 								
 								String summaryLinePrefix = "    %% ";
-								String accuracyType = useMainModelAccuracy ? "main model" : "overall";
+								String accuracyType = useMainModelAccuracy ? "main model" : "overall"; //TODO: generalize comparison to other quality measures!
 								
 								//OUTPUT
 								outN("  Best avg. "+accuracyType+" result for ('%1', %2(%3)): "+System.lineSeparator()+
@@ -893,8 +936,8 @@ public class BatchExperiment {
 										aggregatedModelValidationResult.getModelLearningStatistics().toString(),
 										Arrays.asList(classificationStatistics.toString().split(System.lineSeparator())).stream()
 										.map(line -> new StringBuilder(128).append(summaryLinePrefix).append(line).toString())
-										.collect(Collectors.joining(System.lineSeparator())),
-										aggregatedModelValidationResult.getModelDescription().toShortString(),
+										.collect(Collectors.joining(System.lineSeparator())), //[Testing]
+										aggregatedModelValidationResult.getModelDescription().toShortString(), //[Model]
 										round(totalFoldCalculationTimes.getAverageTrainingTime()),
 										round(totalFoldCalculationTimes.getAverageValidationTime())
 									);
@@ -908,12 +951,30 @@ public class BatchExperiment {
 						{ //update results tables
 							DataAlgorithmParametersSelector selector = bestAlgorithmParametersSelectors.get(0); //get first selector concerning best parameters
 							ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
+							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 							
-							avgAccuracies.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()));
-							stdDevs.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()));
-							avgTPRsAndGmean.addRowValue(String.format(Locale.US, "%s. Gmean: %s",
-									getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
-									round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()) ));
+							if (doFullDataReclassification) {
+								accuracies.addRowValue(round(results.dataName2FullDataResults.get(dataSetName)
+									.algorithmNameWithParameters2Results.get(algorithmName+"("+firstBestParameters+")") //get first best parameters
+									.getModelValidationResult().getOrdinalMisclassificationMatrix().getAccuracy()));
+							}
+							if (doCrossValidations) {
+								avgAccuracies.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()));
+								stdDevs.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()));
+								avgTPRsAndGmean.addRowValue(String.format(Locale.US, "%s. Gmean: %s",
+										getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
+										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()) ));
+								avgTrainingTimes.addRowValue(round(totalFoldCalculationTimes.getAverageTrainingTime()));
+								avgValidationTimes.addRowValue(round(totalFoldCalculationTimes.getAverageValidationTime()));
+								//calculate row value:
+								String rowValue = aggregatedModelValidationResult.getModelDescription().toCompressedShortString();
+								if (algorithmName.equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())) {
+									rowValue += ", avg.cov: " + round(aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules());
+								}
+								avgTestDataModelCharacteristics.addRowValue(rowValue);
+								//
+								avgTestDataQualities.addRowValue(aggregatedModelValidationResult.getClassificationStatistics().getCompressedQualitiesOfApproximation());
+							}
 						}
 						//$$$$$
 					} //for algorithmName
@@ -921,16 +982,39 @@ public class BatchExperiment {
 				outN("####################");
 			} //for dataSetName
 			
+			outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FINISHING BATCH EXPERIMENT RUN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+			outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Training data preprocessor: " + batchExperimentSetup.getDataProcessor());
+
+			//$$$$$
+			if (doFullDataReclassification) {
+				outN("Full data accuracy");
+				outN(accuracies.toString("\t"));
+				outN("--");
+			}
 			if (doCrossValidations) {
-				//$$$$$
+				outN("Avg accuracy");
 				outN(avgAccuracies.toString("\t"));
 				outN("--");
+				outN("Standard deviations");
 				outN(stdDevs.toString("\t"));
 				outN("--");
+				outN("Avg TPR & Gmean");
 				outN(avgTPRsAndGmean.toString("\t"));
 				outN("--");
-				//$$$$$
+				outN("Avg. fold training time [ms]");
+				outN(avgTrainingTimes.toString("\t"));
+				outN("--");
+				outN("Avg. fold validation time [ms]");
+				outN(avgValidationTimes.toString("\t"));
+				outN("--");
+				outN("Avg. test data model characteristics (across cross-validation folds)");
+				outN(avgTestDataModelCharacteristics.toString("\t"));
+				outN("--");
+				outN("Avg. quality for test data");
+				outN(avgTestDataQualities.toString("\t"));
+				outN("--");
 			}
+			//$$$$$
 			
 		} //for batchExperimentSetup
 		

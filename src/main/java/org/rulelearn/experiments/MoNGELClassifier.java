@@ -130,6 +130,11 @@ public class MoNGELClassifier extends KEELClassifier {
 		public void compress() {
 			this.trainedClassifier = null;
 		}
+
+		@Override
+		public String toCompressedShortString() {
+			return String.format(Locale.US, "r: %.2f", aggregationCount > 0 ? (double)totalRulesCount / aggregationCount : 0.0);
+		}
 		
 	}
 	

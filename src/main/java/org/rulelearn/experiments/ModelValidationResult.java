@@ -669,6 +669,29 @@ public class ModelValidationResult {
 			return sb.toString();
 		}
 		
+		public String getCompressedQualitiesOfApproximation() {
+			double preQuality = getAverageNumberOfPreConsistentTestObjects();
+			double postQualityUsingDefaultModel = getAverageNumberOfPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
+			double postQualityForPreConsistentObjectsUsingDefaultModel = getAverageNumberOfPreAndPostConsistentTestObjectsIfDecisionsAssignedByMainAndDefaultModel();
+
+			StringBuilder sb = new StringBuilder(128);
+			sb.append("");
+			
+			if (preQuality >= 0.0) {//pre-consistent
+				sb.append(String.format(Locale.US, "pre: %s", BatchExperiment.round(preQuality)));
+			}
+			
+			if (postQualityUsingDefaultModel >= 0.0) {
+				sb.append(String.format(Locale.US, ", post2: %s", BatchExperiment.round(postQualityUsingDefaultModel)));
+			}
+			
+			if (postQualityForPreConsistentObjectsUsingDefaultModel >= 0.0) {
+				sb.append(String.format(Locale.US, ", prepost2: %s", BatchExperiment.round(postQualityForPreConsistentObjectsUsingDefaultModel)));
+			}
+			
+			return sb.toString();
+		}
+		
 		public double getAvgQualityOfClassification() {
 			return avgQualityOfClassification;
 		}

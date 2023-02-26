@@ -3,7 +3,6 @@ package org.rulelearn.experiments.setup;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.rulelearn.experiments.AcceptingDataProcessor;
 import org.rulelearn.experiments.DataProcessor;
 import org.rulelearn.experiments.DataProvider;
 
@@ -20,8 +19,8 @@ public abstract class BatchExperimentSetupMonuments extends BatchExperimentSetup
 	final protected String dataNameMonumentsNoMV01 = "zabytki01";
 	final protected String dataNameMonumentsNoMV01_K9_K10 = "zabytki01-K9-K10";
 	
-	public BatchExperimentSetupMonuments(long[] seeds, int k) {
-		super(seeds, k);
+	public BatchExperimentSetupMonuments(long[] seeds, int k, DataProcessor dataProcessor) {
+		super(seeds, k, dataProcessor);
 	}
 	
 	@Override
@@ -37,11 +36,6 @@ public abstract class BatchExperimentSetupMonuments extends BatchExperimentSetup
 		}
 		
 		return dataProviders;
-	}
-	
-	@Override
-	public DataProcessor getDataProcessor() {
-		return new AcceptingDataProcessor();
 	}
 	
 	abstract protected DataProvider getDataProviderMonuments(String dataSetName, long[] seeds, int k);

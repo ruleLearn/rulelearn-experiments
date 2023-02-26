@@ -78,7 +78,7 @@ public class Data {
 		if (hasSeed) {
 			return seed;
 		} else {
-			throw new UnknownValueException("Full data do not store a cross-validation seed.");
+			throw new UnknownValueException("Data do not store a cross-validation seed.");
 		}
 	}
 	

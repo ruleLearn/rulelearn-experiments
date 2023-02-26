@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.rulelearn.experiments.AttributeRanges;
 import org.rulelearn.experiments.BasicDataProvider;
+import org.rulelearn.experiments.DataProcessor;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.KEELAlgorithmDataParameters;
 import org.rulelearn.experiments.KEELClassifierLearner;
@@ -21,8 +22,8 @@ import keel.Algorithms.Monotonic_Classification.MoNGEL.MoNGEL;
  */
 public class BatchExperimentSetupMonumentsMoNGEL extends BatchExperimentSetupMonuments {
 	
-	public BatchExperimentSetupMonumentsMoNGEL(long[] seeds, int k) {
-		super(seeds, k);
+	public BatchExperimentSetupMonumentsMoNGEL(long[] seeds, int k, DataProcessor dataProcessor) {
+		super(seeds, k, dataProcessor);
 	}
 	
 	@Override

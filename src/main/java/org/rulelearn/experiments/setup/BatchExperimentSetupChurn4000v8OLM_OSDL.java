@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.rulelearn.experiments.BasicDataProvider;
+import org.rulelearn.experiments.DataProcessor;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.LearningAlgorithm;
 import org.rulelearn.experiments.LearningAlgorithmDataParametersContainer;
@@ -23,8 +24,8 @@ import weka.filters.unsupervised.attribute.ReplaceMissingValues;
  */
 public class BatchExperimentSetupChurn4000v8OLM_OSDL extends BatchExperimentSetupChurn4000v8 {
 
-	public BatchExperimentSetupChurn4000v8OLM_OSDL(long[] seeds, int k) {
-		super(seeds, k);
+	public BatchExperimentSetupChurn4000v8OLM_OSDL(long[] seeds, int k, DataProcessor dataProcessor) {
+		super(seeds, k, dataProcessor);
 	}
 	
 	@Override

@@ -214,7 +214,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 			List<Decision> modes = informationTableWithDecisionDistributions.getDecisionDistribution().getMode();
 			if (modes.size() > 1) { //if modes.size() > 1, then choose mode randomly, using a seed
 				Random random = new Random();
-				random.setSeed(trainData.getSeed());
+				random.setSeed(trainData.getSeed()); //TODO: handle the case of full data, with no seed!
 				int modeIndex = random.nextInt(modes.size());
 				defaultClassificationResult = new SimpleClassificationResult((SimpleDecision)modes.get(modeIndex));
 			} else {
@@ -299,15 +299,6 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 				new EvaluationAndCoverageStoppingConditionChecker(EpsilonConsistencyMeasure.getInstance(), EpsilonConsistencyMeasure.getInstance(),
 						EpsilonConsistencyMeasure.getInstance(), consistencyThreshold);
 		
-//			RuleInducerComponents ruleInducerComponents = new CertainRuleInducerComponents.Builder().
-//					ruleInductionStoppingConditionChecker(stoppingConditionChecker).
-//					ruleConditionsPruner(new DummyRuleConditionsPruner()).
-//					ruleConditionsGeneralizer(new DummyRuleConditionsGeneralizer()). //ADDED-RULE-CONDITIONS-GENERALIZER
-//					ruleConditionsSetPruner(new DummyRuleConditionsSetPruner()).
-//					ruleMinimalityChecker(new DummyRuleMinimalityChecker()).
-//					allowedNegativeObjectsType(AllowedNegativeObjectsType.ANY_REGION).
-//					build(); //TODO: remove!
-		
 		RuleInducerComponents ruleInducerComponents = new CertainRuleInducerComponents.Builder().
 				ruleInductionStoppingConditionChecker(stoppingConditionChecker).
 				ruleConditionsPruner(new AttributeOrderRuleConditionsPruner(stoppingConditionChecker)).
@@ -325,7 +316,7 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		}
 		
 		Unions unions = new UnionsWithSingleLimitingDecision(informationTableWithDecisionDistributions, 
-								   new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
+				new VCDominanceBasedRoughSetCalculator(EpsilonConsistencyMeasure.getInstance(), consistencyThreshold));
 		ApproximatedSetProvider unionAtLeastProvider = new UnionProvider(Union.UnionType.AT_LEAST, unions);
 		ApproximatedSetProvider unionAtMostProvider = new UnionProvider(Union.UnionType.AT_MOST, unions);
 		ApproximatedSetRuleDecisionsProvider unionRuleDecisionsProvider = new UnionWithSingleLimitingDecisionRuleDecisionsProvider();
@@ -338,10 +329,6 @@ public class VCDomLEMModeRuleClassifierLearner extends AbstractLearningAlgorithm
 		List<RuleSetWithComputableCharacteristics> ruleSets = vcDomLEMs.parallelStream().map(vcDomLem -> vcDomLem.generateRules()).collect(Collectors.toList());
 		//ruleSets.parallelStream().forEach(ruleSet -> ruleSet.calculateAllCharacteristics()); //THE CHANGE HERE!
 		
-//			System.out.println(ruleSets.get(0).serialize()); //TODO: remove
-//			System.out.println();
-//			System.out.println(ruleSets.get(1).serialize());
-//			
 		return RuleSetWithComputableCharacteristics.join(ruleSets.get(0), ruleSets.get(1));
 	}
 

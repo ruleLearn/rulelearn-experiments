@@ -6,8 +6,6 @@ package org.rulelearn.experiments;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.rulelearn.core.InvalidValueException;
-
 /**
  * Class representing table that can be pasted to a spreadsheet.
  * 

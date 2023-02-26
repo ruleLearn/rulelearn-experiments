@@ -149,6 +149,11 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 		
 		@Override
+		public String toCompressedShortString() {
+			return String.format(Locale.US, "n: %.2f, l: %.2f", (double)totalSize / aggregationCount, (double)totalNumLeaves / aggregationCount);
+		}
+		
+		@Override
 		public J48ModelDescriptionBuilder getModelDescriptionBuilder() {
 			return new J48ModelDescriptionBuilder();
 		}
@@ -202,6 +207,11 @@ public class WEKAClassifer implements ClassificationModel {
 		}
 		
 		@Override
+		public String toCompressedShortString() {
+			return String.format(Locale.US, "r: %.2f", (double)totalNumRules / aggregationCount);
+		}
+		
+		@Override
 		public JRipModelDescriptionBuilder getModelDescriptionBuilder() {
 			return new JRipModelDescriptionBuilder();
 		}
@@ -252,6 +262,11 @@ public class WEKAClassifer implements ClassificationModel {
 			} else {
 				return String.format(Locale.US, "[Options: %s] Num rules: %d", options, totalNumRules);
 			}
+		}
+		
+		@Override
+		public String toCompressedShortString() {
+			return String.format(Locale.US, "r: %.2f", (double)totalNumRules / aggregationCount);
 		}
 		
 		@Override
@@ -326,6 +341,11 @@ public class WEKAClassifer implements ClassificationModel {
 		@Override
 		public void compress() {
 			this.trainedClassifier = null;
+		}
+
+		@Override
+		public String toCompressedShortString() {
+			return "";
 		}
 
 	}

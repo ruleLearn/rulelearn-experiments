@@ -30,20 +30,25 @@ public abstract class BatchExperimentSetup {
 	
 	protected long[] seeds;
 	protected int k;
+	DataProcessor dataProcessor;
 	
 	protected List<DataProvider> dataProviders = null;
 	protected List<LearningAlgorithm> learningAlgorithms = null;
 	protected LearningAlgorithmDataParametersContainer parametersContainer = null;
 	
-	public BatchExperimentSetup(long[] seeds, int k) {
+	public BatchExperimentSetup(long[] seeds, int k, DataProcessor dataProcessor) {
 		this.seeds = seeds;
 		this.k = k;
+		this.dataProcessor = dataProcessor;
 	}
 	
 	abstract public List<DataProvider> getDataProviders();
 	abstract public List<LearningAlgorithm> getLearningAlgorithms();
 	abstract public LearningAlgorithmDataParametersContainer getLearningAlgorithmDataParametersContainer();
-	abstract public DataProcessor getDataProcessor();
+	
+	public DataProcessor getDataProcessor() {
+		return dataProcessor;
+	}
 	
 	public List<LearningAlgorithm> getLearningAlgorithmsForOriginalData() {
 		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
