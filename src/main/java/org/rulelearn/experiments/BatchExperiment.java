@@ -326,7 +326,7 @@ public class BatchExperiment {
 							//OUTPUT
 							outN("Train data result for '%1(%2)': "+System.lineSeparator()+
 									"Accuracy: %3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Main model decisions ratio: %10."+System.lineSeparator()+
-									"True positive rates: %11. Gmean: %12."+System.lineSeparator()+
+									"True positive rates: %11 # Gmean: %12."+System.lineSeparator()+
 									"%% [Learning]: %13."+System.lineSeparator()+
 									"%14"+System.lineSeparator()+
 									"%% [Times]: training: %15 [ms], validation: %16 [ms].",
@@ -413,7 +413,7 @@ public class BatchExperiment {
 							//OUTPUT
 							String messageTemplate = prepareText("%pEnd of fold %1, algorithm %2(%3).%n"
 									+ "%p%% [Accuracy]: %4 (overall: %5, avg: %6) # %7 # %8 (%9|%10). Main model decisions ratio: %11.%n"
-									+ "%p%% [TP rates]: %12. Gmean: %13.%n"
+									+ "%p%% [TP rates]: %12 # Gmean: %13.%n"
 									+ "%14%n"
 									+ "%p%% [Duration]: %15 [ms].", linePrefix); //%p will be replaced by prefix, %n by new line
 							
@@ -539,7 +539,7 @@ public class BatchExperiment {
 								//OUTPUT
 								outN("  Avg. result over folds for algorithm '%1(%2)': "+System.lineSeparator()+
 										"    Accuracy: %3 (overall: %4, avg: %5) # %6 # %7 (%8|%9). Avg. main model decisions ratio: %10."+System.lineSeparator()+
-										"    True positive rates: %11. Gmean: %12.",
+										"    True positive rates: %11 # Gmean: %12.",
 										learningAlgorithms.get(learningAlgorithmNumber).getName(),
 										parameters,
 										round(aggregatedCVModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()),
@@ -588,7 +588,7 @@ public class BatchExperiment {
 							//OUTPUT
 							outN("Avg. result over CVs for algorithm '%1(%2)': "+System.lineSeparator()+
 									"  Accuracy: %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
-									"  True positive rates: %17. Gmean: %18."+System.lineSeparator()+
+									"  True positive rates: %17 # Gmean: %18."+System.lineSeparator()+
 									"  %% [Learning]: %19"+System.lineSeparator()+
 									"%20"+System.lineSeparator()+
 									"  %% [Model]: %21."+System.lineSeparator()+
@@ -648,7 +648,7 @@ public class BatchExperiment {
 								//OUTPUT
 								outN("  Best avg. "+accuracyType+" result over cross-validations for algorithm '%1(%2)': "+System.lineSeparator()+
 									 "    Accuracy: %3 (stdDev: %4) (overall: %5 (stdDev: %6) | avg: %7) # %8 (stdDev: %9) # %10 (stdDev: %11) (%12 (stdDev: %13) | %14 (stdDev: %15)). Avg. main model decisions ratio: %16. "+System.lineSeparator()+
-									 "    True positive rates: %17. Gmean: %18."+System.lineSeparator()+
+									 "    True positive rates: %17 # Gmean: %18."+System.lineSeparator()+
 									 "    %% [Learning]: %19"+System.lineSeparator()+
 									 "%20"+System.lineSeparator()+
 									 "    %% [Model]: %21."+System.lineSeparator()+
@@ -738,7 +738,7 @@ public class BatchExperiment {
 				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
 				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
 				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
-				
+			
 				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessor()),
 				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessor())
 		};
@@ -781,6 +781,8 @@ public class BatchExperiment {
 			
 			//$$$$$
 			ResultsTable<String> accuracies = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> tPRsAndGmean = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			//---
 			ResultsTable<String> avgAccuracies = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> stdDevs = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> avgTPRsAndGmean = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
@@ -792,6 +794,8 @@ public class BatchExperiment {
 			if (doFullDataReclassification) {
 				accuracies.setTopLeftCell("% missing");
 				accuracies.setColumnHeaders(algorithmsNames);
+				tPRsAndGmean.setTopLeftCell("% missing");
+				tPRsAndGmean.setColumnHeaders(algorithmsNames);
 			}
 			if (doCrossValidations) { //there are going to be average results => initialize tables
 				avgAccuracies.setTopLeftCell("% missing");
@@ -816,6 +820,24 @@ public class BatchExperiment {
 					outN(results.reportFullDataResults(dataSetName));
 					//$$$$$
 					accuracies.newRow(dataSetName);
+					tPRsAndGmean.newRow(dataSetName);
+					
+					for (String algorithmName : algorithmsNames) {
+						List<LearningAlgorithmDataParameters> parameters;
+						String parametersTxt;
+						if ((parameters = parametersContainer.getParameters(algorithmName, dataSetName)) != null) {
+							//TODO: get results for the best parameters if CV is done, not for the first
+							parametersTxt = parameters.get(0).toString(); //get results for the first parameters
+						} else {
+							parametersTxt = "null";
+						}
+						OrdinalMisclassificationMatrix fullDataOrdinalMisclassificationMatrix = results.dataName2FullDataResults.get(dataSetName)
+								.algorithmNameWithParameters2Results.get(algorithmName+"("+parametersTxt+")").getModelValidationResult().getOrdinalMisclassificationMatrix();
+						
+						accuracies.addRowValue(round(fullDataOrdinalMisclassificationMatrix.getAccuracy()));
+						tPRsAndGmean.addRowValue(String.format(Locale.US, "%s # Gmean: %s.",
+								getTruePositiveRates(fullDataOrdinalMisclassificationMatrix), round(fullDataOrdinalMisclassificationMatrix.getGmean())));
+					}
 					//$$$$$
 				} //if (doFullDataReclassification)
 				
@@ -835,7 +857,6 @@ public class BatchExperiment {
 						parametersNumber = -1;
 						List<DataAlgorithmParametersSelector> bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>(); //initialize as an empty list
 						double bestAccuracy = -1.0;
-						LearningAlgorithmDataParameters firstBestParameters = null;
 						
 						for (LearningAlgorithmDataParameters parameters : parametersList) { //check all parameters from the list of parameters for the current algorithm
 							parametersNumber++;
@@ -851,7 +872,7 @@ public class BatchExperiment {
 							//OUTPUT
 							outN("Avg. result for ('%1', %2(%3)): "+System.lineSeparator()+
 									"  Accuracy: %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
-									"  True positive rates: %18. Gmean: %19."+System.lineSeparator()+
+									"  True positive rates: %18 # Gmean: %19."+System.lineSeparator()+
 									"  %% [Learning]: %20"+System.lineSeparator()+
 									"%21"+System.lineSeparator()+
 									"  %% [Model]: %22."+System.lineSeparator()+
@@ -889,7 +910,6 @@ public class BatchExperiment {
 								bestAccuracy = averageAccuracy.getMean();
 								bestAlgorithmParametersSelectors = new ArrayList<DataAlgorithmParametersSelector>();
 								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
-								firstBestParameters = parameters;
 							} else if (averageAccuracy.getMean() == bestAccuracy) {
 								bestAlgorithmParametersSelectors.add(new DataAlgorithmParametersSelector(selector));
 							}
@@ -911,7 +931,7 @@ public class BatchExperiment {
 								//OUTPUT
 								outN("  Best avg. "+accuracyType+" result for ('%1', %2(%3)): "+System.lineSeparator()+
 									 "    Accuracy: %4 (stdDev: %5) (overall: %6 (stdDev: %7) | avg: %8) # %9 (stdDev: %10) # %11 (stdDev: %12) (%13 (stdDev: %14) | %15 (stdDev: %16)). Avg. main model decisions ratio: %17. "+System.lineSeparator()+
-									 "    True positive rates: %18. Gmean: %19."+System.lineSeparator()+
+									 "    True positive rates: %18 # Gmean: %19."+System.lineSeparator()+
 									 "    %% [Learning]: %20"+System.lineSeparator()+
 									 "%21"+System.lineSeparator()+
 									 "    %% [Model]: %22."+System.lineSeparator()+
@@ -948,20 +968,15 @@ public class BatchExperiment {
 						}
 						
 						//$$$$$
-						{ //update results tables
-							DataAlgorithmParametersSelector selector = bestAlgorithmParametersSelectors.get(0); //get first selector concerning best parameters
+						{ //update results tables concerning avg. results
+							DataAlgorithmParametersSelector selector = bestAlgorithmParametersSelectors.get(0); //get first selector concerning eq-equo best parameters //TODO: generalize?
 							ModelValidationResult aggregatedModelValidationResult = results.getAggregatedModelValidationResult(selector);
 							CalculationTimes totalFoldCalculationTimes = results.getTotalFoldCalculationTimes(selector);
 							
-							if (doFullDataReclassification) {
-								accuracies.addRowValue(round(results.dataName2FullDataResults.get(dataSetName)
-									.algorithmNameWithParameters2Results.get(algorithmName+"("+firstBestParameters+")") //get first best parameters
-									.getModelValidationResult().getOrdinalMisclassificationMatrix().getAccuracy()));
-							}
 							if (doCrossValidations) {
 								avgAccuracies.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getAccuracy()));
 								stdDevs.addRowValue(round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getDeviationOfAccuracy()));
-								avgTPRsAndGmean.addRowValue(String.format(Locale.US, "%s. Gmean: %s",
+								avgTPRsAndGmean.addRowValue(String.format(Locale.US, "%s # Gmean: %s",
 										getTruePositiveRates(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix()),
 										round(aggregatedModelValidationResult.getOrdinalMisclassificationMatrix().getGmean()) ));
 								avgTrainingTimes.addRowValue(round(totalFoldCalculationTimes.getAverageTrainingTime()));
@@ -969,7 +984,7 @@ public class BatchExperiment {
 								//calculate row value:
 								String rowValue = aggregatedModelValidationResult.getModelDescription().toCompressedShortString();
 								if (algorithmName.equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())) {
-									rowValue += ", avg.cov: " + round(aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules());
+									rowValue += ", r/o: " + round(aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules());
 								}
 								avgTestDataModelCharacteristics.addRowValue(rowValue);
 								//
@@ -989,6 +1004,9 @@ public class BatchExperiment {
 			if (doFullDataReclassification) {
 				outN("Full data accuracy");
 				outN(accuracies.toString("\t"));
+				outN("--");
+				outN("Full data TPR & Gmean");
+				outN(tPRsAndGmean.toString("\t"));
 				outN("--");
 			}
 			if (doCrossValidations) {

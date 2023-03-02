@@ -31,27 +31,45 @@ public class CSV2LatexTable {
 			System.out.println("Synopsis: CSV2LatexTable csvInputFilePath latexTableOutputFilePath");
 			return;
 		}
-		String separator1 = ";";
+		String separator1 = ";"; //TODO: adjust!
 		String separator2 = "\t"; //alternative separator
 		
 		ReplacementSpecification[] csvLineReplacementSpecification = new ReplacementSpecification[] { //specify pairs of what to replace with what (in given order!)
-				new ReplacementSpecification(",", "."),
+				//new ReplacementSpecification(",", "."),
 				new ReplacementSpecification("% missing", "PERCENTmv"),
 				new ReplacementSpecification("%", ""),
-				new ReplacementSpecification("PERCENTmv", "\\%mv"),
+				new ReplacementSpecification("PERCENTmv", "\\textbf{\\%mv}"),
+				
+				new ReplacementSpecification("bank-churn-10000-v8-0.05-mv1.5", "\\textbf{5}"),
+				new ReplacementSpecification("bank-churn-10000-v8-0.10-mv1.5", "\\textbf{10}"),
+				new ReplacementSpecification("bank-churn-10000-v8-0.15-mv1.5", "\\textbf{15}"),
+				new ReplacementSpecification("bank-churn-10000-v8-0.20-mv1.5", "\\textbf{20}"),
+				new ReplacementSpecification("bank-churn-10000-v8-0.25-mv1.5", "\\textbf{25}"),
+				new ReplacementSpecification("bank-churn-10000-v8", "\\textbf{0}"),
 				
 				new ReplacementSpecification("VCDomLEM+mode-mv2", "$\\epsilon$-$\\mathbb{D}^{mv}_{2}$"),
 				new ReplacementSpecification("mode-mv2", "$\\epsilon$-$\\mathbb{D}^{mv}_{2}$"),
 				
 				new ReplacementSpecification("VCDomLEM+mode-mv1.5", "$\\epsilon$-$\\mathbb{D}^{mv}_{1.5}$"),
 				new ReplacementSpecification("mode-mv1.5", "$\\epsilon$-$\\mathbb{D}^{mv}_{1.5}$"),
+				new ReplacementSpecification("VCDomLEMModeRuleClassifierLearner", "$\\epsilon$-$\\mathbb{D}^{mv}_{1.5}$"),
 				
+				new ReplacementSpecification("WEKAClassifierLearner(J48)", "C4.5"),
 				new ReplacementSpecification("J48", "C4.5"),
+				new ReplacementSpecification("WEKAClassifierLearner(NaiveBayes)", "NB"),
 				new ReplacementSpecification("NaiveBayes -D", "NB"),
+				new ReplacementSpecification("WEKAClassifierLearner(SMO)", "SVM"),
 				new ReplacementSpecification("SMO", "SVM"),
+				new ReplacementSpecification("WEKAClassifierLearner(RandomForest)", "RF"),
 				new ReplacementSpecification("RandomForest", "RF"),
+				new ReplacementSpecification("WEKAClassifierLearner(MultilayerPerceptron)", "MP"),
 				new ReplacementSpecification("MultilayerPerceptron", "MP"),
+				new ReplacementSpecification("WEKAClassifierLearner(JRip)", "RIPP"),
 				new ReplacementSpecification("jRip", "RIPP"),
+				//--
+				new ReplacementSpecification("WEKAClassifierLearner(OSDL)", "OSDL"),
+				new ReplacementSpecification("WEKAClassifierLearner(OLM)", "OLM"),
+				new ReplacementSpecification("WEKAClassifierLearner(MoNGEL)", "MoNGEL"),
 				
 				new ReplacementSpecification("e<=", "$\\theta_X =$"),
 				new ReplacementSpecification("cF>=", "$\\lfloor{cov}\\rfloor =$"),

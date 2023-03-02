@@ -137,7 +137,7 @@ public class ModeRuleClassifier implements ClassificationModel {
 			sb.append(String.format(Locale.US, "r: %.2f", aggregationCount > 0 ? (double)totalRulesCount / aggregationCount : 0.0));
 			sb.append(String.format(Locale.US, ", l: %.2f", (double)sumRuleLength / totalRulesCount));
 			sb.append(String.format(Locale.US, ", s: %.2f", (double)sumRuleSupport / totalRulesCount));
-			sb.append(String.format(Locale.US, ", avg.conf: %.2f", (double)sumRuleConfidence / totalRulesCount));
+			sb.append(String.format(Locale.US, ", conf: %.2f", (double)sumRuleConfidence / totalRulesCount));
 			
 			return sb.toString();
 		}

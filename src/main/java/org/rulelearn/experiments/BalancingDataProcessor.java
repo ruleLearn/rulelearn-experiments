@@ -122,7 +122,9 @@ public class BalancingDataProcessor implements DataProcessor {
 		int maxCount = 0;
 		int newDecisionClassSize;
 		
-		for (Decision decision : decisions) {
+		Decision[] orderedDecisions = informationTableWithDistributions.getOrderedUniqueFullyDeterminedDecisions(); 
+		
+		for (Decision decision : orderedDecisions) {
 			int count = decisionDistribution.getCount(decision);
 			
 			if (count < minCount) {
@@ -152,7 +154,7 @@ public class BalancingDataProcessor implements DataProcessor {
 		List<int[]> perClassSelectedObjectIndicesList = new ArrayList<>(); //indices of objects selected for subsequent decision classes
 		int newTotalNumberOfObjects = 0;
 		
-		for (Decision decision : decisions) {
+		for (Decision decision : orderedDecisions) {
 			int decisionClassSize = decisionDistribution.getCount(decision);
 			
 			//gather indices of all objects from current decision class
@@ -200,6 +202,15 @@ public class BalancingDataProcessor implements DataProcessor {
 		}
 		
 		Arrays.sort(selectedObjectIndices);
+		
+//		int count = 0;
+//		for (int i : selectedObjectIndices) {
+//			System.out.print(i+".");
+//			count++;
+//			if (count % 45 == 0) {
+//				System.out.println();
+//			}
+//		}
 		
 		return new Data(informationTableWithDistributions.select(selectedObjectIndices, true), data.getName()+"_balanced");
 	}

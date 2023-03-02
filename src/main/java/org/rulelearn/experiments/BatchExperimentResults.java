@@ -243,7 +243,7 @@ public class BatchExperimentResults {
 				
 				sb.append(String.format(Locale.US, "Train data result for ('%s', %s):%n"
 						+ "  Accuracy: %s (overall: %s, avg: %s) # %s # %s (%s|%s). Main model decisions ratio: %s.%n"
-						+ "  True positive rates: %s. Gmean: %s.%n"
+						+ "  True positive rates: %s # Gmean: %s.%n"
 						+ "  [Learning]: %s.%n"
 						+ "%s%n"
 						+ "  [Model]: %s.%n"

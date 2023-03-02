@@ -3,7 +3,6 @@
  */
 package org.rulelearn.experiments;
 
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -150,7 +149,7 @@ public class WEKAClassifer implements ClassificationModel {
 		
 		@Override
 		public String toCompressedShortString() {
-			return String.format(Locale.US, "n: %.2f, l: %.2f", (double)totalSize / aggregationCount, (double)totalNumLeaves / aggregationCount);
+			return String.format(Locale.US, "n: %.2f, r: %.2f", (double)totalSize / aggregationCount, (double)totalNumLeaves / aggregationCount);
 		}
 		
 		@Override
