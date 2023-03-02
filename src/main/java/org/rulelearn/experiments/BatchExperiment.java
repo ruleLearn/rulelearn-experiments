@@ -28,6 +28,7 @@ import org.rulelearn.experiments.BatchExperimentResults.FullDataModelValidationR
 import org.rulelearn.experiments.BatchExperimentResults.FullDataResults;
 import org.rulelearn.experiments.ModelValidationResult.ClassificationStatistics;
 import org.rulelearn.experiments.ModelValidationResult.MeansAndStandardDeviations;
+import org.rulelearn.experiments.helpers.ResultsTable;
 import org.rulelearn.experiments.setup.BatchExperimentSetup;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8OLM_OSDL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8Original;

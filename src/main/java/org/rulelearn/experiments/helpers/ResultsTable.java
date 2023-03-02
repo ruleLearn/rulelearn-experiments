@@ -1,7 +1,7 @@
 /**
  * 
  */
-package org.rulelearn.experiments;
+package org.rulelearn.experiments.helpers;
 
 import java.util.ArrayList;
 import java.util.List;
