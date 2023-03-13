@@ -791,8 +791,8 @@ public class BatchExperiment {
 //				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
 //				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
 				
-//				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
-//				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
 //				
 				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
 				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
