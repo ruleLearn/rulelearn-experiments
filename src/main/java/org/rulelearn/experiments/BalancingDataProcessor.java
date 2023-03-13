@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.rulelearn.experiments;
 
 import java.util.ArrayList;
@@ -87,7 +84,7 @@ public class BalancingDataProcessor implements DataProcessor {
 	 * Strategy of balancing decision classes distribution.
 	 */
 	private BalancingStrategy balancingStrategy;
-//	private long seed;
+	private long seed;
 	
 	/**
 	 * Constructor.
@@ -97,12 +94,16 @@ public class BalancingDataProcessor implements DataProcessor {
 	 */
 	public BalancingDataProcessor(BalancingStrategy balancingStrategy, long seed) {
 		this.balancingStrategy = balancingStrategy;
-//		this.seed = seed;
+		this.seed = seed;
 		this.random = new Random(seed);
 	}
 	
 	public BalancingStrategy getBalancingStrategy() {
 		return balancingStrategy;
+	}
+	
+	public Long getSeed() {
+		return seed;
 	}
 
 	@Override
@@ -212,12 +213,20 @@ public class BalancingDataProcessor implements DataProcessor {
 //			}
 //		}
 		
-		return new Data(informationTableWithDistributions.select(selectedObjectIndices, true), data.getName()+"_balanced");
+		return new Data(informationTableWithDistributions.select(selectedObjectIndices, true), data.getName()+"_balanced", data.getGroupName());
 	}
 	
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName()+"("+balancingStrategy.toString()+")";
+		return serialize(balancingStrategy, seed);
+	}
+	
+	public static String serialize(BalancingStrategy balancingStrategy) {
+		return BalancingDataProcessor.class.getSimpleName()+"("+balancingStrategy.toString()+")";
+	}
+	
+	public static String serialize(BalancingStrategy balancingStrategy, long seed) {
+		return BalancingDataProcessor.class.getSimpleName()+"("+balancingStrategy.toString()+", "+seed+")";
 	}
 
 }

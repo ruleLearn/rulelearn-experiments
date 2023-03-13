@@ -6,7 +6,7 @@ package org.rulelearn.experiments.setup;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.rulelearn.experiments.DataProcessor;
+import org.rulelearn.experiments.DataProcessorProvider;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.LearningAlgorithm;
 import org.rulelearn.experiments.LearningAlgorithmDataParametersContainer;
@@ -30,24 +30,24 @@ public abstract class BatchExperimentSetup {
 	
 	protected long[] seeds;
 	protected int k;
-	DataProcessor dataProcessor;
+	DataProcessorProvider dataProcessorProvider;
 	
 	protected List<DataProvider> dataProviders = null;
 	protected List<LearningAlgorithm> learningAlgorithms = null;
 	protected LearningAlgorithmDataParametersContainer parametersContainer = null;
 	
-	public BatchExperimentSetup(long[] seeds, int k, DataProcessor dataProcessor) {
+	public BatchExperimentSetup(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
 		this.seeds = seeds;
 		this.k = k;
-		this.dataProcessor = dataProcessor;
+		this.dataProcessorProvider = dataProcessorProvider;
 	}
 	
 	abstract public List<DataProvider> getDataProviders();
 	abstract public List<LearningAlgorithm> getLearningAlgorithms();
 	abstract public LearningAlgorithmDataParametersContainer getLearningAlgorithmDataParametersContainer();
 	
-	public DataProcessor getDataProcessor() {
-		return dataProcessor;
+	public DataProcessorProvider getDataProcessorProvider() {
+		return dataProcessorProvider;
 	}
 	
 	public List<LearningAlgorithm> getLearningAlgorithmsForOriginalData() {

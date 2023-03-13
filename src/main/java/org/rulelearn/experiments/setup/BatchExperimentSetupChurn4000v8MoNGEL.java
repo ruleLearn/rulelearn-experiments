@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 
 import org.rulelearn.experiments.AttributeRanges;
 import org.rulelearn.experiments.BasicDataProvider;
-import org.rulelearn.experiments.DataProcessor;
+import org.rulelearn.experiments.DataProcessorProvider;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.KEELAlgorithmDataParameters;
 import org.rulelearn.experiments.KEELClassifierLearner;
@@ -22,8 +22,8 @@ import keel.Algorithms.Monotonic_Classification.MoNGEL.MoNGEL;
  */
 public class BatchExperimentSetupChurn4000v8MoNGEL extends BatchExperimentSetupChurn4000v8 {
 	
-	public BatchExperimentSetupChurn4000v8MoNGEL(long[] seeds, int k, DataProcessor dataProcessor) {
-		super(seeds, k, dataProcessor);
+	public BatchExperimentSetupChurn4000v8MoNGEL(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
+		super(seeds, k, dataProcessorProvider);
 	}
 
 	@Override
@@ -112,102 +112,102 @@ public class BatchExperimentSetupChurn4000v8MoNGEL extends BatchExperimentSetupC
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.00_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.05_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.10_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.15_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.20_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv2.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
+	protected DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) { //concerns data set version MONGEL_NUM_OF_PRODUCTS_NONE_ENUMERATION_AND_IS_ACTIVE_MEMBER_INTEGER
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/bank-churn-4000-v8-processed_numOfProducts-none-enumeration_isActiveMember-integer metadata_mv1.5.json",
 				"data/csv/MoNGEL/bank-churn-4000-v8_0.25_numOfProducts-none data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 }

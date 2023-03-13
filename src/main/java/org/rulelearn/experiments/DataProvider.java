@@ -15,6 +15,7 @@ public interface DataProvider {
 	Data provideOriginalData(); //provides original data
 	Data previewOriginalData(); //previews original data - returns Data but does not store information table neither calculates its decision distributions
 	String getDataName();
+	String getDataGroup();
 	long[] getSeeds(); //determines number of cross-validations
 	int getNumberOfFolds(); //number of folds in each cross-validation
 	public void done(); //called when processing of fold is done - can be used to free resources

@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.rulelearn.experiments.BasicDataProvider;
-import org.rulelearn.experiments.DataProcessor;
+import org.rulelearn.experiments.DataProcessorProvider;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.LearningAlgorithm;
 import org.rulelearn.experiments.LearningAlgorithmDataParametersContainer;
@@ -22,8 +22,8 @@ import weka.filters.supervised.attribute.Discretize;
  */
 public class BatchExperimentSetupMonumentsOLM_OSDL extends BatchExperimentSetupMonuments {
 	
-	public BatchExperimentSetupMonumentsOLM_OSDL(long[] seeds, int k, DataProcessor dataProcessor) {
-		super(seeds, k, dataProcessor);
+	public BatchExperimentSetupMonumentsOLM_OSDL(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
+		super(seeds, k, dataProcessorProvider);
 	}
 	
 	@Override
@@ -58,39 +58,39 @@ public class BatchExperimentSetupMonumentsOLM_OSDL extends BatchExperimentSetupM
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-Year1CG.json",
 				"data/csv/zabytki-data-noMV-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments_K9_K10(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments_K9_K10(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-K9-K10-Year1CG.json",
 				"data/csv/zabytki-data-noMV-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments01(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments01(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-0-1-Year1CG.json",
 				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments01_K9_K10(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments01_K9_K10(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/zabytki-metadata-Y1-K-enum-ordinal-0-1-K9-K10-Year1CG.json",
 				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 }

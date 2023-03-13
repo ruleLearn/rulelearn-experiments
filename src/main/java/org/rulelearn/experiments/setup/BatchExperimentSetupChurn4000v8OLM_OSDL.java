@@ -1,11 +1,10 @@
 package org.rulelearn.experiments.setup;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import org.rulelearn.experiments.BasicDataProvider;
-import org.rulelearn.experiments.DataProcessor;
+import org.rulelearn.experiments.DataProcessorProvider;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.LearningAlgorithm;
 import org.rulelearn.experiments.LearningAlgorithmDataParametersContainer;
@@ -24,8 +23,8 @@ import weka.filters.unsupervised.attribute.ReplaceMissingValues;
  */
 public class BatchExperimentSetupChurn4000v8OLM_OSDL extends BatchExperimentSetupChurn4000v8 {
 
-	public BatchExperimentSetupChurn4000v8OLM_OSDL(long[] seeds, int k, DataProcessor dataProcessor) {
-		super(seeds, k, dataProcessor);
+	public BatchExperimentSetupChurn4000v8OLM_OSDL(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
+		super(seeds, k, dataProcessorProvider);
 	}
 	
 	@Override
@@ -110,110 +109,110 @@ public class BatchExperimentSetupChurn4000v8OLM_OSDL extends BatchExperimentSetu
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata.json",
 				"data/csv/OLM/bank-churn-4000-v8-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.05-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.10-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.15-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.20-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv2.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/OLM/bank-churn-4000-v8-processed metadata_mv1.5.json",
 				"data/csv/OLM/bank-churn-4000-v8_0.25-processed data.csv",
 				true, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
-	@Override
-	public List<LearningAlgorithm> getLearningAlgorithmsForOLM_OSDLData() { //only OSDL!
-		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
-//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM())); //uses special version of data!
-		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //uses special version of data! //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
-		return learningAlgorithms;
-	}
+//	@Override
+//	public List<LearningAlgorithm> getLearningAlgorithmsForOLM_OSDLData() { //only OSDL!
+//		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
+////		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OLM())); //uses special version of data!
+//		learningAlgorithms.add(new WEKAClassifierLearner(() -> new OSDL())); //uses special version of data! //weka.core.UnsupportedAttributeTypeException: weka.classifiers.misc.OSDL: Cannot handle numeric attributes!
+//		return learningAlgorithms;
+//	}
 	
 }

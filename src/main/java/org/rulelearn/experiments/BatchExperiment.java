@@ -3,6 +3,8 @@
  */
 package org.rulelearn.experiments;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -17,6 +19,7 @@ import org.rulelearn.approximations.Unions;
 import org.rulelearn.approximations.UnionsWithSingleLimitingDecision;
 import org.rulelearn.approximations.VCDominanceBasedRoughSetCalculator;
 import org.rulelearn.data.Decision;
+import org.rulelearn.data.DecisionDistribution;
 import org.rulelearn.data.InformationTable;
 import org.rulelearn.data.InformationTableWithDecisionDistributions;
 import org.rulelearn.data.SimpleDecision;
@@ -32,13 +35,9 @@ import org.rulelearn.experiments.helpers.ResultsTable;
 import org.rulelearn.experiments.setup.BatchExperimentSetup;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8OLM_OSDL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8Original;
-import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8MoNGEL;
-import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8OLM_OSDL;
-import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8Original;
-import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsMoNGEL;
-import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOLM_OSDL;
-import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOriginal;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
+import org.rulelearn.types.IntegerField;
+import org.rulelearn.types.UnknownSimpleField;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 /**
@@ -51,7 +50,7 @@ public class BatchExperiment {
 	
 	List<DataProvider> dataProviders;
 	CrossValidationProvider crossValidationProvider;
-	DataProcessor trainDataPreprocessor;
+	DataProcessorProvider trainDataPreprocessorProvider;
 	List<LearningAlgorithm> learningAlgorithms;
 	LearningAlgorithmDataParametersContainer parametersContainer;
 	
@@ -74,16 +73,16 @@ public class BatchExperiment {
 	 * Constructs this experiment.
 	 * 
 	 * @param dataProviders
-	 * @param crossValidations
-	 * @param trainDataPreprocessor
+	 * @param crossValidationProvider
+	 * @param trainDataPreprocessorProvider
 	 * @param learningAlgorithms
 	 * @param parametersContainer
 	 */
-	public BatchExperiment(List<DataProvider> dataProviders, CrossValidationProvider crossValidationProvider, DataProcessor trainDataPreprocessor, List<LearningAlgorithm> learningAlgorithms,
+	public BatchExperiment(List<DataProvider> dataProviders, CrossValidationProvider crossValidationProvider, DataProcessorProvider trainDataPreprocessorProvider, List<LearningAlgorithm> learningAlgorithms,
 			LearningAlgorithmDataParametersContainer parametersContainer) {
 		this.dataProviders = dataProviders;
 		this.crossValidationProvider = crossValidationProvider;
-		this.trainDataPreprocessor = trainDataPreprocessor;
+		this.trainDataPreprocessorProvider = trainDataPreprocessorProvider;
 		this.learningAlgorithms = learningAlgorithms;
 		this.parametersContainer = parametersContainer;
 	}
@@ -207,7 +206,7 @@ public class BatchExperiment {
 			}
 		}
 		outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> STARTING BATCH EXPERIMENT RUN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-		outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Training data preprocessor: " + trainDataPreprocessor.toString());
+		outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Training data preprocessor: " + trainDataPreprocessorProvider.toString());
 		outN("Maximum number of algorithm vs data parameters, over all (data, algorithm) pairs: %1.", maxParametersCount); //!
 		
 		//calculate maximum number of cross validations among all data sets
@@ -279,8 +278,40 @@ public class BatchExperiment {
 					
 					outN("--");
 					
+					//TODO: choose another version of provide method for full data?
+					//DataProcessor fullDataPreprocessor = trainDataPreprocessorProvider.provide(fullData.getGroupName()); //get preprocessor used only for full data
+					DataProcessor fullDataPreprocessor = trainDataPreprocessorProvider.provide(); //get preprocessor used only for full data
+					System.out.println("Using full train data preprocesssor: "+fullDataPreprocessor.toString());
+					
 					//calculate and process full data models for all (algorithm, parameters) pairs
-					Data processedFullData = trainDataPreprocessor.process(fullData); //processedFullData will have the same informationTableTransformationTime only if AcceptingDataProcessor is used
+					Data processedFullData = fullDataPreprocessor.process(fullData); //processedFullData will have the same informationTableTransformationTime only if AcceptingDataProcessor is used
+					
+					//----- PRINT NUMBER OF OBJECTS IN EACH CLASS
+					DecisionDistribution decisionDistribution = new DecisionDistribution(processedFullData.getInformationTable());
+					for (Decision decision : decisionDistribution.getDecisions()) {
+						System.out.println("Class "+((SimpleDecision)decision).getEvaluation()+": "+decisionDistribution.getCount(decision)+" objects.");
+					}
+					outN("--");
+//					InformationTableWriter informationTableWriter = new InformationTableWriter(true);
+//					try (FileWriter fileWriter = new FileWriter("./meta.json")) {
+//						informationTableWriter.writeAttributes(processedFullData.getInformationTable(), fileWriter);
+//					}
+//					catch (IOException exception) {
+//						exception.printStackTrace();
+//					}
+//					try (FileWriter fileWriter = new FileWriter("./data.json")) {
+//						informationTableWriter.writeObjects(processedFullData.getInformationTable(), fileWriter);
+//					}
+//					catch (IOException exception) {
+//						exception.printStackTrace();
+//					}
+//					//----- PRINT SIGNATURE AND HASH -----
+//					System.out.print("++ Signature of processed full data: ");
+//					System.out.println(signature(processedFullData.getInformationTable()));
+//					System.out.print("++ Hash of processed full data: ");
+//					System.out.println(processedFullData.getInformationTable().getHash());
+//					outN("--");
+//					//-----
 					
 					int algorithmNumber = -1;
 					//TODO: optimize the following loop using a parallel stream
@@ -301,7 +332,7 @@ public class BatchExperiment {
 							/**/long fullDataTrainingTime = System.currentTimeMillis() - trainingStartTime;
 							fullDataTrainingTime -= model.getModelLearningStatistics().getTotalStatisticsCountingTime();
 							fullDataTrainingTime += model.getModelLearningStatistics().getTotalModelCalculationTimeSavedByUsingCache();
-							if (algorithm.getName().equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName()) && trainDataPreprocessor instanceof AcceptingDataProcessor) { //processedFullData is the same as fullData
+							if (algorithm.getName().equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName()) && trainDataPreprocessorProvider instanceof AcceptingDataProcessorProvider) { //processedFullData is the same as fullData
 								fullDataTrainingTime += fullData.getInformationTableTransformationTime(); //add time of data transformation (done out of time measurement zone marked by /**/, when fullData were provided), as VC-DRSA rule model needs this transformation!
 								model.getModelLearningStatistics().totalDataTransformationTime = fullData.getInformationTableTransformationTime(); //set proper information table transformation time
 							}
@@ -408,6 +439,8 @@ public class BatchExperiment {
 						
 						//run certain number of folds in parallel or sequentially
 						Stream<CrossValidationFold> foldsStream = foldsInParallel ? crossValidationFolds.parallelStream() : crossValidationFolds.stream();
+						String[] preprocesssorsLog = new String[crossValidationFolds.size()];
+						
 						foldsStream.forEach(fold -> {       //just for measuring time!
 							String linePrefix = "      "+foldNumber2Spaces(fold.getIndex());
 							String summaryLinePrefix = linePrefix + "%% ";
@@ -422,7 +455,22 @@ public class BatchExperiment {
 							//t3 = b("    Starting calculations for fold "+fold.getIndex()+".");
 							//t3 = b(null);
 							b(null);
-							Data processedTrainData = trainDataPreprocessor.process(fold.getTrainData()); //e.g.: over-sampling, under-sampling, bootstrapping
+							
+							DataProcessor foldTrainDataPreprocessor = trainDataPreprocessorProvider.provide(
+									fold.getTrainData().getGroupName(),
+									dataProvider.getSeeds()[streamCrossValidationNumber],
+									fold.getIndex());//get preprocessor used only for fold training data, on subsequent data sets
+							preprocesssorsLog[fold.getIndex()] = "  Fold "+fold.getIndex()+": used CV fold train data preprocesssor: "+foldTrainDataPreprocessor.toString();
+							
+							Data processedTrainData = foldTrainDataPreprocessor.process(fold.getTrainData()); //e.g.: over-sampling, under-sampling, bootstrapping
+							
+//							//----- PRINT SIGNATURE AND HASH -----
+//							System.out.println("++ /Fold "+fold.getIndex()+"/ Signature of processed fold train data: "
+//									+ signature(processedTrainData.getInformationTable())
+//									+ " ++ Hash of processed fold train data: "
+//									+ processedTrainData.getInformationTable().getHash());
+//							outN("--");
+//							//-----
 							
 							//long t4;
 							
@@ -527,6 +575,10 @@ public class BatchExperiment {
 						
 						e(t2, resolveText("  Finishing calculations for %1, cross-validation %2.", dataProvider.getDataName(), crossValidationNumber));
 						outN("  ----------");
+						for (String s: preprocesssorsLog) {
+							System.out.println(s);
+						}
+						outN("  ----------");
 						for (int learningAlgorithmNumber = 0; learningAlgorithmNumber < learningAlgorithms.size(); learningAlgorithmNumber++) {
 							parametersList = processListOfParameters(parametersContainer.getParameters(learningAlgorithms.get(learningAlgorithmNumber).getName(), dataProvider.getDataName()));
 							int parametersNumber = -1;
@@ -559,6 +611,7 @@ public class BatchExperiment {
 						outN("  ----------");
 						
 						VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
+						NumberOfConsistentObjectsCache.getInstance().clear(); //release references to allow GC
 					} //for crossValidationNumber
 				} //if (doCrossValidations)
 				//<<<<<
@@ -694,6 +747,7 @@ public class BatchExperiment {
 			
 			dataProvider.done(); //facilitate GC
 			VCDomLEMModeRuleClassifierLearnerCache.getInstance().clear(); //release references to allow GC
+			NumberOfConsistentObjectsCache.getInstance().clear(); //release references to allow GC
 		} //for dataProvider
 		
 		return results;
@@ -706,7 +760,7 @@ public class BatchExperiment {
 		
 //		long[] SKIP_DATA = new long[]{};
 		
-		long[] monumentsSeeds = new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302l, 4914830721005112L};
+		long[] monumentsSeeds = new long[]{0L, 8897335920153900L, 5347765673520470L, 3684779165093844L, 5095550231390613L, 1503924106488124L, 5782954920893053L, 3231154532347289L, 9843288945267302L, 4914830721005112L};
 //		long[] monumentsSeeds = new long[]{0L, 8897335920153900L, 5347765673520470L}; //only first 3 CVs
 //		long[] monumentsSeeds = SKIP_DATA;
 		
@@ -720,28 +774,32 @@ public class BatchExperiment {
 		
 		//TODO: configure which setup should be used in this batch experiment
 		BatchExperimentSetup[] batchExperimentSetups = {
-				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new AcceptingDataProcessor()),
-				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k, new AcceptingDataProcessor()),
-				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k, new AcceptingDataProcessor()),
+//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
+//				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
+//				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
+				
+//				new BatchExperimentSetupMonumentsOriginalWithID(monumentsSeeds, k, new AcceptingDataProcessorProvider()), //setup just for testing purposes
 				
 				//setups just for testing purposes:
-//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessor(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
-//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessor(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
-//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
+//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
+//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessorProvider(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
+//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
 				
-				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k, new AcceptingDataProcessor()),
-				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k, new AcceptingDataProcessor()),
-				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k, new AcceptingDataProcessor()),
+//				new BatchExperimentSetupMonumentsOriginalWithID(monumentsSeeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)), //setup just for testing purposes
 				
-				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
-				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),				
-				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
-				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
-				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
-				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessor(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
-			
-				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessor()),
-				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessor())
+//				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
+//				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
+//				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
+				
+//				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
+//				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
+//				
+				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
+				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)),
+//				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
+//				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.OVERSAMPLING, 3637508937195708L)),
+//				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L)),
+//				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDER_AND_OVERSAMPLING, 7449350427617649L))
 		};
 		//<END EXPERIMENT CONFIG>
 		
@@ -749,11 +807,12 @@ public class BatchExperiment {
 			List<DataProvider> dataProviders = batchExperimentSetup.getDataProviders();
 			List<LearningAlgorithm> learningAlgorithms = batchExperimentSetup.getLearningAlgorithms();
 			LearningAlgorithmDataParametersContainer parametersContainer = batchExperimentSetup.getLearningAlgorithmDataParametersContainer();
+			DataProcessorProvider dataProcessorProvider = batchExperimentSetup.getDataProcessorProvider();
 			
 			BatchExperimentResults results = (new BatchExperiment(
 					dataProviders,
 					new RepeatableCrossValidationProvider(),
-					batchExperimentSetup.getDataProcessor(),
+					dataProcessorProvider,
 					learningAlgorithms,
 					parametersContainer)
 			).run();
@@ -783,13 +842,14 @@ public class BatchExperiment {
 			//$$$$$
 			ResultsTable<String> accuracies = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> tPRsAndGmean = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> fullDataModelCharacteristics = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			//---
 			ResultsTable<String> avgAccuracies = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> stdDevs = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> avgTPRsAndGmean = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> avgTrainingTimes = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> avgValidationTimes = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
-			ResultsTable<String> avgTestDataModelCharacteristics = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
+			ResultsTable<String> avgDataModelCharacteristics = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			ResultsTable<String> avgTestDataQualities = new ResultsTable<>(dataSetsNames.size(), algorithmsNames.size());
 			
 			if (doFullDataReclassification) {
@@ -797,6 +857,8 @@ public class BatchExperiment {
 				accuracies.setColumnHeaders(algorithmsNames);
 				tPRsAndGmean.setTopLeftCell("% missing");
 				tPRsAndGmean.setColumnHeaders(algorithmsNames);
+				fullDataModelCharacteristics.setTopLeftCell("% missing");
+				fullDataModelCharacteristics.setColumnHeaders(algorithmsNames);
 			}
 			if (doCrossValidations) { //there are going to be average results => initialize tables
 				avgAccuracies.setTopLeftCell("% missing");
@@ -809,8 +871,8 @@ public class BatchExperiment {
 				avgTrainingTimes.setColumnHeaders(algorithmsNames);
 				avgValidationTimes.setTopLeftCell("% missing");
 				avgValidationTimes.setColumnHeaders(algorithmsNames);
-				avgTestDataModelCharacteristics.setTopLeftCell("% missing");
-				avgTestDataModelCharacteristics.setColumnHeaders(algorithmsNames);
+				avgDataModelCharacteristics.setTopLeftCell("% missing");
+				avgDataModelCharacteristics.setColumnHeaders(algorithmsNames);
 				avgTestDataQualities.setTopLeftCell("% missing");
 				avgTestDataQualities.setColumnHeaders(algorithmsNames);
 			}
@@ -822,6 +884,7 @@ public class BatchExperiment {
 					//$$$$$
 					accuracies.newRow(dataSetName);
 					tPRsAndGmean.newRow(dataSetName);
+					fullDataModelCharacteristics.newRow(dataSetName);
 					
 					for (String algorithmName : algorithmsNames) {
 						List<LearningAlgorithmDataParameters> parameters;
@@ -832,12 +895,18 @@ public class BatchExperiment {
 						} else {
 							parametersTxt = "null";
 						}
-						OrdinalMisclassificationMatrix fullDataOrdinalMisclassificationMatrix = results.dataName2FullDataResults.get(dataSetName)
-								.algorithmNameWithParameters2Results.get(algorithmName+"("+parametersTxt+")").getModelValidationResult().getOrdinalMisclassificationMatrix();
+						ModelValidationResult modelValidationResult = results.dataName2FullDataResults.get(dataSetName).algorithmNameWithParameters2Results.get(algorithmName+"("+parametersTxt+")").getModelValidationResult();
+						OrdinalMisclassificationMatrix fullDataOrdinalMisclassificationMatrix = modelValidationResult.getOrdinalMisclassificationMatrix();
 						
 						accuracies.addRowValue(round(fullDataOrdinalMisclassificationMatrix.getAccuracy()));
-						tPRsAndGmean.addRowValue(String.format(Locale.US, "%s # Gmean: %s.",
-								getTruePositiveRates(fullDataOrdinalMisclassificationMatrix), round(fullDataOrdinalMisclassificationMatrix.getGmean())));
+						tPRsAndGmean.addRowValue(String.format(Locale.US, "%s # Gmean: %s.", getTruePositiveRates(fullDataOrdinalMisclassificationMatrix), round(fullDataOrdinalMisclassificationMatrix.getGmean())));
+						
+						String rowValue = modelValidationResult.getModelDescription().toCompressedShortString();
+						if (algorithmName.equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())) {
+							rowValue += ", r/o: " + round(modelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules());
+						}
+						fullDataModelCharacteristics.addRowValue(rowValue);
+						
 					}
 					//$$$$$
 				} //if (doFullDataReclassification)
@@ -849,7 +918,7 @@ public class BatchExperiment {
 					avgTPRsAndGmean.newRow(dataSetName);
 					avgTrainingTimes.newRow(dataSetName);
 					avgValidationTimes.newRow(dataSetName);
-					avgTestDataModelCharacteristics.newRow(dataSetName);
+					avgDataModelCharacteristics.newRow(dataSetName);
 					avgTestDataQualities.newRow(dataSetName);
 					//$$$$$
 					
@@ -987,7 +1056,7 @@ public class BatchExperiment {
 								if (algorithmName.equals(VCDomLEMModeRuleClassifierLearner.getAlgorithmName())) {
 									rowValue += ", r/o: " + round(aggregatedModelValidationResult.getClassificationStatistics().getAverageNumberOfCoveringRules());
 								}
-								avgTestDataModelCharacteristics.addRowValue(rowValue);
+								avgDataModelCharacteristics.addRowValue(rowValue);
 								//
 								avgTestDataQualities.addRowValue(aggregatedModelValidationResult.getClassificationStatistics().getCompressedQualitiesOfApproximation());
 							}
@@ -999,7 +1068,7 @@ public class BatchExperiment {
 			} //for dataSetName
 			
 			outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> FINISHING BATCH EXPERIMENT RUN <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-			outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Training data preprocessor: " + batchExperimentSetup.getDataProcessor());
+			outN(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Training data preprocessor: " + batchExperimentSetup.getDataProcessorProvider());
 
 			//$$$$$
 			if (doFullDataReclassification) {
@@ -1008,6 +1077,9 @@ public class BatchExperiment {
 				outN("--");
 				outN("Full data TPR & Gmean");
 				outN(tPRsAndGmean.toString("\t"));
+				outN("--");
+				outN("Full data model characteristics");
+				outN(fullDataModelCharacteristics.toString("\t"));
 				outN("--");
 			}
 			if (doCrossValidations) {
@@ -1026,8 +1098,8 @@ public class BatchExperiment {
 				outN("Avg. fold validation time [ms]");
 				outN(avgValidationTimes.toString("\t"));
 				outN("--");
-				outN("Avg. test data model characteristics (across cross-validation folds)");
-				outN(avgTestDataModelCharacteristics.toString("\t"));
+				outN("Avg. data model characteristics (across cross-validation folds)");
+				outN(avgDataModelCharacteristics.toString("\t"));
 				outN("--");
 				outN("Avg. quality for test data");
 				outN(avgTestDataQualities.toString("\t"));
@@ -1057,6 +1129,68 @@ public class BatchExperiment {
 		} else {
 			return String.format(Locale.US, decimalFormat, number);
 		}
+	}
+	
+	/**
+	 * Gets signature of given information table taking into account IDs of subsequent objects in that information table.
+	 * Assumes that first column is of type {@link IntegerField}.
+	 * 
+	 * @param informationTable information table to be summarized using a short signature
+	 * @return signature of given information table
+	 */
+	private static String signature(InformationTable informationTable) {
+		if (informationTable == null) {
+			return null;
+		}
+		
+		//Index2IdMapper mapper = informationTable.getIndex2IdMapper();
+		
+		MessageDigest md = null;
+		byte[] allBytes = new byte[4 * informationTable.getNumberOfObjects()];
+		
+		int index = 0;
+		int value;
+		for (int i = 0; i < informationTable.getNumberOfObjects(); i++) {
+			if (!(informationTable.getField(i, 0) instanceof UnknownSimpleField)) {
+				value = ((IntegerField)informationTable.getField(i, 0)).getValue();
+			} else {
+				value = i;
+			}
+			byte[] bytes = intToBytes(value);
+			System.arraycopy(bytes, 0, allBytes, index, bytes.length);
+			index += 4;
+		}
+
+		try {
+			md = MessageDigest.getInstance("SHA-256");
+		} catch (NoSuchAlgorithmException e) {
+			return null;
+		}
+		
+		md.update(allBytes);
+		byte[] hashBytes = md.digest();
+		
+		StringBuilder builder = new StringBuilder(hashBytes.length * 2);
+		for (byte b : hashBytes) {
+			builder.append(String.format("%02X", b));
+		}
+		
+		return builder.toString();
+	}
+	
+	/**
+	 * Converts given index to array of bytes.
+	 * 
+	 * @param index index to be converted
+	 * @return array of bytes encoding given index
+	 */
+	private static byte[] intToBytes(final int index) {
+	    return new byte[] {
+	        (byte)((index >> 24) & 0xff),
+	        (byte)((index >> 16) & 0xff),
+	        (byte)((index >> 8) & 0xff),
+	        (byte)((index >> 0) & 0xff),
+	    };
 	}
 	
 }

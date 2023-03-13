@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.rulelearn.experiments.BasicDataProvider;
-import org.rulelearn.experiments.DataProcessor;
+import org.rulelearn.experiments.DataProcessorProvider;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.LearningAlgorithm;
 import org.rulelearn.experiments.LearningAlgorithmDataParameters;
@@ -24,8 +24,8 @@ import weka.classifiers.bayes.NaiveBayes;
  */
 public class BatchExperimentSetupChurn4000v8Original extends BatchExperimentSetupChurn4000v8 {
 	
-	public BatchExperimentSetupChurn4000v8Original(long[] seeds, int k, DataProcessor dataProcessor) {
-		super(seeds, k, dataProcessor);
+	public BatchExperimentSetupChurn4000v8Original(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
+		super(seeds, k, dataProcessorProvider);
 	}
 
 	@Override
@@ -190,91 +190,91 @@ public class BatchExperimentSetupChurn4000v8Original extends BatchExperimentSetu
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata.json",
 				"data/json-objects/bank-churn-4000-v8 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_05_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
 				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_05_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
 				"data/json-objects/bank-churn-4000-v8_0.05 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_10_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
 				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_10_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
 				"data/json-objects/bank-churn-4000-v8_0.10 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_15_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
 				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_15_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
 				"data/json-objects/bank-churn-4000-v8_0.15 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_20_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
 				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_20_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
 				"data/json-objects/bank-churn-4000-v8_0.20 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_25_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv2.json",
 				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn4000v8_0_25_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-4000-v8 metadata_mv1.5.json",
 				"data/json-objects/bank-churn-4000-v8_0.25 data.json",
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 	static List<LearningAlgorithmDataParameters> getVCDomLEMModeRuleClassifierLearnerChurn4000v8ParametersList() {

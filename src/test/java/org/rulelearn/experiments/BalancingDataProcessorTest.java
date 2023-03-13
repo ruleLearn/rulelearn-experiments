@@ -47,6 +47,7 @@ class BalancingDataProcessorTest {
 		Mockito.when(informationTableWithDecisionDistributionsMock.getDecision(9)).thenReturn(decision1Mock);
 		
 		Mockito.when(informationTableWithDecisionDistributionsMock.select(Mockito.any(), Mockito.anyBoolean())).thenReturn(null);
+		Mockito.when(informationTableWithDecisionDistributionsMock.getOrderedUniqueFullyDeterminedDecisions()).thenReturn(new Decision[] {decision1Mock, decision0Mock});
 		
 		Mockito.when(dataMock.getInformationTable()).thenReturn(informationTableWithDecisionDistributionsMock);
 		
@@ -96,6 +97,7 @@ class BalancingDataProcessorTest {
 		Mockito.when(informationTableWithDecisionDistributionsMock.getDecision(9)).thenReturn(decision1Mock);
 		
 		Mockito.when(informationTableWithDecisionDistributionsMock.select(Mockito.any(), Mockito.anyBoolean())).thenReturn(null);
+		Mockito.when(informationTableWithDecisionDistributionsMock.getOrderedUniqueFullyDeterminedDecisions()).thenReturn(new Decision[] {decision1Mock, decision0Mock});
 		
 		Mockito.when(dataMock.getInformationTable()).thenReturn(informationTableWithDecisionDistributionsMock);
 		
@@ -145,6 +147,7 @@ class BalancingDataProcessorTest {
 		Mockito.when(informationTableWithDecisionDistributionsMock.getDecision(9)).thenReturn(decision1Mock);
 		
 		Mockito.when(informationTableWithDecisionDistributionsMock.select(Mockito.any(), Mockito.anyBoolean())).thenReturn(null);
+		Mockito.when(informationTableWithDecisionDistributionsMock.getOrderedUniqueFullyDeterminedDecisions()).thenReturn(new Decision[] {decision1Mock, decision0Mock});
 		
 		Mockito.when(dataMock.getInformationTable()).thenReturn(informationTableWithDecisionDistributionsMock);
 		
@@ -203,6 +206,7 @@ class BalancingDataProcessorTest {
 		Mockito.when(informationTableWithDecisionDistributionsMock.getDecision(15)).thenReturn(decision2Mock);
 		
 		Mockito.when(informationTableWithDecisionDistributionsMock.select(Mockito.any(), Mockito.anyBoolean())).thenReturn(null);
+		Mockito.when(informationTableWithDecisionDistributionsMock.getOrderedUniqueFullyDeterminedDecisions()).thenReturn(new Decision[] {decision0Mock, decision1Mock, decision2Mock});
 		
 		Mockito.when(dataMock.getInformationTable()).thenReturn(informationTableWithDecisionDistributionsMock);
 		
@@ -261,6 +265,7 @@ class BalancingDataProcessorTest {
 		Mockito.when(informationTableWithDecisionDistributionsMock.getDecision(15)).thenReturn(decision2Mock);
 		
 		Mockito.when(informationTableWithDecisionDistributionsMock.select(Mockito.any(), Mockito.anyBoolean())).thenReturn(null);
+		Mockito.when(informationTableWithDecisionDistributionsMock.getOrderedUniqueFullyDeterminedDecisions()).thenReturn(new Decision[] {decision0Mock, decision1Mock, decision2Mock});
 		
 		Mockito.when(dataMock.getInformationTable()).thenReturn(informationTableWithDecisionDistributionsMock);
 		
@@ -319,6 +324,7 @@ class BalancingDataProcessorTest {
 		Mockito.when(informationTableWithDecisionDistributionsMock.getDecision(15)).thenReturn(decision2Mock);
 		
 		Mockito.when(informationTableWithDecisionDistributionsMock.select(Mockito.any(), Mockito.anyBoolean())).thenReturn(null);
+		Mockito.when(informationTableWithDecisionDistributionsMock.getOrderedUniqueFullyDeterminedDecisions()).thenReturn(new Decision[] {decision0Mock, decision1Mock, decision2Mock});
 		
 		Mockito.when(dataMock.getInformationTable()).thenReturn(informationTableWithDecisionDistributionsMock);
 		
@@ -372,6 +378,7 @@ class BalancingDataProcessorTest {
 		Mockito.when(informationTableWithDecisionDistributionsMock.getDecision(10)).thenReturn(decision2Mock);
 		
 		Mockito.when(informationTableWithDecisionDistributionsMock.select(Mockito.any(), Mockito.anyBoolean())).thenReturn(null);
+		Mockito.when(informationTableWithDecisionDistributionsMock.getOrderedUniqueFullyDeterminedDecisions()).thenReturn(new Decision[] {decision0Mock, decision1Mock, decision2Mock});
 		
 		Mockito.when(dataMock.getInformationTable()).thenReturn(informationTableWithDecisionDistributionsMock);
 		

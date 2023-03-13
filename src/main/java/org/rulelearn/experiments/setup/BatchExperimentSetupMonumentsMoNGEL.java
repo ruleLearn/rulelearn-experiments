@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 
 import org.rulelearn.experiments.AttributeRanges;
 import org.rulelearn.experiments.BasicDataProvider;
-import org.rulelearn.experiments.DataProcessor;
+import org.rulelearn.experiments.DataProcessorProvider;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.KEELAlgorithmDataParameters;
 import org.rulelearn.experiments.KEELClassifierLearner;
@@ -22,8 +22,8 @@ import keel.Algorithms.Monotonic_Classification.MoNGEL.MoNGEL;
  */
 public class BatchExperimentSetupMonumentsMoNGEL extends BatchExperimentSetupMonuments {
 	
-	public BatchExperimentSetupMonumentsMoNGEL(long[] seeds, int k, DataProcessor dataProcessor) {
-		super(seeds, k, dataProcessor);
+	public BatchExperimentSetupMonumentsMoNGEL(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
+		super(seeds, k, dataProcessorProvider);
 	}
 	
 	@Override
@@ -75,39 +75,39 @@ public class BatchExperimentSetupMonumentsMoNGEL extends BatchExperimentSetupMon
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-Year1CG.json",
 				"data/csv/zabytki-data-noMV-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments_K9_K10(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments_K9_K10(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-Year1CG.json",
 				"data/csv/zabytki-data-noMV-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments01(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments01(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-Year1CG.json",
 				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 
 	@Override
-	protected DataProvider getDataProviderMonuments01_K9_K10(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderMonuments01_K9_K10(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/MoNGEL/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-Year1CG.json",
 				"data/csv/zabytki-data-noMV-0-1-Year1CG.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 
 }

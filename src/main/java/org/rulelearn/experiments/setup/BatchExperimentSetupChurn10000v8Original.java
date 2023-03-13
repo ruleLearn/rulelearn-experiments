@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.rulelearn.experiments.BasicDataProvider;
-import org.rulelearn.experiments.DataProcessor;
+import org.rulelearn.experiments.DataProcessorProvider;
 import org.rulelearn.experiments.DataProvider;
 import org.rulelearn.experiments.LearningAlgorithm;
 import org.rulelearn.experiments.LearningAlgorithmDataParametersContainer;
@@ -22,9 +22,30 @@ import weka.classifiers.bayes.NaiveBayes;
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
  */
 public class BatchExperimentSetupChurn10000v8Original extends BatchExperimentSetupChurn10000v8 {
+
+	//**************************** OVERRIDES BEGIN
+//	@Override
+//	public List<DataProvider> getDataProviders() {
+//		if (dataProviders == null) {
+//			dataProviders = new ArrayList<DataProvider>();
+//			
+//			dataProviders.add(getDataProviderChurn10000v8(dataNameChurn10000v8, seeds, k));
+//		}
+//		
+//		return dataProviders;
+//	}
+//	
+//	public List<LearningAlgorithm> getLearningAlgorithmsForOriginalData() {
+//		List<LearningAlgorithm> learningAlgorithms = new ArrayList<LearningAlgorithm>();
+//		learningAlgorithms.add(new VCDomLEMModeRuleClassifierLearner());
+////		learningAlgorithms.add(new WEKAClassifierLearner(() -> new J48()));
+////		learningAlgorithms.add(new WEKAClassifierLearner(() -> new JRip()));
+//		return learningAlgorithms;
+//	}
+	//**************************** OVERRIDES END
 	
-	public BatchExperimentSetupChurn10000v8Original(long[] seeds, int k, DataProcessor dataProcessor) {
-		super(seeds, k, dataProcessor);
+	public BatchExperimentSetupChurn10000v8Original(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
+		super(seeds, k, dataProcessorProvider);
 	}
 
 	@Override
@@ -35,7 +56,7 @@ public class BatchExperimentSetupChurn10000v8Original extends BatchExperimentSet
 		
 		return learningAlgorithms;
 	}
-
+	
 	@Override
 	public LearningAlgorithmDataParametersContainer getLearningAlgorithmDataParametersContainer() {
 		if (parametersContainer == null) {
@@ -128,87 +149,87 @@ public class BatchExperimentSetupChurn10000v8Original extends BatchExperimentSet
 	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn10000v8(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn10000v8(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-10000-v8 metadata.json",
 				"data/csv/bank-churn-10000-v8 data.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 //	@Override
-//	protected DataProvider getDataProviderChurn10000v8_0_05_mv2(String dataSetName, long[] seeds, int k) {
+//	protected DataProvider getDataProviderChurn10000v8_0_05_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 //		return new BasicDataProvider(
 //				"data/json-metadata/bank-churn-10000-v8 metadata_mv2.json",
 //				"data/csv/bank-churn-10000-v8_0.05 data.csv",
 //				false, ';',
-//				dataSetName, seeds, k);
+//				dataSetName, dataSetGroup, seeds, k);
 //	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn10000v8_0_05_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn10000v8_0_05_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-10000-v8 metadata_mv1.5.json",
 				"data/csv/bank-churn-10000-v8_0.05 data.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 //	@Override
-//	protected DataProvider getDataProviderChurn10000v8_0_10_mv2(String dataSetName, long[] seeds, int k) {
+//	protected DataProvider getDataProviderChurn10000v8_0_10_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 //		return new BasicDataProvider(
 //				"data/json-metadata/bank-churn-10000-v8 metadata_mv2.json",
 //				"data/csv/bank-churn-10000-v8_0.10 data.csv",
 //				false, ';',
-//				dataSetName, seeds, k);
+//				dataSetName, dataSetGroup, seeds, k);
 //	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn10000v8_0_10_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn10000v8_0_10_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-10000-v8 metadata_mv1.5.json",
 				"data/csv/bank-churn-10000-v8_0.10 data.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 //	@Override
-//	protected DataProvider getDataProviderChurn10000v8_0_15_mv2(String dataSetName, long[] seeds, int k) {
+//	protected DataProvider getDataProviderChurn10000v8_0_15_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 //		return new BasicDataProvider(
 //				"data/json-metadata/bank-churn-10000-v8 metadata_mv2.json",
 //				"data/csv/bank-churn-10000-v8_0.15 data.csv",
 //				false, ';',
-//				dataSetName, seeds, k);
+//				dataSetName, dataSetGroup, seeds, k);
 //	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn10000v8_0_15_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn10000v8_0_15_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-10000-v8 metadata_mv1.5.json",
 				"data/csv/bank-churn-10000-v8_0.15 data.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 //	@Override
-//	protected DataProvider getDataProviderChurn10000v8_0_20_mv2(String dataSetName, long[] seeds, int k) {
+//	protected DataProvider getDataProviderChurn10000v8_0_20_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 //		return new BasicDataProvider(
 //				"data/json-metadata/bank-churn-10000-v8 metadata_mv2.json",
 //				"data/csv/bank-churn-10000-v8_0.20 data.csv",
-//				dataSetName, seeds, k);
+//				dataSetName, dataSetGroup, seeds, k);
 //	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn10000v8_0_20_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn10000v8_0_20_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-10000-v8 metadata_mv1.5.json",
 				"data/csv/bank-churn-10000-v8_0.20 data.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 //	@Override
-//	protected DataProvider getDataProviderChurn10000v8_0_25_mv2(String dataSetName, long[] seeds, int k) {
+//	protected DataProvider getDataProviderChurn10000v8_0_25_mv2(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 //		return new BasicDataProvider(
 //				"data/json-metadata/bank-churn-10000-v8 metadata_mv2.json",
 //				"data/csv/bank-churn-10000-v8_0.25 data.csv",
@@ -217,12 +238,12 @@ public class BatchExperimentSetupChurn10000v8Original extends BatchExperimentSet
 //	}
 	
 	@Override
-	protected DataProvider getDataProviderChurn10000v8_0_25_mv15(String dataSetName, long[] seeds, int k) {
+	protected DataProvider getDataProviderChurn10000v8_0_25_mv15(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
 				"data/json-metadata/bank-churn-10000-v8 metadata_mv1.5.json",
 				"data/csv/bank-churn-10000-v8_0.25 data.csv",
 				false, ';',
-				dataSetName, seeds, k);
+				dataSetName, dataSetGroup, seeds, k);
 	}
 	
 }

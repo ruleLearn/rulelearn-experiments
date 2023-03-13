@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.rulelearn.experiments;
 
 /**
@@ -17,7 +14,16 @@ public class AcceptingDataProcessor implements DataProcessor {
 	
 	@Override
 	public String toString() {
-		return this.getClass().getSimpleName();
+		return serialize();
+	}
+
+	@Override
+	public Long getSeed() {
+		return null; //seed not used
+	}
+	
+	public static String serialize() {
+		return AcceptingDataProcessor.class.getSimpleName();
 	}
 
 }

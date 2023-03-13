@@ -19,34 +19,39 @@ public class Data {
 	InformationTable data;
 	Instances instances = null; //not always used - calculated only when getter is invoked for the first time
 	String name;
+	String groupName; //name of a group of different data sets that this data belongs to (data sets within a group may differ, e.g., by missing values or different columns, but should contain the same objects!)
 	long seed;
 	boolean hasSeed = false;
 	long informationTableTransformationTime = 0L; //time of transformation from InformationTable to InformationTableWithDecisionDistributions, if the information table contains decision distributions
 	
-	Data(InformationTable data, String name, long seed) {
+	Data(InformationTable data, String name, String groupName, long seed) {
 		this.data = data;
 		this.name = name;
+		this.groupName = groupName;
 		this.seed = seed;
 		this.hasSeed = true;
 	}
 	
-	Data(InformationTableWithDecisionDistributions data, String name, long seed, long informationTableTransformationTime) {
+	Data(InformationTableWithDecisionDistributions data, String name, String groupName, long seed, long informationTableTransformationTime) {
 		this.data = data;
 		this.name = name;
+		this.groupName = groupName;
 		this.seed = seed;
 		this.hasSeed = true;
 		this.informationTableTransformationTime = informationTableTransformationTime;
 	}
 	
-	Data(InformationTable data, String name) {
+	Data(InformationTable data, String name, String groupName) {
 		this.data = data;
 		this.name = name;
+		this.groupName = groupName;
 		this.hasSeed = false;
 	}
 	
-	Data(InformationTableWithDecisionDistributions data, String name, long informationTableTransformationTime) {
+	Data(InformationTableWithDecisionDistributions data, String name, String groupName, long informationTableTransformationTime) {
 		this.data = data;
 		this.name = name;
+		this.groupName = groupName;
 		this.hasSeed = false;
 		this.informationTableTransformationTime = informationTableTransformationTime;
 	}
@@ -72,6 +77,10 @@ public class Data {
 	
 	public String getName() {
 		return name;
+	}
+	
+	public String getGroupName() {
+		return groupName;
 	}
 	
 	public long getSeed() {

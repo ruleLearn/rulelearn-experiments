@@ -17,13 +17,13 @@ import org.rulelearn.rules.CompositeRuleCharacteristicsFilter;
 import weka.classifiers.bayes.NaiveBayes;
 
 /**
- * Batch experiment setup for monuments ('zabytki' in Polish) data set, concerning original data.
+ * Batch experiment setup for monuments ('zabytki' in Polish) data set, concerning original data, extended with IDs.
  * 
  * @author Marcin Szeląg (<a href="mailto:marcin.szelag@cs.put.poznan.pl">marcin.szelag@cs.put.poznan.pl</a>)
  */
-public class BatchExperimentSetupMonumentsOriginal extends BatchExperimentSetupMonuments {
+public class BatchExperimentSetupMonumentsOriginalWithID extends BatchExperimentSetupMonuments {
 	
-	public BatchExperimentSetupMonumentsOriginal(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
+	public BatchExperimentSetupMonumentsOriginalWithID(long[] seeds, int k, DataProcessorProvider dataProcessorProvider) {
 		super(seeds, k, dataProcessorProvider);
 	}
 	
@@ -120,8 +120,8 @@ public class BatchExperimentSetupMonumentsOriginal extends BatchExperimentSetupM
 	@Override
 	protected DataProvider getDataProviderMonuments(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-				"data/csv/zabytki-data-noMV.csv",
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-withID.json",
+				"data/csv/zabytki-data-noMV-withID.csv",
 				false, ';',
 				dataSetName, dataSetGroup, seeds, k);
 	}
@@ -129,8 +129,8 @@ public class BatchExperimentSetupMonumentsOriginal extends BatchExperimentSetupM
 	@Override
 	protected DataProvider getDataProviderMonuments_K9_K10(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-				"data/csv/zabytki-data-noMV.csv",
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-withID.json",
+				"data/csv/zabytki-data-noMV-withID.csv",
 				false, ';',
 				dataSetName, dataSetGroup, seeds, k);
 	}
@@ -138,8 +138,8 @@ public class BatchExperimentSetupMonumentsOriginal extends BatchExperimentSetupM
 	@Override
 	protected DataProvider getDataProviderMonuments01(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal.json",
-				"data/csv/zabytki-data-noMV-0-1.csv",
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-withID.json",
+				"data/csv/zabytki-data-noMV-0-1-withID.csv",
 				false, ';',
 				dataSetName, dataSetGroup, seeds, k);
 	}
@@ -147,8 +147,8 @@ public class BatchExperimentSetupMonumentsOriginal extends BatchExperimentSetupM
 	@Override
 	protected DataProvider getDataProviderMonuments01_K9_K10(String dataSetName, String dataSetGroup, long[] seeds, int k) {
 		return new BasicDataProvider(
-				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10.json",
-				"data/csv/zabytki-data-noMV-0-1.csv",
+				"data/json-metadata/zabytki-metadata-Y1-K-numeric-ordinal-K9-K10-withID.json",
+				"data/csv/zabytki-data-noMV-0-1-withID.csv",
 				false, ';',
 				dataSetName, dataSetGroup, seeds, k);
 	}

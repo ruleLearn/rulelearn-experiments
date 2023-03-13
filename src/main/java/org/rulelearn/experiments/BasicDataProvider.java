@@ -245,6 +245,7 @@ public class BasicDataProvider implements DataProvider {
 	long informationTableTransformationTime = 0L;
 	Params params;
 	String dataName;
+	String dataGroup;
 	long[] seeds;
 	int numberOfFolds;
 	
@@ -252,22 +253,26 @@ public class BasicDataProvider implements DataProvider {
 	
 	public BasicDataProvider(String metadataJSONFilePath, String objectsJSONFilePath,
 			String dataName,
+			String dataGroup,
 			long[] seeds,
 			int numberOfFolds) {
 		
 		this.params = new JSONParams(metadataJSONFilePath, objectsJSONFilePath);
 		this.dataName = dataName;
+		this.dataGroup = dataGroup;
 		this.seeds = seeds;
 		this.numberOfFolds = numberOfFolds;
 	}
 	
 	public BasicDataProvider(String metadataJSONFilePath, String objectsCSVFilePath, boolean header, char separator,
 			String dataName,
+			String dataGroup,
 			long[] seeds,
 			int numberOfFolds) {
 
 		this.params = new CSVParams(metadataJSONFilePath, objectsCSVFilePath, header, separator);
 		this.dataName = dataName;
+		this.dataGroup = dataGroup;
 		this.seeds = seeds;
 		this.numberOfFolds = numberOfFolds;
 	}
@@ -291,7 +296,7 @@ public class BasicDataProvider implements DataProvider {
 				}
 			}
 			
-			return new Data(informationTable, dataName, seeds[crossValidationNumber], informationTableTransformationTime);
+			return new Data(informationTable, dataName, dataGroup, seeds[crossValidationNumber], informationTableTransformationTime);
 		} else {
 			throw new UnsupportedOperationException("Data provider has already done his job.");
 		}
@@ -314,7 +319,7 @@ public class BasicDataProvider implements DataProvider {
 				}
 			}
 			
-			return new Data(informationTable, dataName, informationTableTransformationTime);
+			return new Data(informationTable, dataName, dataGroup, informationTableTransformationTime);
 		} else {
 			throw new UnsupportedOperationException("Data provider has already done his job.");
 		}
@@ -329,7 +334,7 @@ public class BasicDataProvider implements DataProvider {
 			throw new InvalidValueException("Could not load information table from disk.");
 		}
 		
-		return new Data(informationTable, dataName);
+		return new Data(informationTable, dataName, dataGroup);
 	}
 
 	/**
@@ -359,12 +364,14 @@ public class BasicDataProvider implements DataProvider {
 		}
 	}
 
-	/**
-	 * @throws UnsupportedOperationException if this provider has already {@link #done() done} his job.
-	 */
 	@Override
 	public String getDataName() {
 		return dataName;
+	}
+	
+	@Override
+	public String getDataGroup() {
+		return dataGroup;
 	}
 	
 	@Override
@@ -379,5 +386,5 @@ public class BasicDataProvider implements DataProvider {
 	public void reset() {
 		this.informationTable = null;
 	}
-	
+
 }

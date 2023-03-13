@@ -63,8 +63,8 @@ public class RepeatableCrossValidation implements CrossValidation {
 			
 			int foldIndex = 0;
 			for (org.rulelearn.sampling.CrossValidator.CrossValidationFold<InformationTable> fold : folds) {
-				Data trainData = new Data(fold.getTrainingTable(), data.getName()+"_"+seed+"_train_"+foldIndex, data.getSeed()); //no information table transformation done yet
-				Data testData = new Data(fold.getValidationTable(), data.getName()+"_"+seed+"_test_"+foldIndex, data.getSeed());  //no information table transformation done yet
+				Data trainData = new Data(fold.getTrainingTable(), data.getName()+"_"+seed+"_train_"+foldIndex, data.getGroupName(), data.getSeed()); //no information table transformation done yet
+				Data testData = new Data(fold.getValidationTable(), data.getName()+"_"+seed+"_test_"+foldIndex, data.getGroupName(), data.getSeed());  //no information table transformation done yet
 				crossValidationFolds.add(new RepeatableCrossValidationFold(trainData, testData, foldIndex++));
 			}
 			
