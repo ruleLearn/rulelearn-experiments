@@ -34,9 +34,9 @@ public class BalancingDataProcessorProvider implements DataProcessorProvider {
 
 	@Override
 	public DataProcessor provide(String dataGroupName) {
-		long seed = basicSeed + convert(dataGroupName);
-//		seed = (new Random(seed)).nextLong();
-		return new BalancingDataProcessor(balancingStrategy, seed); //accepts overflow
+		long seed = basicSeed + convert(dataGroupName) * 15_485_863; //accepts overflow
+		seed = (new Random(seed)).nextLong();
+		return new BalancingDataProcessor(balancingStrategy, seed);
 	}
 
 	@Override

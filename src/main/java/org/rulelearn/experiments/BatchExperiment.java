@@ -35,6 +35,12 @@ import org.rulelearn.experiments.helpers.ResultsTable;
 import org.rulelearn.experiments.setup.BatchExperimentSetup;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8OLM_OSDL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupChurn10000v8Original;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8MoNGEL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8OLM_OSDL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupChurn4000v8Original;
+import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsMoNGEL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOLM_OSDL;
+import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOriginal;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
 import org.rulelearn.types.IntegerField;
 import org.rulelearn.types.UnknownSimpleField;
@@ -279,8 +285,8 @@ public class BatchExperiment {
 					outN("--");
 					
 					//TODO: choose another version of provide method for full data?
-					//DataProcessor fullDataPreprocessor = trainDataPreprocessorProvider.provide(fullData.getGroupName()); //get preprocessor used only for full data
-					DataProcessor fullDataPreprocessor = trainDataPreprocessorProvider.provide(); //get preprocessor used only for full data
+					DataProcessor fullDataPreprocessor = trainDataPreprocessorProvider.provide(fullData.getGroupName()); //get preprocessor used only for full data
+					//DataProcessor fullDataPreprocessor = trainDataPreprocessorProvider.provide(); //get preprocessor used only for full data
 					System.out.println("Using full train data preprocesssor: "+fullDataPreprocessor.toString());
 					
 					//calculate and process full data models for all (algorithm, parameters) pairs
@@ -774,9 +780,9 @@ public class BatchExperiment {
 		
 		//TODO: configure which setup should be used in this batch experiment
 		BatchExperimentSetup[] batchExperimentSetups = {
-//				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
-//				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
-//				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupMonumentsOriginal(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupMonumentsOLM_OSDL(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupMonumentsMoNGEL(monumentsSeeds, k, new AcceptingDataProcessorProvider()),
 				
 //				new BatchExperimentSetupMonumentsOriginalWithID(monumentsSeeds, k, new AcceptingDataProcessorProvider()), //setup just for testing purposes
 				
@@ -787,9 +793,9 @@ public class BatchExperiment {
 				
 //				new BatchExperimentSetupMonumentsOriginalWithID(monumentsSeeds, k, new BalancingDataProcessorProvider(BalancingStrategy.UNDERSAMPLING, 9240360408272270L)), //setup just for testing purposes
 				
-//				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
-//				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
-//				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupChurn4000v8Original(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupChurn4000v8OLM_OSDL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
+				new BatchExperimentSetupChurn4000v8MoNGEL(churn4000v8Seeds, k, new AcceptingDataProcessorProvider()),
 				
 				new BatchExperimentSetupChurn10000v8Original(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
 				new BatchExperimentSetupChurn10000v8OLM_OSDL(churn10000v8Seeds, k, new AcceptingDataProcessorProvider()),
