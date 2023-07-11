@@ -31,8 +31,12 @@
 
 package org.core;
 
-import java.io.*;
-import java.util.*;
+import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.RandomAccessFile;
 
 
 /**
@@ -94,6 +98,7 @@ public class Files{
                 DataOutputStream fis = new DataOutputStream((OutputStream) f);
                 fis.writeBytes(content);
                 fis.close();
+                f.close();
 	    }
         catch (IOException e) {
 	        e.printStackTrace();

@@ -3,8 +3,6 @@
  */
 package org.rulelearn.experiments;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -42,8 +40,6 @@ import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsMoNGEL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOLM_OSDL;
 import org.rulelearn.experiments.setup.BatchExperimentSetupMonumentsOriginal;
 import org.rulelearn.measures.dominance.EpsilonConsistencyMeasure;
-import org.rulelearn.types.IntegerField;
-import org.rulelearn.types.UnknownSimpleField;
 import org.rulelearn.validation.OrdinalMisclassificationMatrix;
 
 /**
@@ -1137,66 +1133,66 @@ public class BatchExperiment {
 		}
 	}
 	
-	/**
-	 * Gets signature of given information table taking into account IDs of subsequent objects in that information table.
-	 * Assumes that first column is of type {@link IntegerField}.
-	 * 
-	 * @param informationTable information table to be summarized using a short signature
-	 * @return signature of given information table
-	 */
-	private static String signature(InformationTable informationTable) {
-		if (informationTable == null) {
-			return null;
-		}
-		
-		//Index2IdMapper mapper = informationTable.getIndex2IdMapper();
-		
-		MessageDigest md = null;
-		byte[] allBytes = new byte[4 * informationTable.getNumberOfObjects()];
-		
-		int index = 0;
-		int value;
-		for (int i = 0; i < informationTable.getNumberOfObjects(); i++) {
-			if (!(informationTable.getField(i, 0) instanceof UnknownSimpleField)) {
-				value = ((IntegerField)informationTable.getField(i, 0)).getValue();
-			} else {
-				value = i;
-			}
-			byte[] bytes = intToBytes(value);
-			System.arraycopy(bytes, 0, allBytes, index, bytes.length);
-			index += 4;
-		}
-
-		try {
-			md = MessageDigest.getInstance("SHA-256");
-		} catch (NoSuchAlgorithmException e) {
-			return null;
-		}
-		
-		md.update(allBytes);
-		byte[] hashBytes = md.digest();
-		
-		StringBuilder builder = new StringBuilder(hashBytes.length * 2);
-		for (byte b : hashBytes) {
-			builder.append(String.format("%02X", b));
-		}
-		
-		return builder.toString();
-	}
-	
-	/**
-	 * Converts given index to array of bytes.
-	 * 
-	 * @param index index to be converted
-	 * @return array of bytes encoding given index
-	 */
-	private static byte[] intToBytes(final int index) {
-	    return new byte[] {
-	        (byte)((index >> 24) & 0xff),
-	        (byte)((index >> 16) & 0xff),
-	        (byte)((index >> 8) & 0xff),
-	        (byte)((index >> 0) & 0xff),
-	    };
-	}
+//	/**
+//	 * Gets signature of given information table taking into account IDs of subsequent objects in that information table.
+//	 * Assumes that first column is of type {@link IntegerField}.
+//	 * 
+//	 * @param informationTable information table to be summarized using a short signature
+//	 * @return signature of given information table
+//	 */
+//	private static String signature(InformationTable informationTable) {
+//		if (informationTable == null) {
+//			return null;
+//		}
+//		
+//		//Index2IdMapper mapper = informationTable.getIndex2IdMapper();
+//		
+//		MessageDigest md = null;
+//		byte[] allBytes = new byte[4 * informationTable.getNumberOfObjects()];
+//		
+//		int index = 0;
+//		int value;
+//		for (int i = 0; i < informationTable.getNumberOfObjects(); i++) {
+//			if (!(informationTable.getField(i, 0) instanceof UnknownSimpleField)) {
+//				value = ((IntegerField)informationTable.getField(i, 0)).getValue();
+//			} else {
+//				value = i;
+//			}
+//			byte[] bytes = intToBytes(value);
+//			System.arraycopy(bytes, 0, allBytes, index, bytes.length);
+//			index += 4;
+//		}
+//
+//		try {
+//			md = MessageDigest.getInstance("SHA-256");
+//		} catch (NoSuchAlgorithmException e) {
+//			return null;
+//		}
+//		
+//		md.update(allBytes);
+//		byte[] hashBytes = md.digest();
+//		
+//		StringBuilder builder = new StringBuilder(hashBytes.length * 2);
+//		for (byte b : hashBytes) {
+//			builder.append(String.format("%02X", b));
+//		}
+//		
+//		return builder.toString();
+//	}
+//	
+//	/**
+//	 * Converts given index to array of bytes.
+//	 * 
+//	 * @param index index to be converted
+//	 * @return array of bytes encoding given index
+//	 */
+//	private static byte[] intToBytes(final int index) {
+//	    return new byte[] {
+//	        (byte)((index >> 24) & 0xff),
+//	        (byte)((index >> 16) & 0xff),
+//	        (byte)((index >> 8) & 0xff),
+//	        (byte)((index >> 0) & 0xff),
+//	    };
+//	}
 	
 }
